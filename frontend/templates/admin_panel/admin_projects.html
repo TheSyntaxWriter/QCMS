@@ -2,12 +2,51 @@
 
 <h2>📁 Projects</h2>
 
-<button class="btn btn-add">+ Add Project</button>
+<div class="card" style="margin-bottom: 15px;">
+  <h3>{% if edit_project %}Edit Project{% else %}Add Project{% endif %}</h3>
+  <form method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{% if edit_project %}update{% else %}create{% endif %}">
+    {% if edit_project %}
+      <input type="hidden" name="project_id" value="{{ edit_project.id }}">
+    {% endif %}
+
+    <div>
+      <label>Code</label>
+      <input class="form-control" name="code" required value="{% if edit_project %}{{ edit_project.code }}{% endif %}">
+    </div>
+    <div>
+      <label>Name</label>
+      <input class="form-control" name="name" required value="{% if edit_project %}{{ edit_project.name }}{% endif %}">
+    </div>
+    <div>
+      <label>Domain</label>
+      <select class="form-control" name="domain" required>
+        {% for domain in domains %}
+          <option value="{{ domain }}" {% if edit_project and edit_project.domain == domain %}selected{% endif %}>{{ domain }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>
+        <input type="checkbox" name="is_active" {% if edit_project %}{% if edit_project.is_active %}checked{% endif %}{% else %}checked{% endif %}>
+        Active
+      </label>
+    </div>
+    <div>
+      <button type="submit" class="btn btn-add">{% if edit_project %}Update{% else %}Add{% endif %}</button>
+      {% if edit_project %}
+        <a href="{% url 'admin_projects' %}" class="btn btn-view">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
 
 <div class="card">
   <table>
     <thead>
       <tr>
+        <th>Code</th>
         <th>Name</th>
         <th>Domain</th>
         <th>Status</th>
@@ -18,20 +57,26 @@
     <tbody>
       {% for project in projects %}
       <tr>
+        <td>{{ project.code }}</td>
         <td>{{ project.name }}</td>
         <td>{{ project.domain }}</td>
 
         <td>
           {% if project.is_active %}
-          <span class="active">Active</span>
+          <span class="active-text">Active</span>
           {% else %}
-          <span class="inactive">Inactive</span>
+          <span class="inactive-text">Inactive</span>
           {% endif %}
         </td>
 
         <td>
-          <button class="btn btn-edit">Edit</button>
-          <button class="btn btn-delete">Delete</button>
+          <a href="{% url 'admin_projects' %}?edit={{ project.id }}" class="btn btn-edit">Edit</a>
+          <form method="post" style="display: inline;" onsubmit="return confirm('Delete this project?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="project_id" value="{{ project.id }}">
+            <button type="submit" class="btn btn-delete">Delete</button>
+          </form>
         </td>
       </tr>
       {% endfor %}

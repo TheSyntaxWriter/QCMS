@@ -2,24 +2,96 @@
 
 <h2>📋 Checklists</h2>
 
-<button class="btn btn-add">+ Add Checklist</button>
+<div class="card" style="margin-bottom: 15px;">
+  <h3>{% if edit_checklist %}Edit Checklist{% else %}Add Checklist{% endif %}</h3>
+  <form method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{% if edit_checklist %}update{% else %}create{% endif %}">
+    {% if edit_checklist %}
+      <input type="hidden" name="checklist_id" value="{{ edit_checklist.id }}">
+    {% endif %}
+
+    <div>
+      <label>Code</label>
+      <input class="form-control" name="code" required value="{% if edit_checklist %}{{ edit_checklist.code }}{% endif %}">
+    </div>
+    <div>
+      <label>Name</label>
+      <input class="form-control" name="name" required value="{% if edit_checklist %}{{ edit_checklist.name }}{% endif %}">
+    </div>
+    <div>
+      <label>Type</label>
+      <select class="form-control" name="checklist_type">
+        {% for checklist_type in checklist_types %}
+          <option value="{{ checklist_type }}" {% if edit_checklist and edit_checklist.checklist_type == checklist_type %}selected{% endif %}>{{ checklist_type }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Department</label>
+      <select class="form-control" name="department_id">
+        <option value="">-- Select --</option>
+        {% for department in departments %}
+          <option value="{{ department.id }}" {% if edit_checklist and edit_checklist.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Project</label>
+      <select class="form-control" name="project_id">
+        <option value="">-- Select --</option>
+        {% for project in projects %}
+          <option value="{{ project.id }}" {% if edit_checklist and edit_checklist.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>
+        <input type="checkbox" name="is_active" {% if edit_checklist %}{% if edit_checklist.is_active %}checked{% endif %}{% else %}checked{% endif %}>
+        Active
+      </label>
+    </div>
+    <div>
+      <button type="submit" class="btn btn-add">{% if edit_checklist %}Update{% else %}Add{% endif %}</button>
+      {% if edit_checklist %}
+        <a href="{% url 'admin_checklists' %}" class="btn btn-view">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
 
 <div class="card">
   <table>
     <thead>
       <tr>
+        <th>Code</th>
         <th>Name</th>
         <th>Department</th>
+        <th>Project</th>
         <th>Type</th>
+        <th>Status</th>
+        <th>Action</th>
       </tr>
     </thead>
 
     <tbody>
       {% for checklist in checklists %}
       <tr>
+        <td>{{ checklist.code }}</td>
         <td>{{ checklist.name }}</td>
-        <td>{{ checklist.department.name }}</td>
-        <td>{{ checklist.type }}</td>
+        <td>{{ checklist.department.name|default:"-" }}</td>
+        <td>{{ checklist.project.name|default:"-" }}</td>
+        <td>{{ checklist.checklist_type }}</td>
+        <td>{% if checklist.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
+        <td>
+          <a href="{% url 'admin_checklists' %}?edit={{ checklist.id }}" class="btn btn-edit">Edit</a>
+          <form method="post" style="display: inline;" onsubmit="return confirm('Delete this checklist?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="checklist_id" value="{{ checklist.id }}">
+            <button type="submit" class="btn btn-delete">Delete</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </tbody>

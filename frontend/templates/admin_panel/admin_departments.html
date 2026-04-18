@@ -2,14 +2,49 @@
 
 <h2>🏢 Departments</h2>
 
-<button class="btn btn-add">+ Add Department</button>
+<div class="card" style="margin-bottom: 15px;">
+  <h3>{% if edit_department %}Edit Department{% else %}Add Department{% endif %}</h3>
+  <form method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; align-items: end;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="{% if edit_department %}update{% else %}create{% endif %}">
+    {% if edit_department %}
+      <input type="hidden" name="department_id" value="{{ edit_department.id }}">
+    {% endif %}
+
+    <div>
+      <label>Code</label>
+      <input class="form-control" name="code" required value="{% if edit_department %}{{ edit_department.code }}{% endif %}">
+    </div>
+
+    <div>
+      <label>Name</label>
+      <input class="form-control" name="name" required value="{% if edit_department %}{{ edit_department.name }}{% endif %}">
+    </div>
+
+    <div>
+      <label>
+        <input type="checkbox" name="is_active" {% if edit_department %}{% if edit_department.is_active %}checked{% endif %}{% else %}checked{% endif %}>
+        Active
+      </label>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-add">{% if edit_department %}Update{% else %}Add{% endif %}</button>
+      {% if edit_department %}
+        <a href="{% url 'admin_departments' %}" class="btn btn-view">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
 
 <div class="card">
   <table>
     <thead>
       <tr>
         <th>ID</th>
+        <th>Code</th>
         <th>Name</th>
+        <th>Status</th>
         <th>Action</th>
       </tr>
     </thead>
@@ -18,11 +53,18 @@
       {% for dept in departments %}
       <tr>
         <td>{{ dept.id }}</td>
+        <td>{{ dept.code }}</td>
         <td>{{ dept.name }}</td>
+        <td>{% if dept.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
 
         <td>
-          <button class="btn btn-edit">Edit</button>
-          <button class="btn btn-delete">Delete</button>
+          <a href="{% url 'admin_departments' %}?edit={{ dept.id }}" class="btn btn-edit">Edit</a>
+          <form method="post" style="display: inline;" onsubmit="return confirm('Delete this department?');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="department_id" value="{{ dept.id }}">
+            <button type="submit" class="btn btn-delete">Delete</button>
+          </form>
         </td>
       </tr>
       {% endfor %}
