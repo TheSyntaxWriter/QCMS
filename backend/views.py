@@ -324,6 +324,13 @@ def admin_users(request):
 # ADMIN DEPARTMENTS
 # =========================================================
 def admin_departments(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
     return render(request, 'admin_panel/admin_departments.html', {
         'departments': Department.objects.all()
     })
@@ -333,6 +340,13 @@ def admin_departments(request):
 # ADMIN PROJECTS
 # =========================================================
 def admin_projects(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
     return render(request, 'admin_panel/admin_projects.html', {
         'projects': Project.objects.all()
     })
@@ -342,6 +356,13 @@ def admin_projects(request):
 # ADMIN CHECKLISTS
 # =========================================================
 def admin_checklists(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
     return render(request, 'admin_panel/admin_checklists.html', {
         'checklists': Checklist.objects.all()
     })
@@ -351,6 +372,13 @@ def admin_checklists(request):
 # ADMIN RESPONSES
 # =========================================================
 def admin_responses(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
     return render(request, 'admin_panel/admin_responses.html', {
         'transactions': ChecklistTransaction.objects.all()
     })
@@ -360,6 +388,13 @@ def admin_responses(request):
 # MANAGEMENT DASHBOARD
 # =========================================================
 def management_dashboard(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Management":
+        return redirect('home')
+
     return render(request, 'management_dashboard.html')
 
 
@@ -367,6 +402,12 @@ def management_dashboard(request):
 # UNIVERSAL CREATE
 # =========================================================
 def admin_master_create(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
 
     if request.method == "POST":
 
@@ -395,7 +436,6 @@ def admin_master_create(request):
 # =========================================================
 # ADMIN USER ACTION (FINAL)
 # =========================================================
-from django.http import JsonResponse
 
 def admin_user_action(request):
 
