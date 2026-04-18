@@ -1,0 +1,56 @@
+{% extends 'base.html' %} {% block content %}
+
+<!-- ===================================================== -->
+<!-- 🔹 LOGIN CONTAINER -->
+<!-- ===================================================== -->
+<div style="display: flex; justify-content: center; margin-top: 60px">
+  <div class="card" style="width: 320px; padding: 20px; text-align: center">
+    <!-- 🔹 TITLE -->
+    <h2>🔐 Login</h2>
+
+    <!-- ===================================================== -->
+    <!-- 🔹 LOGIN FORM -->
+    <!-- ===================================================== -->
+    <form method="POST">
+      {% csrf_token %}
+
+      <!-- 🔹 USERNAME -->
+      <div style="margin-bottom: 15px">
+        <label><b>Username</b></label
+        ><br />
+        <input
+          type="text"
+          name="username"
+          required
+          placeholder="Enter username"
+          style="width: 100%; padding: 8px"
+        />
+      </div>
+
+      <!-- 🔹 PASSWORD -->
+      <div style="margin-bottom: 15px">
+        <label><b>Password</b></label
+        ><br />
+        <input
+          type="password"
+          name="password"
+          required
+          placeholder="Enter password"
+          style="width: 100%; padding: 8px"
+        />
+      </div>
+
+      <!-- 🔹 SUBMIT -->
+      <button class="btn" type="submit" style="width: 100%">Login</button>
+    </form>
+
+    <!-- ===================================================== -->
+    <!-- 🔹 ERROR MESSAGE -->
+    <!-- ===================================================== -->
+    {% if error %}
+    <p style="color: red; margin-top: 15px">{{ error }}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

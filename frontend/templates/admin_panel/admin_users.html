@@ -1,0 +1,291 @@
+{% extends 'admin_panel/admin_base.html' %} 
+{% load static %}
+{% block content %}
+
+<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
+
+<div class="header-section" style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
+  
+  <div class="left-panel" style="flex: 1;">
+    <h2>👤 Users Management</h2>
+    <div class="filter-box" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+      <input type="text" id="search" placeholder="Search..." value="{{ request.GET.search }}" class="form-control" style="width: 150px;">
+
+      <select id="department" class="form-control">
+        <option value="">Dept</option>
+        {% for d in departments %}
+          <option value="{{ d.id }}" {% if request.GET.department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+
+      <select id="project" class="form-control">
+        <option value="">Project</option>
+        {% for p in projects %}
+          <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+
+      <select id="status" class="form-control">
+        <option value="">Status</option>
+        <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Active</option>
+        <option value="inactive" {% if request.GET.status == "inactive" %}selected{% endif %}>Inactive</option>
+      </select>
+
+      <button class="btn btn-add" onclick="applyFilter()">Go</button>
+      <a href="{% url 'admin_users' %}"><button class="btn btn-delete">Reset</button></a>
+    </div>
+  </div>
+
+  <div class="center-panel" style="flex: 1; text-align: center;">
+    <div style="height: 180px; position: relative;">
+        <canvas id="paiChart"></canvas>
+        
+    </div>
+  </div>
+
+  <div class="right-panel" style="flex: 1;">
+    <div class="mini-stats" style="display: flex; gap: 10px; margin-bottom: 15px;">
+      <div class="mini-card" style="background: #007bff; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
+        <span style="font-size: 12px;">User</span><h4 style="margin: 5px 0;">{{ role_counts.user|default:"0" }}</h4>
+      </div>
+      <div class="mini-card" style="background: #28a745; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
+        <span style="font-size: 12px;">HOD</span><h4 style="margin: 5px 0;">{{ role_counts.hod|default:"0" }}</h4>
+      </div>
+      <div class="mini-card" style="background: #dc3545; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
+        <span style="font-size: 12px;">Mgmt</span><h4 style="margin: 5px 0;">{{ role_counts.management|default:"0" }}</h4>
+      </div>
+    </div>
+    
+    <div class="mini-chart" style="height: 120px; background: transparent; padding: 5px; border-radius: 8px; border: 1px solid #fff;">
+      <canvas id="stackedChart"></canvas>
+      
+    </div>
+  </div>
+</div>
+
+<div style="margin-bottom: 15px">
+  <button class="btn btn-add" id="addUserBtn">+ Add New User</button>
+</div>
+
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Full Name</th>
+          <th>Role</th>
+          <th>Department</th>
+          <th>Project</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.user.username }}</td>
+          <td>{{ user.user.first_name }} {{ user.user.last_name }}</td>
+          <td>{{ user.role }}</td>
+          <td>{{ user.department.name|default:"-" }}</td>
+          <td>{{ user.project.name|default:"-" }}</td>
+          <td>
+            {% if user.is_active %}
+              <span class="active-text" style="color: green; font-weight: bold;">Active</span>
+            {% else %}
+              <span class="inactive-text" style="color: red; font-weight: bold;">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-view view-btn" 
+                    data-username="{{ user.user.username }}" 
+                    data-first="{{ user.user.first_name }}" 
+                    data-last="{{ user.user.last_name }}" 
+                    data-role="{{ user.role }}" 
+                    data-dept="{{ user.department.name }}" 
+                    data-project="{{ user.project.name }}" 
+                    data-status="{{ user.is_active }}">View</button>
+
+            <button class="btn btn-edit edit-btn" 
+                    data-id="{{ user.user.id }}" 
+                    data-username="{{ user.user.username }}" 
+                    data-first="{{ user.user.first_name }}" 
+                    data-last="{{ user.user.last_name }}" 
+                    data-role="{{ user.role }}" 
+                    data-dept-id="{{ user.department.id }}" 
+                    data-project-id="{{ user.project.id }}">Edit</button>
+
+            <a href="{% url 'admin_user_action' %}?toggle={{ user.user.id }}">
+                <button class="btn btn-view">{% if user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+            </a>
+            <a href="{% url 'admin_user_action' %}?delete={{ user.user.id }}" onclick="return confirm('Kya aap delete karna chahte hain?')">
+                <button class="btn btn-delete">Delete</button>
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align: center;">No users found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="popup" class="popup">
+  <div class="popup-content">
+    <div class="popup-header">
+      <h3 id="popup-title">User Form</h3>
+      <span class="close-btn" onclick="closePopup()">✖</span>
+    </div>
+    <div class="popup-body" id="popup-body">
+      </div>
+    <div class="popup-footer">
+      <button class="btn btn-add" id="saveBtn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // --- 1. Filter Logic ---
+  function applyFilter(){
+    let s = document.getElementById("search").value;
+    let d = document.getElementById("department").value;
+    let p = document.getElementById("project").value;
+    let st = document.getElementById("status").value;
+    window.location.href = `?search=${encodeURIComponent(s)}&department=${d}&project=${p}&status=${st}`;
+  }
+
+  // --- 2. Charts Initialization ---
+  document.addEventListener("DOMContentLoaded", function() {
+    // Pie Chart
+    const paiCtx = document.getElementById('paiChart').getContext('2d');
+    new Chart(paiCtx, {
+      type: 'pie',
+      data: {
+        labels: ['Active', 'Inactive'],
+        datasets: [{
+          data: [{{ active_users|default:0 }}, {{ inactive_users|default:0 }}],
+          backgroundColor: ['#28a745', '#dc3545']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+
+    // Stacked Bar Chart
+    const stackedCtx = document.getElementById('stackedChart').getContext('2d');
+    new Chart(stackedCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ dept_labels|safe }},
+        datasets: [
+          { label: 'Active', data: {{ dept_active_data|safe }}, backgroundColor: '#28a745' },
+          { label: 'Inactive', data: {{ dept_inactive_data|safe }}, backgroundColor: '#dc3545' }
+        ]
+      },
+      options: {
+        scales: { x: { stacked: true }, y: { stacked: true } },
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } }
+      }
+    });
+  });
+
+  // --- 3. Popup Logic (Add, Edit, View) ---
+  const popup = document.getElementById("popup");
+  const popupBody = document.getElementById("popup-body");
+  const popupTitle = document.getElementById("popup-title");
+  const saveBtn = document.getElementById("saveBtn");
+
+  // Open Add User
+  document.getElementById("addUserBtn").onclick = function() {
+    popup.style.display = "flex";
+    popupTitle.innerText = "Add New User";
+    saveBtn.style.display = "inline-block";
+    popupBody.innerHTML = `
+      <form id="userForm" method="POST" action="{% url 'admin_master_create' %}">
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="user">
+        <div class="form-group">
+          <label>Username</label><input name="username" class="form-control" required>
+          <label>Password</label><input type="password" name="password" class="form-control" required>
+          <label>First Name</label><input name="first_name" class="form-control">
+          <label>Last Name</label><input name="last_name" class="form-control">
+          <label>Role</label>
+          <select name="role" class="form-control">
+            <option>User</option><option>HOD</option><option>Management</option><option>Admin</option>
+          </select>
+          <label>Department</label>
+          <select name="department" class="form-control">
+            <option value="">Select Dept</option>
+            {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+          </select>
+          <label>Project</label>
+          <select name="project" class="form-control">
+            <option value="">Select Project</option>
+            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+          </select>
+        </div>
+      </form>`;
+  };
+
+  // Open Edit User
+  document.querySelectorAll(".edit-btn").forEach(btn => {
+    btn.onclick = function() {
+      popup.style.display = "flex";
+      popupTitle.innerText = "Edit User";
+      saveBtn.style.display = "inline-block";
+      popupBody.innerHTML = `
+        <form id="userForm" method="POST" action="{% url 'admin_user_action' %}">
+          {% csrf_token %}
+          <input type="hidden" name="edit_id" value="${this.dataset.id}">
+          <label>Username</label><input name="username" class="form-control" value="${this.dataset.username}">
+          <label>First Name</label><input name="first_name" class="form-control" value="${this.dataset.first}">
+          <label>Last Name</label><input name="last_name" class="form-control" value="${this.dataset.last}">
+          <label>Role</label>
+          <select name="role" class="form-control">
+            <option ${this.dataset.role == 'User' ? 'selected' : ''}>User</option>
+            <option ${this.dataset.role == 'HOD' ? 'selected' : ''}>HOD</option>
+            <option ${this.dataset.role == 'Management' ? 'selected' : ''}>Management</option>
+            <option ${this.dataset.role == 'Admin' ? 'selected' : ''}>Admin</option>
+          </select>
+          <label>Department</label>
+          <select name="department" class="form-control">
+            {% for d in departments %}
+              <option value="{{ d.id }}" ${this.dataset.deptId == "{{ d.id }}" ? "selected" : ""}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </form>`;
+    };
+  });
+
+  // Open View User
+  document.querySelectorAll(".view-btn").forEach(btn => {
+    btn.onclick = function() {
+      popup.style.display = "flex";
+      popupTitle.innerText = "User Information";
+      saveBtn.style.display = "none";
+      let statusText = this.dataset.status === "True" ? "Active" : "Inactive";
+      popupBody.innerHTML = `
+        <div style="line-height: 2;">
+          <p><b>Username:</b> ${this.dataset.username}</p>
+          <p><b>Name:</b> ${this.dataset.first} ${this.dataset.last}</p>
+          <p><b>Role:</b> ${this.dataset.role}</p>
+          <p><b>Department:</b> ${this.dataset.dept}</p>
+          <p><b>Project:</b> ${this.dataset.project}</p>
+          <p><b>Status:</b> ${statusText}</p>
+        </div>`;
+    };
+  });
+
+  // Universal Save Button
+  saveBtn.onclick = function() {
+    const form = document.getElementById("userForm");
+    if(form) form.submit();
+  };
+
+  function closePopup() { popup.style.display = "none"; }
+  window.onclick = function(event) { if (event.target == popup) closePopup(); }
+</script>
+
+{% endblock %}

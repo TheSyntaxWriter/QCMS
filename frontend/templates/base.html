@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+  <head>
+    <title>WMS</title>
+
+    <!-- ===================================================== -->
+    <!-- 🔹 GLOBAL STYLING -->
+    <!-- ===================================================== -->
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background-color: #f5f6fa;
+      }
+
+      /* 🔹 NAVBAR */
+      .navbar {
+        background-color: #2c3e50;
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .navbar a {
+        color: white;
+        text-decoration: none;
+        margin-left: 15px;
+      }
+
+      /* 🔹 MAIN CONTAINER */
+      .container {
+        padding: 20px;
+      }
+
+      /* 🔹 CARD DESIGN */
+      .card {
+        background: white;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+      }
+
+      /* 🔹 BUTTON */
+      .btn {
+        padding: 8px 15px;
+        background-color: #27ae60;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      .btn:hover {
+        background-color: #219150;
+      }
+
+      /* 🔹 TABLE */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      th {
+        background-color: #ecf0f1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- ===================================================== -->
+    <!-- 🔹 NAVBAR -->
+    <!-- ===================================================== -->
+    <div class="navbar">
+      <div>
+        <strong>🚀 WMS</strong>
+      </div>
+
+      <div>
+        <!-- 👉 Show username if logged in -->
+        {% if request.user.is_authenticated %} {{ request.user.username }}
+        <a href="{% url 'logout' %}">Logout</a>
+        {% else %}
+        <a href="{% url 'login' %}">Login</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- 🔹 PAGE CONTENT BLOCK -->
+    <!-- ===================================================== -->
+    <div class="container">
+      {% block content %}
+      <!-- 👉 Page content will come here -->
+      {% endblock %}
+    </div>
+  </body>
+</html>

@@ -1,0 +1,33 @@
+{% extends 'admin_panel/admin_base.html' %} {% block content %}
+
+<h2>🏢 Departments</h2>
+
+<button class="btn btn-add">+ Add Department</button>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for dept in departments %}
+      <tr>
+        <td>{{ dept.id }}</td>
+        <td>{{ dept.name }}</td>
+
+        <td>
+          <button class="btn btn-edit">Edit</button>
+          <button class="btn btn-delete">Delete</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

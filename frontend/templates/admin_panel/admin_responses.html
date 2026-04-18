@@ -1,0 +1,27 @@
+{% extends 'admin_panel/admin_base.html' %} {% block content %}
+
+<h1>📄 All Responses</h1>
+
+<table>
+  <tr>
+    <th>Checklist</th>
+    <th>User</th>
+    <th>Status</th>
+    <th>Date</th>
+  </tr>
+
+  {% for txn in transactions %}
+  <tr>
+    <td>{{ txn.checklist.name }}</td>
+    <td>{{ txn.user.username }}</td>
+    <td>{{ txn.status }}</td>
+    <td>{{ txn.submitted_date }}</td>
+  </tr>
+  {% empty %}
+  <tr>
+    <td colspan="4">No responses</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

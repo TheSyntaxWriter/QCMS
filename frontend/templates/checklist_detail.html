@@ -1,0 +1,66 @@
+{% extends 'base.html' %} {% block content %}
+
+<!-- ===================================================== -->
+<!-- 🔹 PAGE TITLE -->
+<!-- ===================================================== -->
+<h1>📋 {{ checklist.name }}</h1>
+
+<!-- ===================================================== -->
+<!-- 🔹 FORM CONTAINER (CARD STYLE) -->
+<!-- ===================================================== -->
+<div class="card">
+  <form method="POST">
+    {% csrf_token %}
+
+    <!-- 🔹 Loop through all questions -->
+    {% for question in questions %}
+
+    <!-- ================================================= -->
+    <!-- 🔹 QUESTION CARD -->
+    <!-- ================================================= -->
+    <div class="card" style="margin-bottom: 15px">
+      <!-- 👉 Question Text -->
+      <label>{{ question.question_text }}</label><br /><br />
+
+      <!-- ================================================= -->
+      <!-- 🔹 YES / NO TYPE -->
+      <!-- ================================================= -->
+      {% if question.question_type == "Yes/No" %}
+      <input type="radio" name="q{{ question.id }}" value="Yes" /> Yes
+      <input type="radio" name="q{{ question.id }}" value="No" /> No
+
+      <!-- ================================================= -->
+      <!-- 🔹 TEXT INPUT TYPE -->
+      <!-- ================================================= -->
+      {% elif question.question_type == "Text" %}
+      <input
+        type="text"
+        name="q{{ question.id }}"
+        style="width: 100%; padding: 5px"
+      />
+
+      <!-- ================================================= -->
+      <!-- 🔹 DATE INPUT TYPE -->
+      <!-- ================================================= -->
+      {% elif question.question_type == "Date" %}
+      <input type="date" name="q{{ question.id }}" />
+
+      <!-- ================================================= -->
+      <!-- 🔹 FILE INPUT TYPE (Future Ready) -->
+      <!-- ================================================= -->
+      {% elif question.question_type == "File" %}
+      <input type="file" name="q{{ question.id }}" />
+
+      {% endif %}
+    </div>
+
+    {% endfor %}
+
+    <!-- ===================================================== -->
+    <!-- 🔹 SUBMIT BUTTON -->
+    <!-- ===================================================== -->
+    <button class="btn" type="submit">Submit Checklist</button>
+  </form>
+</div>
+
+{% endblock %}

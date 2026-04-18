@@ -1,0 +1,29 @@
+{% extends 'admin_panel/admin_base.html' %} {% block content %}
+
+<h2>📋 Checklists</h2>
+
+<button class="btn btn-add">+ Add Checklist</button>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Department</th>
+        <th>Type</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for checklist in checklists %}
+      <tr>
+        <td>{{ checklist.name }}</td>
+        <td>{{ checklist.department.name }}</td>
+        <td>{{ checklist.type }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

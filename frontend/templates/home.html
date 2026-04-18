@@ -1,0 +1,67 @@
+{% extends 'base.html' %} {% block content %}
+<a href="{% url 'my_submissions' %}">
+  <button style="margin-bottom: 15px">📂 My Submissions</button>
+</a>
+<!-- ===================================================== -->
+<!-- 🔹 PAGE TITLE -->
+<!-- ===================================================== -->
+<h1>📊 Dashboard</h1>
+
+<!-- ===================================================== -->
+<!-- 🔹 CHECKLIST SECTION (Cards View) -->
+<!-- ===================================================== -->
+<h2>📋 Available Checklists</h2>
+
+<div style="display: flex; flex-wrap: wrap; gap: 15px">
+  {% for checklist in checklists %}
+
+  <!-- 🔹 Checklist Card -->
+  <div class="card" style="width: 250px">
+    <!-- 👉 Checklist Name -->
+    <h3>{{ checklist.name }}</h3>
+
+    <!-- 👉 Checklist Type -->
+    <p>Type: {{ checklist.checklist_type }}</p>
+
+    <!-- 👉 Action Button -->
+    <a href="{% url 'checklist_detail' checklist.id %}">
+      <button class="btn">Open</button>
+    </a>
+  </div>
+
+  {% empty %}
+  <p>No checklist available</p>
+  {% endfor %}
+</div>
+
+<!-- ===================================================== -->
+<!-- 🔹 DASHBOARD SECTION (Last 10 Submissions) -->
+<!-- ===================================================== -->
+<h2>🕒 Last 10 Submissions</h2>
+
+<div class="card">
+  <table>
+    <tr>
+      <th>Checklist</th>
+      <th>User</th>
+      <th>Status</th>
+      <th>Date</th>
+    </tr>
+
+    {% for txn in transactions %}
+    <tr>
+      <td>{{ txn.checklist.name }}</td>
+      <td>{{ txn.user.username }}</td>
+      <td>{{ txn.status }}</td>
+      <td>{{ txn.submitted_date }}</td>
+    </tr>
+
+    {% empty %}
+    <tr>
+      <td colspan="4">No submissions yet</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

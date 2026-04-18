@@ -1,0 +1,42 @@
+{% extends 'admin_panel/admin_base.html' %} {% block content %}
+
+<h2>📁 Projects</h2>
+
+<button class="btn btn-add">+ Add Project</button>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Domain</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for project in projects %}
+      <tr>
+        <td>{{ project.name }}</td>
+        <td>{{ project.domain }}</td>
+
+        <td>
+          {% if project.is_active %}
+          <span class="active">Active</span>
+          {% else %}
+          <span class="inactive">Inactive</span>
+          {% endif %}
+        </td>
+
+        <td>
+          <button class="btn btn-edit">Edit</button>
+          <button class="btn btn-delete">Delete</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

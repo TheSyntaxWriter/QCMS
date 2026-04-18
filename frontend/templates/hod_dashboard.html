@@ -1,0 +1,84 @@
+{% extends 'base.html' %} {% block content %}
+
+<!-- ===================================================== -->
+<!-- 🔹 PAGE HEADER -->
+<!-- ===================================================== -->
+<h1>🧑‍💼 HOD Dashboard</h1>
+
+<!-- ===================================================== -->
+<!-- 🔹 TABLE CONTAINER -->
+<!-- ===================================================== -->
+<div class="card">
+  <table border="1" cellpadding="10" width="100%">
+    <!-- ================= TABLE HEADER ================= -->
+    <tr>
+      <th>Checklist</th>
+      <th>User</th>
+      <th>Submitted Date</th>
+      <th>Status</th>
+      <th>Action</th>
+    </tr>
+
+    <!-- ================= LOOP START ================= -->
+    {% for txn in transactions %}
+    <tr>
+      <!-- 🔹 Checklist Name -->
+      <td>{{ txn.checklist.name }}</td>
+
+      <!-- 🔹 User -->
+      <td>{{ txn.user.username }}</td>
+
+      <!-- 🔹 Date -->
+      <td>{{ txn.submitted_date }}</td>
+
+      <!-- 🔹 Status with color -->
+      <td>
+        {% if txn.status == "Approved" %}
+        <span style="color: green; font-weight: bold">Approved</span>
+
+        {% elif txn.status == "Rejected" %}
+        <span style="color: red; font-weight: bold">Rejected</span>
+
+        {% else %}
+        <span style="color: orange; font-weight: bold">Pending</span>
+        {% endif %}
+      </td>
+
+      <!-- ================= ACTION COLUMN ================= -->
+      <td>
+        <!-- 🔍 VIEW (ALWAYS VISIBLE) -->
+        <a href="{% url 'view_checklist' txn.id %}">
+          <button style="background: #3498db; color: white">View</button>
+        </a>
+
+        <!-- ================================================= -->
+        <!-- 🔥 APPROVE / REJECT ONLY FOR PENDING -->
+        <!-- ================================================= -->
+        {% if txn.status == "Pending" %}
+
+        <!-- ✅ APPROVE -->
+        <a href="{% url 'update_status' txn.id 'approve' %}">
+          <button style="background: green; color: white">Approve</button>
+        </a>
+
+        <!-- ❌ REJECT -->
+        <a href="{% url 'update_status' txn.id 'reject' %}">
+          <button style="background: red; color: white">Reject</button>
+        </a>
+
+        {% endif %}
+      </td>
+    </tr>
+
+    <!-- ================= EMPTY CASE ================= -->
+    {% empty %}
+    <tr>
+      <td colspan="5" style="text-align: center">No submissions found</td>
+    </tr>
+
+    {% endfor %}
+    <!-- ================= LOOP END ================= -->
+  </table>
+</div>
+
+{% endblock %}
