@@ -221,6 +221,9 @@ def admin_user_action(request):
             user.username = request.POST.get('username')
             user.first_name = request.POST.get('first_name')
             user.last_name = request.POST.get('last_name')
+            password = request.POST.get('password')
+            if password:
+                user.set_password(password)
             user.save()
 
             profile_obj.role = request.POST.get('role')
