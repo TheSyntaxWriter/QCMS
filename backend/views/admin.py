@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
 from django.http import JsonResponse
@@ -39,6 +41,8 @@ def admin_users(request):
     dept_filter = request.GET.get('department', '')
     proj_filter = request.GET.get('project', '')
     stat_filter = request.GET.get('status', '')
+    sort_by = request.GET.get('sort', 'username')
+    sort_dir = request.GET.get('dir', 'asc')
 
     user_list = UserProfile.objects.select_related('user', 'department', 'project')
 
@@ -55,6 +59,37 @@ def admin_users(request):
     if stat_filter:
         is_active = stat_filter == 'active'
         user_list = user_list.filter(is_active=is_active)
+
+    allowed_sort_fields = {
+        'username': 'user__username',
+        'full_name': 'user__first_name',
+        'role': 'role',
+        'department': 'department__name',
+        'project': 'project__name',
+        'status': 'is_active',
+    }
+    if sort_by not in allowed_sort_fields:
+        sort_by = 'username'
+    if sort_dir not in {'asc', 'desc'}:
+        sort_dir = 'asc'
+
+    order_field = allowed_sort_fields[sort_by]
+    if sort_dir == 'desc':
+        order_field = f'-{order_field}'
+    user_list = user_list.order_by(order_field, 'user__username')
+
+    base_params = {
+        'search': search_query,
+        'department': dept_filter,
+        'project': proj_filter,
+        'status': stat_filter,
+    }
+
+    sort_links = {}
+    for key in allowed_sort_fields:
+        next_dir = 'desc' if sort_by == key and sort_dir == 'asc' else 'asc'
+        params = {**base_params, 'sort': key, 'dir': next_dir}
+        sort_links[key] = urlencode({k: v for k, v in params.items() if v != ''})
 
     role_counts = {
         'user': user_list.filter(role='User').count(),
@@ -84,6 +119,9 @@ def admin_users(request):
         'dept_labels': dept_labels,
         'dept_active_data': dept_active_data,
         'dept_inactive_data': dept_inactive_data,
+        'sort_by': sort_by,
+        'sort_dir': sort_dir,
+        'sort_links': sort_links,
     }
 
     return render(request, 'admin_panel/admin_users.html', context)
