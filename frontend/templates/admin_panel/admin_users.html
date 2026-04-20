@@ -112,8 +112,8 @@
                     data-dept-id="{{ user.department.id }}" 
                     data-project-id="{{ user.project.id }}">Edit</button>
 
-            <a href="{% url 'admin_user_action' %}?toggle={{ user.user.id }}">
-                <button class="btn btn-view">{% if user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+            <a href="{% url 'admin_user_action' %}?toggle={{ user.user.id }}" class="action-toggle-link">
+                <button class="btn btn-view action-toggle-btn">{% if user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
             </a>
             <button class="btn btn-delete delete-btn" data-delete-url="{% url 'admin_user_action' %}?delete={{ user.user.id }}">Delete</button>
           </td>
