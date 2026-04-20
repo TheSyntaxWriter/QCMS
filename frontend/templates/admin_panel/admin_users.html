@@ -233,7 +233,72 @@
 
     return `
       <form id="userForm" class="user-form-grid" method="POST" action="${action}">
+  function renderRoleOptions(selectedRole = "User") {
+    return `
+      <option ${selectedRole === 'User' ? 'selected' : ''}>User</option>
+      <option ${selectedRole === 'HOD' ? 'selected' : ''}>HOD</option>
+      <option ${selectedRole === 'Management' ? 'selected' : ''}>Management</option>
+      <option ${selectedRole === 'Admin' ? 'selected' : ''}>Admin</option>
+    `;
+  }
+
+  function renderDepartmentOptions(selectedDepartmentId = "") {
+    return `
+      <option value="">Select Dept</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" ${String(selectedDepartmentId) === "{{ d.id }}" ? "selected" : ""}>{{ d.name|escapejs }}</option>
+      {% endfor %}
+    `;
+  }
+
+  function renderProjectOptions(selectedProjectId = "") {
+    return `
+      <option value="">Select Project</option>
+      {% for p in projects %}
+        <option value="{{ p.id }}" ${String(selectedProjectId) === "{{ p.id }}" ? "selected" : ""}>{{ p.name|escapejs }} ({{ p.domain|escapejs }})</option>
+      {% endfor %}
+    `;
+  }
+
+  function renderUserForm({
+    mode = "add",
+    action = "{% url 'admin_master_create' %}",
+    editId = "",
+    username = "",
+    firstName = "",
+    lastName = "",
+    role = "User",
+    departmentId = "",
+    projectId = ""
+  }) {
+    const isAdd = mode === "add";
+
+    return `
+      <form id="userForm" class="user-form-grid" method="POST" action="${action}">
         {% csrf_token %}
+        ${isAdd ? '<input type="hidden" name="form_type" value="user">' : `<input type="hidden" name="edit_id" value="${editId}">`}
+
+        <div class="form-field">
+          <label>Username</label>
+          <input name="username" class="form-control" value="${username}" required>
+        </div>
+
+        <div class="form-field">
+          <label>${isAdd ? "Password" : "Password (optional)"}</label>
+          <input type="password" name="password" class="form-control" ${isAdd ? "required" : ""}>
+        </div>
+
+        <div class="form-field">
+          <label>First Name</label>
+          <input name="first_name" class="form-control" value="${firstName}">
+        </div>
+
+        <div class="form-field">
+          <label>Last Name</label>
+          <input name="last_name" class="form-control" value="${lastName}">
+        </div>
+
+        <div class="form-field">
         ${isAdd ? '<input type="hidden" name="form_type" value="user">' : `<input type="hidden" name="edit_id" value="${editId}">`}
 
         <div class="form-field">
@@ -260,23 +325,43 @@
           <label>Role</label>
           <select name="role" class="form-control">
             ${renderRoleOptions(role)}
+            ${renderRoleOptions(role)}
           </select>
+        </div>
+
+        <div class="form-field">
         </div>
 
         <div class="form-field">
           <label>Department</label>
           <select name="department" class="form-control">
             ${renderDepartmentOptions(departmentId)}
+            ${renderDepartmentOptions(departmentId)}
           </select>
+        </div>
+
+        <div class="form-field form-field-full">
         </div>
 
         <div class="form-field form-field-full">
           <label>Project</label>
           <select name="project" class="form-control">
             ${renderProjectOptions(projectId)}
+            ${renderProjectOptions(projectId)}
           </select>
         </div>
       </form>`;
+  }
+
+  // Open Add User
+  document.getElementById("addUserBtn").onclick = function() {
+    popup.style.display = "flex";
+    popupTitle.innerText = "Add New User";
+    saveBtn.style.display = "inline-block";
+    popupBody.innerHTML = renderUserForm({
+      mode: "add",
+      action: "{% url 'admin_master_create' %}"
+    });
   }
 
   // Open Add User
@@ -296,6 +381,17 @@
       popup.style.display = "flex";
       popupTitle.innerText = "Edit User";
       saveBtn.style.display = "inline-block";
+      popupBody.innerHTML = renderUserForm({
+        mode: "edit",
+        action: "{% url 'admin_user_action' %}",
+        editId: this.dataset.id,
+        username: this.dataset.username,
+        firstName: this.dataset.first,
+        lastName: this.dataset.last,
+        role: this.dataset.role,
+        departmentId: this.dataset.deptId,
+        projectId: this.dataset.projectId
+      });
       popupBody.innerHTML = renderUserForm({
         mode: "edit",
         action: "{% url 'admin_user_action' %}",
