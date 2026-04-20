@@ -216,6 +216,15 @@ thead {
   padding: 2px 6px;
 }
 
+/* Ensure user table headers are centered */
+.card .table-container table thead th {
+  text-align: center;
+}
+
+.card .table-container table thead th .sort-link {
+  justify-content: center;
+}
+
 .sort-link {
   color: white;
   text-decoration: none;
@@ -289,6 +298,21 @@ tr:hover {
 .btn:hover {
   opacity: 0.85;
   transform: translateY(-1px);
+}
+
+/* Fixed width for Activate/Deactivate action button */
+.action-toggle-link {
+  display: inline-flex;
+}
+
+.action-toggle-btn {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  white-space: nowrap;
 }
 
 /* 7. POPUP MODAL STYLES */
