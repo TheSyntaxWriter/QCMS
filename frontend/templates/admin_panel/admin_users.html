@@ -8,32 +8,6 @@
   
   <div class="left-panel" style="flex: 1;">
     <h2>👤 Users Management</h2>
-    <div class="filter-box" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-      <input type="text" id="search" placeholder="Search..." value="{{ request.GET.search }}" class="form-control" style="width: 150px;">
-
-      <select id="department" class="form-control">
-        <option value="">Dept</option>
-        {% for d in departments %}
-          <option value="{{ d.id }}" {% if request.GET.department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
-        {% endfor %}
-      </select>
-
-      <select id="project" class="form-control">
-        <option value="">Project</option>
-        {% for p in projects %}
-          <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
-        {% endfor %}
-      </select>
-
-      <select id="status" class="form-control">
-        <option value="">Status</option>
-        <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Active</option>
-        <option value="inactive" {% if request.GET.status == "inactive" %}selected{% endif %}>Inactive</option>
-      </select>
-
-      <button class="btn btn-add" onclick="applyFilter()">Go</button>
-      <a href="{% url 'admin_users' %}"><button class="btn btn-delete">Reset</button></a>
-    </div>
   </div>
 
   <div class="center-panel" style="flex: 1; text-align: center;">
@@ -67,17 +41,46 @@
   <button class="btn btn-add" id="addUserBtn">+ Add New User</button>
 </div>
 
+<form method="GET" class="users-toolbar">
+  <input type="hidden" name="sort" value="{{ sort_by }}">
+  <input type="hidden" name="dir" value="{{ sort_dir }}">
+  <input type="text" name="search" id="search" placeholder="Search users..." value="{{ request.GET.search }}" class="form-control toolbar-search">
+
+  <select name="department" id="department" class="form-control">
+    <option value="">All Departments</option>
+    {% for d in departments %}
+      <option value="{{ d.id }}" {% if request.GET.department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="project" id="project" class="form-control">
+    <option value="">All Projects</option>
+    {% for p in projects %}
+      <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }} ({{ p.domain }})</option>
+    {% endfor %}
+  </select>
+
+  <select name="status" id="status" class="form-control">
+    <option value="">All Status</option>
+    <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if request.GET.status == "inactive" %}selected{% endif %}>Inactive</option>
+  </select>
+
+  <button type="submit" class="btn btn-add icon-btn" title="Search">🔍</button>
+  <a href="{% url 'admin_users' %}" class="btn btn-delete reset-link">Reset Filters</a>
+</form>
+
 <div class="card">
   <div class="table-container">
     <table>
       <thead>
         <tr>
-          <th>Username</th>
-          <th>Full Name</th>
-          <th>Role</th>
-          <th>Department</th>
-          <th>Project</th>
-          <th>Status</th>
+          <th><a class="sort-link" href="?{{ sort_links.username }}">Username{% if sort_by == 'username' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.full_name }}">Full Name{% if sort_by == 'full_name' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.role }}">Role{% if sort_by == 'role' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.department }}">Department{% if sort_by == 'department' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.project }}">Project{% if sort_by == 'project' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.status }}">Status{% if sort_by == 'status' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th>Action</th>
         </tr>
       </thead>
@@ -147,16 +150,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // --- 1. Filter Logic ---
-  function applyFilter(){
-    let s = document.getElementById("search").value;
-    let d = document.getElementById("department").value;
-    let p = document.getElementById("project").value;
-    let st = document.getElementById("status").value;
-    window.location.href = `?search=${encodeURIComponent(s)}&department=${d}&project=${p}&status=${st}`;
-  }
-
-  // --- 2. Charts Initialization ---
+  // --- 1. Charts Initialization ---
   document.addEventListener("DOMContentLoaded", function() {
     // Pie Chart
     const paiCtx = document.getElementById('paiChart').getContext('2d');
@@ -191,42 +185,109 @@
     });
   });
 
-  // --- 3. Popup Logic (Add, Edit, View) ---
+  // --- 2. Popup Logic (Add, Edit, View) ---
   const popup = document.getElementById("popup");
   const popupBody = document.getElementById("popup-body");
   const popupTitle = document.getElementById("popup-title");
   const saveBtn = document.getElementById("saveBtn");
+
+  function renderRoleOptions(selectedRole = "User") {
+    return `
+      <option ${selectedRole === 'User' ? 'selected' : ''}>User</option>
+      <option ${selectedRole === 'HOD' ? 'selected' : ''}>HOD</option>
+      <option ${selectedRole === 'Management' ? 'selected' : ''}>Management</option>
+      <option ${selectedRole === 'Admin' ? 'selected' : ''}>Admin</option>
+    `;
+  }
+
+  function renderDepartmentOptions(selectedDepartmentId = "") {
+    return `
+      <option value="">Select Dept</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" ${String(selectedDepartmentId) === "{{ d.id }}" ? "selected" : ""}>{{ d.name|escapejs }}</option>
+      {% endfor %}
+    `;
+  }
+
+  function renderProjectOptions(selectedProjectId = "") {
+    return `
+      <option value="">Select Project</option>
+      {% for p in projects %}
+        <option value="{{ p.id }}" ${String(selectedProjectId) === "{{ p.id }}" ? "selected" : ""}>{{ p.name|escapejs }} ({{ p.domain|escapejs }})</option>
+      {% endfor %}
+    `;
+  }
+
+  function renderUserForm({
+    mode = "add",
+    action = "{% url 'admin_master_create' %}",
+    editId = "",
+    username = "",
+    firstName = "",
+    lastName = "",
+    role = "User",
+    departmentId = "",
+    projectId = ""
+  }) {
+    const isAdd = mode === "add";
+
+    return `
+      <form id="userForm" class="user-form-grid" method="POST" action="${action}">
+        {% csrf_token %}
+        ${isAdd ? '<input type="hidden" name="form_type" value="user">' : `<input type="hidden" name="edit_id" value="${editId}">`}
+
+        <div class="form-field">
+          <label>Username</label>
+          <input name="username" class="form-control" value="${username}" required>
+        </div>
+
+        <div class="form-field">
+          <label>${isAdd ? "Password" : "Password (optional)"}</label>
+          <input type="password" name="password" class="form-control" ${isAdd ? "required" : ""}>
+        </div>
+
+        <div class="form-field">
+          <label>First Name</label>
+          <input name="first_name" class="form-control" value="${firstName}">
+        </div>
+
+        <div class="form-field">
+          <label>Last Name</label>
+          <input name="last_name" class="form-control" value="${lastName}">
+        </div>
+
+        <div class="form-field">
+          <label>Role</label>
+          <select name="role" class="form-control">
+            ${renderRoleOptions(role)}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label>Department</label>
+          <select name="department" class="form-control">
+            ${renderDepartmentOptions(departmentId)}
+          </select>
+        </div>
+
+        <div class="form-field form-field-full">
+          <label>Project</label>
+          <select name="project" class="form-control">
+            ${renderProjectOptions(projectId)}
+          </select>
+        </div>
+      </form>`;
+  }
 
   // Open Add User
   document.getElementById("addUserBtn").onclick = function() {
     popup.style.display = "flex";
     popupTitle.innerText = "Add New User";
     saveBtn.style.display = "inline-block";
-    popupBody.innerHTML = `
-      <form id="userForm" method="POST" action="{% url 'admin_master_create' %}">
-        {% csrf_token %}
-        <input type="hidden" name="form_type" value="user">
-        <div class="form-group">
-          <label>Username</label><input name="username" class="form-control" required>
-          <label>Password</label><input type="password" name="password" class="form-control" required>
-          <label>First Name</label><input name="first_name" class="form-control">
-          <label>Last Name</label><input name="last_name" class="form-control">
-          <label>Role</label>
-          <select name="role" class="form-control">
-            <option>User</option><option>HOD</option><option>Management</option><option>Admin</option>
-          </select>
-          <label>Department</label>
-          <select name="department" class="form-control">
-            <option value="">Select Dept</option>
-            {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
-          </select>
-          <label>Project</label>
-          <select name="project" class="form-control">
-            <option value="">Select Project</option>
-            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
-          </select>
-        </div>
-      </form>`;
+    popupBody.innerHTML = renderUserForm({
+      mode: "add",
+      action: "{% url 'admin_master_create' %}"
+    });
   };
 
   // Open Edit User
@@ -235,27 +296,17 @@
       popup.style.display = "flex";
       popupTitle.innerText = "Edit User";
       saveBtn.style.display = "inline-block";
-      popupBody.innerHTML = `
-        <form id="userForm" method="POST" action="{% url 'admin_user_action' %}">
-          {% csrf_token %}
-          <input type="hidden" name="edit_id" value="${this.dataset.id}">
-          <label>Username</label><input name="username" class="form-control" value="${this.dataset.username}">
-          <label>First Name</label><input name="first_name" class="form-control" value="${this.dataset.first}">
-          <label>Last Name</label><input name="last_name" class="form-control" value="${this.dataset.last}">
-          <label>Role</label>
-          <select name="role" class="form-control">
-            <option ${this.dataset.role == 'User' ? 'selected' : ''}>User</option>
-            <option ${this.dataset.role == 'HOD' ? 'selected' : ''}>HOD</option>
-            <option ${this.dataset.role == 'Management' ? 'selected' : ''}>Management</option>
-            <option ${this.dataset.role == 'Admin' ? 'selected' : ''}>Admin</option>
-          </select>
-          <label>Department</label>
-          <select name="department" class="form-control">
-            {% for d in departments %}
-              <option value="{{ d.id }}" ${this.dataset.deptId == "{{ d.id }}" ? "selected" : ""}>{{ d.name }}</option>
-            {% endfor %}
-          </select>
-        </form>`;
+      popupBody.innerHTML = renderUserForm({
+        mode: "edit",
+        action: "{% url 'admin_user_action' %}",
+        editId: this.dataset.id,
+        username: this.dataset.username,
+        firstName: this.dataset.first,
+        lastName: this.dataset.last,
+        role: this.dataset.role,
+        departmentId: this.dataset.deptId,
+        projectId: this.dataset.projectId
+      });
     };
   });
 
