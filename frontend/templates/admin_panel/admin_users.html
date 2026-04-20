@@ -21,7 +21,7 @@
       <select id="project" class="form-control">
         <option value="">Project</option>
         {% for p in projects %}
-          <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+          <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }} ({{ p.domain }})</option>
         {% endfor %}
       </select>
 
@@ -197,36 +197,103 @@
   const popupTitle = document.getElementById("popup-title");
   const saveBtn = document.getElementById("saveBtn");
 
+  function renderRoleOptions(selectedRole = "User") {
+    return `
+      <option ${selectedRole === 'User' ? 'selected' : ''}>User</option>
+      <option ${selectedRole === 'HOD' ? 'selected' : ''}>HOD</option>
+      <option ${selectedRole === 'Management' ? 'selected' : ''}>Management</option>
+      <option ${selectedRole === 'Admin' ? 'selected' : ''}>Admin</option>
+    `;
+  }
+
+  function renderDepartmentOptions(selectedDepartmentId = "") {
+    return `
+      <option value="">Select Dept</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" ${String(selectedDepartmentId) === "{{ d.id }}" ? "selected" : ""}>{{ d.name|escapejs }}</option>
+      {% endfor %}
+    `;
+  }
+
+  function renderProjectOptions(selectedProjectId = "") {
+    return `
+      <option value="">Select Project</option>
+      {% for p in projects %}
+        <option value="{{ p.id }}" ${String(selectedProjectId) === "{{ p.id }}" ? "selected" : ""}>{{ p.name|escapejs }} ({{ p.domain|escapejs }})</option>
+      {% endfor %}
+    `;
+  }
+
+  function renderUserForm({
+    mode = "add",
+    action = "{% url 'admin_master_create' %}",
+    editId = "",
+    username = "",
+    firstName = "",
+    lastName = "",
+    role = "User",
+    departmentId = "",
+    projectId = ""
+  }) {
+    const isAdd = mode === "add";
+
+    return `
+      <form id="userForm" class="user-form-grid" method="POST" action="${action}">
+        {% csrf_token %}
+        ${isAdd ? '<input type="hidden" name="form_type" value="user">' : `<input type="hidden" name="edit_id" value="${editId}">`}
+
+        <div class="form-field">
+          <label>Username</label>
+          <input name="username" class="form-control" value="${username}" required>
+        </div>
+
+        <div class="form-field">
+          <label>${isAdd ? "Password" : "Password (optional)"}</label>
+          <input type="password" name="password" class="form-control" ${isAdd ? "required" : ""}>
+        </div>
+
+        <div class="form-field">
+          <label>First Name</label>
+          <input name="first_name" class="form-control" value="${firstName}">
+        </div>
+
+        <div class="form-field">
+          <label>Last Name</label>
+          <input name="last_name" class="form-control" value="${lastName}">
+        </div>
+
+        <div class="form-field">
+          <label>Role</label>
+          <select name="role" class="form-control">
+            ${renderRoleOptions(role)}
+          </select>
+        </div>
+
+        <div class="form-field">
+          <label>Department</label>
+          <select name="department" class="form-control">
+            ${renderDepartmentOptions(departmentId)}
+          </select>
+        </div>
+
+        <div class="form-field form-field-full">
+          <label>Project</label>
+          <select name="project" class="form-control">
+            ${renderProjectOptions(projectId)}
+          </select>
+        </div>
+      </form>`;
+  }
+
   // Open Add User
   document.getElementById("addUserBtn").onclick = function() {
     popup.style.display = "flex";
     popupTitle.innerText = "Add New User";
     saveBtn.style.display = "inline-block";
-    popupBody.innerHTML = `
-      <form id="userForm" method="POST" action="{% url 'admin_master_create' %}">
-        {% csrf_token %}
-        <input type="hidden" name="form_type" value="user">
-        <div class="form-group">
-          <label>Username</label><input name="username" class="form-control" required>
-          <label>Password</label><input type="password" name="password" class="form-control" required>
-          <label>First Name</label><input name="first_name" class="form-control">
-          <label>Last Name</label><input name="last_name" class="form-control">
-          <label>Role</label>
-          <select name="role" class="form-control">
-            <option>User</option><option>HOD</option><option>Management</option><option>Admin</option>
-          </select>
-          <label>Department</label>
-          <select name="department" class="form-control">
-            <option value="">Select Dept</option>
-            {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
-          </select>
-          <label>Project</label>
-          <select name="project" class="form-control">
-            <option value="">Select Project</option>
-            {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
-          </select>
-        </div>
-      </form>`;
+    popupBody.innerHTML = renderUserForm({
+      mode: "add",
+      action: "{% url 'admin_master_create' %}"
+    });
   };
 
   // Open Edit User
@@ -235,27 +302,17 @@
       popup.style.display = "flex";
       popupTitle.innerText = "Edit User";
       saveBtn.style.display = "inline-block";
-      popupBody.innerHTML = `
-        <form id="userForm" method="POST" action="{% url 'admin_user_action' %}">
-          {% csrf_token %}
-          <input type="hidden" name="edit_id" value="${this.dataset.id}">
-          <label>Username</label><input name="username" class="form-control" value="${this.dataset.username}">
-          <label>First Name</label><input name="first_name" class="form-control" value="${this.dataset.first}">
-          <label>Last Name</label><input name="last_name" class="form-control" value="${this.dataset.last}">
-          <label>Role</label>
-          <select name="role" class="form-control">
-            <option ${this.dataset.role == 'User' ? 'selected' : ''}>User</option>
-            <option ${this.dataset.role == 'HOD' ? 'selected' : ''}>HOD</option>
-            <option ${this.dataset.role == 'Management' ? 'selected' : ''}>Management</option>
-            <option ${this.dataset.role == 'Admin' ? 'selected' : ''}>Admin</option>
-          </select>
-          <label>Department</label>
-          <select name="department" class="form-control">
-            {% for d in departments %}
-              <option value="{{ d.id }}" ${this.dataset.deptId == "{{ d.id }}" ? "selected" : ""}>{{ d.name }}</option>
-            {% endfor %}
-          </select>
-        </form>`;
+      popupBody.innerHTML = renderUserForm({
+        mode: "edit",
+        action: "{% url 'admin_user_action' %}",
+        editId: this.dataset.id,
+        username: this.dataset.username,
+        firstName: this.dataset.first,
+        lastName: this.dataset.last,
+        role: this.dataset.role,
+        departmentId: this.dataset.deptId,
+        projectId: this.dataset.projectId
+      });
     };
   });
 
