@@ -65,11 +65,46 @@
   <a href="{% url 'admin_users' %}" class="btn btn-delete reset-link">Reset Filters</a>
 </form>
 
+<form method="GET" class="users-toolbar">
+  <input type="hidden" name="sort" value="{{ sort_by }}">
+  <input type="hidden" name="dir" value="{{ sort_dir }}">
+  <input type="text" name="search" id="search" placeholder="Search users..." value="{{ request.GET.search }}" class="form-control toolbar-search">
+
+  <select name="department" id="department" class="form-control">
+    <option value="">All Departments</option>
+    {% for d in departments %}
+      <option value="{{ d.id }}" {% if request.GET.department == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+    {% endfor %}
+  </select>
+
+  <select name="project" id="project" class="form-control">
+    <option value="">All Projects</option>
+    {% for p in projects %}
+      <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }} ({{ p.domain }})</option>
+    {% endfor %}
+  </select>
+
+  <select name="status" id="status" class="form-control">
+    <option value="">All Status</option>
+    <option value="active" {% if request.GET.status == "active" %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if request.GET.status == "inactive" %}selected{% endif %}>Inactive</option>
+  </select>
+
+  <button type="submit" class="btn btn-add icon-btn" title="Search">🔍</button>
+  <a href="{% url 'admin_users' %}" class="btn btn-delete reset-link">Reset Filters</a>
+</form>
+
 <div class="card">
   <div class="table-container">
     <table>
       <thead>
         <tr>
+          <th><a class="sort-link" href="?{{ sort_links.username }}">Username{% if sort_by == 'username' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.full_name }}">Full Name{% if sort_by == 'full_name' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.role }}">Role{% if sort_by == 'role' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.department }}">Department{% if sort_by == 'department' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.project }}">Project{% if sort_by == 'project' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th><a class="sort-link" href="?{{ sort_links.status }}">Status{% if sort_by == 'status' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.username }}">Username{% if sort_by == 'username' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.full_name }}">Full Name{% if sort_by == 'full_name' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.role }}">Role{% if sort_by == 'role' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
@@ -200,6 +235,7 @@
     }
   });
 
+  // --- 2. Popup Logic (Add, Edit, View) ---
   // --- 2. Popup Logic (Add, Edit, View) ---
   const popup = document.getElementById("popup");
   const popupBody = document.getElementById("popup-body");
@@ -374,3 +410,4 @@
 </script>
 
 {% endblock %}
+
