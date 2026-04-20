@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
           {
             // Data comes from HTML (window variables)
             data: [window.active_users || 0, window.inactive_users || 0],
-            backgroundColor: ["#28a745", "#dc3545"],
+            backgroundColor: ["#087b0a", "#8a0b18"],
           },
         ],
       },
@@ -47,12 +47,12 @@ document.addEventListener("DOMContentLoaded", function () {
           {
             label: "Active",
             data: window.dept_active_data || [],
-            backgroundColor: "#28a745",
+            backgroundColor: "#064d16",
           },
           {
             label: "Inactive",
             data: window.dept_inactive_data || [],
-            backgroundColor: "#dc3545",
+            backgroundColor: "#690912",
           },
         ],
       },

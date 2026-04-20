@@ -18,13 +18,13 @@
     </div>
 
     <div class="mini-stats" style="display: flex; gap: 10px; margin-bottom: 15px;">
-      <div class="mini-card" style="background: #007bff; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
+      <div class="mini-card" style="background: #0d59ab; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
         <span style="font-size: 12px;">User</span><h4 style="margin: 5px 0;">{{ role_counts.user|default:"0" }}</h4>
       </div>
-      <div class="mini-card" style="background: #28a745; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
+      <div class="mini-card" style="background: #5b055e; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
         <span style="font-size: 12px;">HOD</span><h4 style="margin: 5px 0;">{{ role_counts.hod|default:"0" }}</h4>
       </div>
-      <div class="mini-card" style="background: #dc3545; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
+      <div class="mini-card" style="background: #8b8904; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
         <span style="font-size: 12px;">Mgmt</span><h4 style="margin: 5px 0;">{{ role_counts.management|default:"0" }}</h4>
       </div>
     </div>
@@ -88,9 +88,9 @@
           <td>{{ user.project.name|default:"-" }}</td>
           <td>
             {% if user.is_active %}
-              <span class="active-text" style="color: green; font-weight: bold;">Active</span>
+              <span class="active-text" style="color: rgb(2, 85, 2); font-weight: bold;">Active</span>
             {% else %}
-              <span class="inactive-text" style="color: red; font-weight: bold;">Inactive</span>
+              <span class="inactive-text" style="color: rgb(146, 7, 7); font-weight: bold;">Inactive</span>
             {% endif %}
           </td>
           <td>
