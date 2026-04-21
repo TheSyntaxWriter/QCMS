@@ -4,6 +4,8 @@ from .admin import (
     admin_departments,
     admin_master_create,
     admin_master_create_legacy,
+    admin_department_action,
+    admin_project_action,
     admin_projects,
     admin_responses,
     admin_user_action,
@@ -31,6 +33,8 @@ __all__ = [
     'admin_responses',
     'admin_master_create',
     'admin_master_create_legacy',
+    'admin_department_action',
+    'admin_project_action',
     'admin_user_action',
     'management_dashboard',
 ]

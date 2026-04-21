@@ -195,8 +195,14 @@ def admin_departments(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
+    departments = Department.objects.all().order_by('id')
     return render(request, 'admin_panel/admin_departments.html', {
-        'departments': Department.objects.all(),
+        'departments': departments,
+        'admin_departments_config': {
+            'createUrl': '/admin-create/',
+            'actionUrl': '/admin-department-action/',
+            'csrfToken': get_token(request),
+        },
     })
 
 
@@ -208,8 +214,14 @@ def admin_projects(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
+    projects = Project.objects.all().order_by('id')
     return render(request, 'admin_panel/admin_projects.html', {
-        'projects': Project.objects.all(),
+        'projects': projects,
+        'admin_projects_config': {
+            'createUrl': '/admin-create/',
+            'actionUrl': '/admin-project-action/',
+            'csrfToken': get_token(request),
+        },
     })
 
 
@@ -276,6 +288,39 @@ def admin_master_create(request):
                 project_id=request.POST.get('project') or None,
                 is_active=True,
             )
+        elif request.POST.get("form_type") == "department":
+            code = (request.POST.get('code') or '').strip()
+            name = (request.POST.get('name') or '').strip()
+            is_active = request.POST.get('is_active') == 'true'
+
+            if not code or not name:
+                messages.error(request, "Department code and name are required.")
+                return redirect('admin_departments')
+
+            if Department.objects.filter(code=code).exists():
+                messages.error(request, "Department code already exists.")
+                return redirect('admin_departments')
+
+            Department.objects.create(code=code, name=name, is_active=is_active)
+        elif request.POST.get("form_type") == "project":
+            code = (request.POST.get('code') or '').strip()
+            name = (request.POST.get('name') or '').strip()
+            domain = request.POST.get('domain')
+            is_active = request.POST.get('is_active') == 'true'
+
+            if not code or not name or not domain:
+                messages.error(request, "Project code, name and domain are required.")
+                return redirect('admin_projects')
+
+            if domain not in {'Corporate', 'Non-Corporate'}:
+                messages.error(request, "Invalid project domain.")
+                return redirect('admin_projects')
+
+            if Project.objects.filter(code=code).exists():
+                messages.error(request, "Project code already exists.")
+                return redirect('admin_projects')
+
+            Project.objects.create(code=code, name=name, domain=domain, is_active=is_active)
 
         return redirect(request.META.get('HTTP_REFERER'))
 
@@ -368,3 +413,95 @@ def admin_user_action(request):
             return redirect('admin_users')
 
     return redirect('admin_users')
+
+
+def admin_department_action(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
+    if request.method == "POST":
+        action = request.POST.get('action')
+        department_id = request.POST.get('department_id')
+
+        if action == 'delete' and department_id:
+            Department.objects.filter(id=department_id).delete()
+            return redirect('admin_departments')
+
+        if action == 'edit' and department_id:
+            department = Department.objects.filter(id=department_id).first()
+            if not department:
+                messages.error(request, "Department not found.")
+                return redirect('admin_departments')
+
+            code = (request.POST.get('code') or '').strip()
+            name = (request.POST.get('name') or '').strip()
+            is_active = request.POST.get('is_active') == 'true'
+
+            if not code or not name:
+                messages.error(request, "Department code and name are required.")
+                return redirect('admin_departments')
+
+            if Department.objects.filter(code=code).exclude(id=department.id).exists():
+                messages.error(request, "Department code already exists.")
+                return redirect('admin_departments')
+
+            department.code = code
+            department.name = name
+            department.is_active = is_active
+            department.save()
+            return redirect('admin_departments')
+
+    return redirect('admin_departments')
+
+
+def admin_project_action(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
+    if request.method == "POST":
+        action = request.POST.get('action')
+        project_id = request.POST.get('project_id')
+
+        if action == 'delete' and project_id:
+            Project.objects.filter(id=project_id).delete()
+            return redirect('admin_projects')
+
+        if action == 'edit' and project_id:
+            project = Project.objects.filter(id=project_id).first()
+            if not project:
+                messages.error(request, "Project not found.")
+                return redirect('admin_projects')
+
+            code = (request.POST.get('code') or '').strip()
+            name = (request.POST.get('name') or '').strip()
+            domain = request.POST.get('domain')
+            is_active = request.POST.get('is_active') == 'true'
+
+            if not code or not name or not domain:
+                messages.error(request, "Project code, name and domain are required.")
+                return redirect('admin_projects')
+
+            if domain not in {'Corporate', 'Non-Corporate'}:
+                messages.error(request, "Invalid project domain.")
+                return redirect('admin_projects')
+
+            if Project.objects.filter(code=code).exclude(id=project.id).exists():
+                messages.error(request, "Project code already exists.")
+                return redirect('admin_projects')
+
+            project.code = code
+            project.name = name
+            project.domain = domain
+            project.is_active = is_active
+            project.save()
+            return redirect('admin_projects')
+
+    return redirect('admin_projects')
