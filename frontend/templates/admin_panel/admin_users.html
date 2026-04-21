@@ -424,18 +424,22 @@ document.addEventListener("DOMContentLoaded", function () {
   function closePopup() { popup.style.display = "none"; }
 
   const deletePopup = document.getElementById("deletePopup");
-  const confirmDeleteLink = document.getElementById("confirmDeleteLink");
+  const deleteUserIdInput = document.getElementById("deleteUserId");
 
   document.querySelectorAll(".delete-btn").forEach(btn => {
     btn.onclick = function() {
-      confirmDeleteLink.href = this.dataset.deleteUrl;
+      if (deleteUserIdInput) {
+        deleteUserIdInput.value = this.dataset.userId;
+      }
       deletePopup.style.display = "flex";
     };
   });
 
   function closeDeletePopup() {
     deletePopup.style.display = "none";
-    confirmDeleteLink.href = "#";
+    if (deleteUserIdInput) {
+      deleteUserIdInput.value = "";
+    }
   }
 
   window.onclick = function(event) {
