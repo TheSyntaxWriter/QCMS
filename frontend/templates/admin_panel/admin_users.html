@@ -169,7 +169,7 @@
             labels: ['Active', 'Inactive'],
             datasets: [{
               data: [{{ active_users|default:0 }}, {{ inactive_users|default:0 }}],
-              backgroundColor: ['#28a745', '#dc3545']
+              backgroundColor: ['#087b0a', '#8a0b18']
             }]
           },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
@@ -184,8 +184,8 @@
           data: {
             labels: {{ dept_labels|safe }},
             datasets: [
-              { label: 'Active', data: {{ dept_active_data|safe }}, backgroundColor: '#28a745' },
-              { label: 'Inactive', data: {{ dept_inactive_data|safe }}, backgroundColor: '#dc3545' }
+              { label: 'Active', data: {{ dept_active_data|safe }}, backgroundColor: '#087b0a' },
+              { label: 'Inactive', data: {{ dept_inactive_data|safe }}, backgroundColor: '#8a0b18' }
             ]
           },
           options: {
