@@ -55,18 +55,6 @@
   text-align: center;
 }
 
-.users-mini-card-user {
-  background: #0d59ab;
-}
-
-.users-mini-card-hod {
-  background: #5b055e;
-}
-
-.users-mini-card-mgmt {
-  background: #8b8904;
-}
-
 .users-mini-label {
   font-size: 12px;
 }
@@ -220,7 +208,7 @@
   border-radius: 10px;
   text-align: center;
   color: white;
-  background: #3949ab; /* Default Blue */
+  background: #0a1163; /* Default Blue */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
@@ -232,7 +220,7 @@
 /* 4. CHARTS (Transparent Background) */
 canvas {
   background: transparent !important; /* White background hatane ke liye */
-  border: 1px solid #000;
+  border: 1px solid none;
   border-radius: 0;
   padding: 5px;
 }
@@ -256,7 +244,7 @@ table {
 }
 
 thead {
-  background: #1a237e; /* Dark Blue Header */
+  background: #0a1163; /* Dark Blue Header */
   color: white;
 }
 
@@ -304,7 +292,7 @@ thead {
 
 .sort-indicator {
   font-size: 10px;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(19, 17, 43, 0.22);
   border-radius: 10px;
   padding: 2px 6px;
 }
@@ -343,19 +331,19 @@ tr:hover {
 }
 
 .btn-add {
-  background: #1a237e;
+  background: #2f7b02;
   color: white;
 }
 .btn-view {
-  background: #3949ab;
+  background: #2a4ec6;
   color: white;
 }
 .btn-edit {
-  background: #28a745;
+  background: #5aca19;
   color: white;
 }
 .btn-delete {
-  background: #dc3545;
+  background: #810915;
   color: white;
 }
 
@@ -411,7 +399,7 @@ tr:hover {
 
 .popup-header {
   padding: 15px 20px;
-  background: #1a237e;
+  background: #0a1163;
   color: white;
   display: flex;
   justify-content: space-between;
@@ -465,13 +453,13 @@ tr:hover {
 }
 
 .danger-header {
-  background: #9b1328;
+  background: #760616;
 }
 
 .delete-popup-body {
   text-align: center;
   font-size: 16px;
-  color: #333;
+  color: #750505;
   padding: 26px 20px;
 }
 

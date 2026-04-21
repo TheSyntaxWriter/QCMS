@@ -25,7 +25,7 @@
         <span class="users-mini-label">HOD</span><h4 class="users-mini-value">{{ role_counts.hod|default:"0" }}</h4>
       </div>
       <div class="mini-card users-mini-card users-mini-card-mgmt">
-        <span class="users-mini-label">Mgmt</span><h4 class="users-mini-value">{{ role_counts.management|default:"0" }}</h4>
+        <span class="users-mini-label">Management</span><h4 class="users-mini-value">{{ role_counts.management|default:"0" }}</h4>
       </div>
     </div>
   </div>
@@ -187,49 +187,104 @@
   <input type="hidden" name="user_id" id="deleteUserId" value="">
 </form>
 
-{{ admin_users_config|json_script:"admin-users-config" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-  // --- 1. Charts Initialization ---
-  document.addEventListener("DOMContentLoaded", function() {
-    if (window.Chart) {
-      const pieCanvas = document.getElementById('paiChart');
-      if (pieCanvas) {
-        const paiCtx = pieCanvas.getContext('2d');
-        new Chart(paiCtx, {
-          type: 'pie',
-          data: {
-            labels: ['Active', 'Inactive'],
-            datasets: [{
-              data: [{{ active_users|default:0 }}, {{ inactive_users|default:0 }}],
-              backgroundColor: ['#087b0a', '#8a0b18']
-            }]
-          },
-          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-        });
-      }
 
-      const stackedCanvas = document.getElementById('stackedChart');
-      if (stackedCanvas) {
-        const stackedCtx = stackedCanvas.getContext('2d');
-        new Chart(stackedCtx, {
-          type: 'bar',
-          data: {
-            labels: {{ dept_labels|safe }},
-            datasets: [
-              { label: 'Active', data: {{ dept_active_data|safe }}, backgroundColor: '#087b0a' },
-              { label: 'Inactive', data: {{ dept_inactive_data|safe }}, backgroundColor: '#8a0b18' }
-            ]
-          },
-          options: {
-            scales: { x: { stacked: true }, y: { stacked: true } },
-            responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false } }
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // ================================
+  // 1. PIE CHART
+  // ================================
+  const pieCanvas = document.getElementById('paiChart');
+
+  if (pieCanvas) {
+    const paiCtx = pieCanvas.getContext('2d');
+
+    new Chart(paiCtx, {
+      type: 'pie',
+      data: {
+        labels: ['Active', 'Inactive'],
+        datasets: [{
+          data: [{{ active_users|default:0 }}, {{ inactive_users|default:0 }}],
+          backgroundColor: ['#087b0a', '#8a0b18'],
+
+          // 🔥 BORDER FIX
+          borderColor: '#170101',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right'
           }
-        });
+        }
       }
-    }
-  });
+    });
+  }
+
+  // ================================
+  // 2. STACKED BAR CHART
+  // ================================
+  const stackedCanvas = document.getElementById('stackedChart');
+
+  if (stackedCanvas) {
+    const stackedCtx = stackedCanvas.getContext('2d');
+
+    new Chart(stackedCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ dept_labels|safe }},
+        datasets: [
+          {
+            label: 'Active',
+            data: {{ dept_active_data|safe }},
+            backgroundColor: '#087b0a',
+
+            // 🔥 BORDER FIX
+            borderColor: '#170101',
+            borderWidth: 1,
+            borderSkipped: false,
+  
+          },
+          {
+            label: 'Inactive',
+            data: {{ dept_inactive_data|safe }},
+            backgroundColor: '#8a0b18',
+
+            // 🔥 BORDER FIX
+            borderColor: '#170101',
+            borderWidth: 1,
+            borderSkipped: false,
+            
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        scales: {
+          x: {
+            stacked: true
+          },
+          y: {
+            stacked: true
+          }
+        },
+
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+  }
+
+});
 
   // --- 2. Popup Logic (Add, Edit, View) ---
   const popup = document.getElementById("popup");
@@ -387,6 +442,7 @@
     if (event.target == popup) closePopup();
     if (event.target == deletePopup) closeDeletePopup();
   }
-</script>
+  </script>
+
 
 {% endblock %}
