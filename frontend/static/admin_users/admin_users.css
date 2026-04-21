@@ -309,7 +309,7 @@ tr:hover {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: 0px;
   white-space: nowrap;
 }
 
