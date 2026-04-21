@@ -1,33 +1,97 @@
-{% extends 'admin_panel/admin_base.html' %} {% block content %}
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
 
 <h2>🏢 Departments</h2>
 
-<button class="btn btn-add">+ Add Department</button>
+{% if messages %}
+  <div class="users-messages">
+    {% for message in messages %}
+      <div class="users-message users-message-{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
 
-<div class="card">
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% for dept in departments %}
-      <tr>
-        <td>{{ dept.id }}</td>
-        <td>{{ dept.name }}</td>
-
-        <td>
-          <button class="btn btn-edit">Edit</button>
-          <button class="btn btn-delete">Delete</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="users-add-wrap">
+  <button class="btn btn-add" id="addEntityBtn">+ Add Department</button>
 </div>
 
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Created At</th>
+          <th>Updated At</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dept in departments %}
+        <tr>
+          <td>{{ dept.id }}</td>
+          <td>{{ dept.code }}</td>
+          <td>{{ dept.name }}</td>
+          <td>{% if dept.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
+          <td>{{ dept.created_at|date:"Y-m-d H:i:s"|default:"-" }}</td>
+          <td>{{ dept.updated_at|date:"Y-m-d H:i:s"|default:"-" }}</td>
+          <td>
+            <button class="btn btn-edit edit-btn"
+                    data-id="{{ dept.id }}"
+                    data-code="{{ dept.code }}"
+                    data-name="{{ dept.name }}"
+                    data-is-active="{{ dept.is_active|yesno:'true,false' }}">Edit</button>
+            <button class="btn btn-delete delete-btn" data-id="{{ dept.id }}">Delete</button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="users-empty-row">No departments found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="popup" class="popup">
+  <div class="popup-content">
+    <div class="popup-header">
+      <h3 id="popup-title">Department Form</h3>
+      <span class="close-btn" onclick="closePopup()">✖</span>
+    </div>
+    <div class="popup-body" id="popup-body"></div>
+    <div class="popup-footer">
+      <button class="btn btn-add" id="saveBtn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="deletePopup" class="popup">
+  <div class="popup-content delete-popup-content">
+    <div class="popup-header danger-header">
+      <h3>⚠ Delete Department</h3>
+      <span class="close-btn" onclick="closeDeletePopup()">✖</span>
+    </div>
+    <div class="popup-body delete-popup-body">
+      <p>Are you sure you want to delete this department?</p>
+    </div>
+    <div class="popup-footer delete-popup-footer">
+      <button class="btn btn-view" type="button" onclick="closeDeletePopup()">Cancel</button>
+      <button id="confirmDeleteBtn" type="submit" form="deleteEntityForm" class="btn btn-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<form id="deleteEntityForm" method="POST" action="{% url 'admin_department_action' %}" class="hidden-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete">
+  <input type="hidden" name="department_id" id="deleteEntityId" value="">
+</form>
+
+{{ admin_departments_config|json_script:"entity-config" }}
+<script src="{% static 'admin_users/master_crud.js' %}"></script>
 {% endblock %}
