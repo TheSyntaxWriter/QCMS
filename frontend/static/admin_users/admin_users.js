@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <label>Department</label>
           <select name="department" class="form-control">${renderDepartmentOptions(departmentId)}</select>
         </div>
-        <div class="form-field form-field-full">
+        <div class="form-field">
           <label>Project</label>
           <select name="project" class="form-control">${renderProjectOptions(projectId)}</select>
         </div>
@@ -134,6 +134,8 @@ document.addEventListener("DOMContentLoaded", function () {
           datasets: [{
             data: [charts.active || 0, charts.inactive || 0],
             backgroundColor: ["#28a745", "#dc3545"],
+            borderColor: "#170101",
+            borderWidth: 1,
           }],
         },
         options: {
@@ -152,8 +154,8 @@ document.addEventListener("DOMContentLoaded", function () {
         data: {
           labels: charts.deptLabels || [],
           datasets: [
-            { label: "Active", data: charts.deptActiveData || [], backgroundColor: "#28a745" },
-            { label: "Inactive", data: charts.deptInactiveData || [], backgroundColor: "#dc3545" },
+            { label: "Active", data: charts.deptActiveData || [], backgroundColor: "#28a745", borderColor: "#170101", borderWidth: 1 },
+            { label: "Inactive", data: charts.deptInactiveData || [], backgroundColor: "#dc3545", borderColor: "#170101", borderWidth: 1 },
           ],
         },
         options: {

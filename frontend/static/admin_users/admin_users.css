@@ -304,6 +304,15 @@ tr:hover {
   white-space: nowrap;
 }
 
+.table-container tbody td:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
 .inline-action-form {
   display: inline-flex;
   margin: 0;
@@ -429,6 +438,11 @@ tr:hover {
   .users-toolbar .form-control,
   .reset-link {
     flex: 1 1 45%;
+  }
+
+  .table-container tbody td:last-child {
+    white-space: normal;
+    justify-content: flex-start;
   }
 
   .user-form-grid {
