@@ -1,37 +1,45 @@
-{% extends 'admin_panel/admin_base.html' %} 
+{% extends 'admin_panel/admin_base.html' %}
 {% load static %}
 {% block content %}
 
 <link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
 
-<div class="header-section" style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 20px;">
-  <div class="left-panel" style="flex: 1;">
+<div class="header-section users-header-section">
+  <div class="left-panel users-left-panel">
     <h2>👤 Users Management</h2>
-    <div class="stacked-chart-card" style="height: 220px; position: relative; margin-top: 14px;">
+    <div class="stacked-chart-card users-stacked-chart-card">
       <canvas id="stackedChart"></canvas>
     </div>
   </div>
 
-  <div class="right-panel" style="flex: 1;">
-    <div style="height: 180px; position: relative; margin-bottom: 15px;">
+  <div class="right-panel users-right-panel">
+    <div class="users-pie-chart-wrap">
       <canvas id="paiChart"></canvas>
     </div>
 
-    <div class="mini-stats" style="display: flex; gap: 10px; margin-bottom: 15px;">
-      <div class="mini-card" style="background: #0d59ab; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
-        <span style="font-size: 12px;">User</span><h4 style="margin: 5px 0;">{{ role_counts.user|default:"0" }}</h4>
+    <div class="mini-stats users-mini-stats-wrap">
+      <div class="mini-card users-mini-card users-mini-card-user">
+        <span class="users-mini-label">User</span><h4 class="users-mini-value">{{ role_counts.user|default:"0" }}</h4>
       </div>
-      <div class="mini-card" style="background: #5b055e; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
-        <span style="font-size: 12px;">HOD</span><h4 style="margin: 5px 0;">{{ role_counts.hod|default:"0" }}</h4>
+      <div class="mini-card users-mini-card users-mini-card-hod">
+        <span class="users-mini-label">HOD</span><h4 class="users-mini-value">{{ role_counts.hod|default:"0" }}</h4>
       </div>
-      <div class="mini-card" style="background: #8b8904; color: white; padding: 10px; border-radius: 8px; flex: 1; text-align: center;">
-        <span style="font-size: 12px;">Mgmt</span><h4 style="margin: 5px 0;">{{ role_counts.management|default:"0" }}</h4>
+      <div class="mini-card users-mini-card users-mini-card-mgmt">
+        <span class="users-mini-label">Mgmt</span><h4 class="users-mini-value">{{ role_counts.management|default:"0" }}</h4>
       </div>
     </div>
   </div>
 </div>
 
-<div style="margin-bottom: 15px">
+{% if messages %}
+  <div class="users-messages">
+    {% for message in messages %}
+      <div class="users-message users-message-{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="users-add-wrap">
   <button class="btn btn-add" id="addUserBtn">+ Add New User</button>
 </div>
 
@@ -88,43 +96,61 @@
           <td>{{ user.project.name|default:"-" }}</td>
           <td>
             {% if user.is_active %}
-              <span class="active-text" style="color: rgb(2, 85, 2); font-weight: bold;">Active</span>
+              <span class="active-text">Active</span>
             {% else %}
-              <span class="inactive-text" style="color: rgb(146, 7, 7); font-weight: bold;">Inactive</span>
+              <span class="inactive-text">Inactive</span>
             {% endif %}
           </td>
           <td>
-            <button class="btn btn-view view-btn" 
-                    data-username="{{ user.user.username }}" 
-                    data-first="{{ user.user.first_name }}" 
-                    data-last="{{ user.user.last_name }}" 
-                    data-role="{{ user.role }}" 
-                    data-dept="{{ user.department.name }}" 
-                    data-project="{{ user.project.name }}" 
+            <button class="btn btn-view view-btn"
+                    data-username="{{ user.user.username }}"
+                    data-first="{{ user.user.first_name }}"
+                    data-last="{{ user.user.last_name }}"
+                    data-role="{{ user.role }}"
+                    data-dept="{{ user.department.name|default:'-' }}"
+                    data-project="{{ user.project.name|default:'-' }}"
                     data-status="{{ user.is_active }}">View</button>
 
-            <button class="btn btn-edit edit-btn" 
-                    data-id="{{ user.user.id }}" 
-                    data-username="{{ user.user.username }}" 
-                    data-first="{{ user.user.first_name }}" 
-                    data-last="{{ user.user.last_name }}" 
-                    data-role="{{ user.role }}" 
-                    data-dept-id="{{ user.department.id }}" 
+            <button class="btn btn-edit edit-btn"
+                    data-id="{{ user.user.id }}"
+                    data-username="{{ user.user.username }}"
+                    data-first="{{ user.user.first_name }}"
+                    data-last="{{ user.user.last_name }}"
+                    data-role="{{ user.role }}"
+                    data-dept-id="{{ user.department.id }}"
                     data-project-id="{{ user.project.id }}">Edit</button>
 
-            <a href="{% url 'admin_user_action' %}?toggle={{ user.user.id }}" class="action-toggle-link">
-                <button class="btn btn-view action-toggle-btn">{% if user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
-            </a>
-            <button class="btn btn-delete delete-btn" data-delete-url="{% url 'admin_user_action' %}?delete={{ user.user.id }}">Delete</button>
+            <form method="POST" action="{% url 'admin_user_action' %}" class="inline-action-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle">
+              <input type="hidden" name="user_id" value="{{ user.user.id }}">
+              <button type="submit" class="btn btn-view action-toggle-btn">{% if user.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+            </form>
+
+            <button class="btn btn-delete delete-btn" data-user-id="{{ user.user.id }}">Delete</button>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" style="text-align: center;">No users found.</td></tr>
+        <tr><td colspan="7" class="users-empty-row">No users found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
+{% if users_page.paginator.num_pages > 1 %}
+<div class="users-pagination">
+  {% if users_page.has_previous %}
+    <a class="btn btn-view" href="?{{ pagination_query }}{% if pagination_query %}&{% endif %}page={{ users_page.previous_page_number }}">Previous</a>
+  {% endif %}
+
+  <span>Page {{ users_page.number }} of {{ users_page.paginator.num_pages }}</span>
+
+  {% if users_page.has_next %}
+    <a class="btn btn-view" href="?{{ pagination_query }}{% if pagination_query %}&{% endif %}page={{ users_page.next_page_number }}">Next</a>
+  {% endif %}
+</div>
+{% endif %}
 
 <div id="popup" class="popup">
   <div class="popup-content">
@@ -150,11 +176,18 @@
     </div>
     <div class="popup-footer delete-popup-footer">
       <button class="btn btn-view" type="button" onclick="closeDeletePopup()">Cancel</button>
-      <a id="confirmDeleteLink" href="#" class="btn btn-delete reset-link">Delete</a>
+      <button id="confirmDeleteBtn" type="submit" form="deleteUserForm" class="btn btn-delete">Delete</button>
     </div>
   </div>
 </div>
 
+<form id="deleteUserForm" method="POST" action="{% url 'admin_user_action' %}" class="hidden-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete">
+  <input type="hidden" name="user_id" id="deleteUserId" value="">
+</form>
+
+{{ admin_users_config|json_script:"admin-users-config" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
   // --- 1. Charts Initialization ---

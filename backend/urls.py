@@ -74,6 +74,6 @@ urlpatterns = [
     # =====================================================
     # 🔥 USER ACTIONS (VIEW / EDIT / TOGGLE)
     # =====================================================
-    path('admin-master-create/', views.admin_master_create, name='admin_create'),
+    path('admin-master-create/', views.admin_master_create_legacy, name='admin_create'),
     path('admin-user-action/', views.admin_user_action, name='admin_user_action'),
 ]

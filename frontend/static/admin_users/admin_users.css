@@ -11,11 +11,110 @@
   margin-bottom: 25px;
 }
 
+.users-header-section {
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
 /* Left Panel: Title aur Stacked Filters ke liye */
 .left-panel {
   width: 30%;
   display: flex;
   flex-direction: column;
+}
+
+.users-left-panel,
+.users-right-panel {
+  flex: 1;
+  width: auto;
+}
+
+.users-stacked-chart-card {
+  height: 220px;
+  position: relative;
+  margin-top: 14px;
+}
+
+.users-pie-chart-wrap {
+  height: 180px;
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.users-add-wrap {
+  margin-bottom: 15px;
+}
+
+.users-mini-stats-wrap {
+  margin-bottom: 15px;
+}
+
+.users-mini-card {
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.users-mini-card-user {
+  background: #0d59ab;
+}
+
+.users-mini-card-hod {
+  background: #5b055e;
+}
+
+.users-mini-card-mgmt {
+  background: #8b8904;
+}
+
+.users-mini-label {
+  font-size: 12px;
+}
+
+.users-mini-value {
+  margin: 5px 0;
+}
+
+.users-empty-row {
+  text-align: center;
+}
+
+.users-pagination {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.hidden-form {
+  display: none;
+}
+
+.users-messages {
+  margin-bottom: 12px;
+}
+
+.users-message {
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.users-message-error {
+  background: #f9d6d8;
+  color: #6f0711;
+}
+
+.users-message-success {
+  background: #d6f4dc;
+  color: #0f5f1e;
+}
+
+.users-message-info {
+  background: #e5edff;
+  color: #12337b;
 }
 
 /* Center Panel: Pie Chart ke liye (No Background) */
@@ -109,42 +208,6 @@
   padding: 0 14px;
 }
 
-.users-toolbar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 15px;
-}
-
-.users-toolbar .form-control {
-  min-width: 150px;
-  height: 40px;
-}
-
-.users-toolbar .toolbar-search {
-  min-width: 220px;
-  flex: 1;
-}
-
-.users-toolbar .icon-btn {
-  min-width: 44px;
-  width: 44px;
-  height: 40px;
-  padding: 0;
-  font-size: 17px;
-  line-height: 1;
-}
-
-.reset-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  height: 40px;
-  padding: 0 14px;
-}
-
 /* 3. MINI STATS (Role Cards) */
 .mini-stats {
   display: flex;
@@ -169,6 +232,7 @@
 /* 4. CHARTS (Transparent Background) */
 canvas {
   background: transparent !important; /* White background hatane ke liye */
+  border: 1px solid #000;
   border-radius: 0;
   padding: 5px;
 }
@@ -315,6 +379,11 @@ tr:hover {
   white-space: nowrap;
 }
 
+.inline-action-form {
+  display: inline-flex;
+  margin: 0;
+}
+
 /* 7. POPUP MODAL STYLES */
 .popup {
   display: none;
@@ -396,7 +465,7 @@ tr:hover {
 }
 
 .danger-header {
-  background: #dc3545;
+  background: #9b1328;
 }
 
 .delete-popup-body {
@@ -410,6 +479,10 @@ tr:hover {
   display: flex;
   justify-content: center;
   gap: 10px;
+}
+
+.delete-popup-footer .btn {
+  min-width: 90px;
 }
 
 @media (max-width: 640px) {

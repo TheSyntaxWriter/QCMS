@@ -1,8 +1,11 @@
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
+from django.core.paginator import Paginator
 from django.http import JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 
 from ..models import Checklist, ChecklistTransaction, Department, Project, UserProfile
@@ -91,26 +94,37 @@ def admin_users(request):
         params = {**base_params, 'sort': key, 'dir': next_dir}
         sort_links[key] = urlencode({k: v for k, v in params.items() if v != ''})
 
+    filtered_user_list = user_list
+
     role_counts = {
-        'user': user_list.filter(role='User').count(),
-        'hod': user_list.filter(role='HOD').count(),
-        'management': user_list.filter(role='Management').count(),
+        'user': filtered_user_list.filter(role='User').count(),
+        'hod': filtered_user_list.filter(role='HOD').count(),
+        'management': filtered_user_list.filter(role='Management').count(),
     }
 
-    total_active = user_list.filter(is_active=True).count()
-    total_inactive = user_list.filter(is_active=False).count()
+    total_active = filtered_user_list.filter(is_active=True).count()
+    total_inactive = filtered_user_list.filter(is_active=False).count()
 
-    dept_stats = Department.objects.annotate(
-        active_count=Count('userprofile', filter=Q(userprofile__is_active=True)),
-        inactive_count=Count('userprofile', filter=Q(userprofile__is_active=False)),
+    dept_stats = (
+        filtered_user_list
+        .values('department__name')
+        .annotate(
+            active_count=Count('id', filter=Q(is_active=True)),
+            inactive_count=Count('id', filter=Q(is_active=False)),
+        )
+        .order_by('department__name')
     )
 
-    dept_labels = [department.name for department in dept_stats]
-    dept_active_data = [department.active_count for department in dept_stats]
-    dept_inactive_data = [department.inactive_count for department in dept_stats]
+    dept_labels = [department['department__name'] or "Unassigned" for department in dept_stats]
+    dept_active_data = [department['active_count'] for department in dept_stats]
+    dept_inactive_data = [department['inactive_count'] for department in dept_stats]
+
+    paginator = Paginator(filtered_user_list, 10)
+    page_number = request.GET.get('page')
+    users_page = paginator.get_page(page_number)
 
     context = {
-        'users': user_list,
+        'users': users_page,
         'departments': Department.objects.all(),
         'projects': Project.objects.all(),
         'role_counts': role_counts,
@@ -122,6 +136,33 @@ def admin_users(request):
         'sort_by': sort_by,
         'sort_dir': sort_dir,
         'sort_links': sort_links,
+        'pagination_query': urlencode({k: v for k, v in {
+            'search': search_query,
+            'department': dept_filter,
+            'project': proj_filter,
+            'status': stat_filter,
+            'sort': sort_by,
+            'dir': sort_dir,
+        }.items() if v != ''}),
+        'users_page': users_page,
+        'admin_users_config': {
+            'createUrl': '/admin-create/',
+            'editUrl': '/admin-user-action/',
+            'csrfToken': get_token(request),
+            'departments': [
+                {'id': d.id, 'name': d.name} for d in Department.objects.all()
+            ],
+            'projects': [
+                {'id': p.id, 'name': p.name, 'domain': p.domain} for p in Project.objects.all()
+            ],
+            'charts': {
+                'active': total_active,
+                'inactive': total_inactive,
+                'deptLabels': dept_labels,
+                'deptActiveData': dept_active_data,
+                'deptInactiveData': dept_inactive_data,
+            },
+        },
     }
 
     return render(request, 'admin_panel/admin_users.html', context)
@@ -189,9 +230,18 @@ def admin_master_create(request):
 
     if request.method == "POST":
         if request.POST.get("form_type") == "user":
+            username = (request.POST.get('username') or '').strip()
+            password = request.POST.get('password') or ''
+            if not username or not password:
+                messages.error(request, "Username and password are required.")
+                return redirect('admin_users')
+            if User.objects.filter(username=username).exists():
+                messages.error(request, "Username already exists. Please choose another.")
+                return redirect('admin_users')
+
             user = User.objects.create_user(
-                username=request.POST.get('username'),
-                password=request.POST.get('password'),
+                username=username,
+                password=password,
                 first_name=request.POST.get('first_name'),
                 last_name=request.POST.get('last_name'),
             )
@@ -209,6 +259,12 @@ def admin_master_create(request):
     return redirect('admin_dashboard')
 
 
+def admin_master_create_legacy(request):
+    if request.method == "POST":
+        return admin_master_create(request)
+    return redirect('admin_master_create')
+
+
 def admin_user_action(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -217,17 +273,21 @@ def admin_user_action(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
-    delete_id = request.GET.get('delete')
-    if delete_id:
-        User.objects.filter(id=delete_id).delete()
-        return redirect('admin_users')
+    if request.method == "POST":
+        action = request.POST.get('action')
+        user_id = request.POST.get('user_id')
 
-    toggle_id = request.GET.get('toggle')
-    if toggle_id:
-        profile_obj = UserProfile.objects.get(user_id=toggle_id)
-        profile_obj.is_active = not profile_obj.is_active
-        profile_obj.save()
-        return redirect('admin_users')
+        if action in {'delete', 'toggle'} and user_id:
+            if action == 'delete':
+                User.objects.filter(id=user_id).delete()
+            else:
+                try:
+                    profile_obj = UserProfile.objects.get(user_id=user_id)
+                    profile_obj.is_active = not profile_obj.is_active
+                    profile_obj.save()
+                except UserProfile.DoesNotExist:
+                    messages.error(request, "User profile not found.")
+            return redirect('admin_users')
 
     if request.GET.get('action') == "view":
         user_id = request.GET.get('id')
@@ -256,7 +316,15 @@ def admin_user_action(request):
                 return redirect('admin_users')
 
             user = profile_obj.user
-            user.username = request.POST.get('username')
+            username = (request.POST.get('username') or '').strip()
+            if not username:
+                messages.error(request, "Username is required.")
+                return redirect('admin_users')
+            if User.objects.filter(username=username).exclude(id=user.id).exists():
+                messages.error(request, "Username already exists. Please choose another.")
+                return redirect('admin_users')
+
+            user.username = username
             user.first_name = request.POST.get('first_name')
             user.last_name = request.POST.get('last_name')
             password = request.POST.get('password')
@@ -270,3 +338,5 @@ def admin_user_action(request):
             profile_obj.save()
 
             return redirect('admin_users')
+
+    return redirect('admin_users')
