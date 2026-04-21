@@ -1,161 +1,235 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // ================= FILTER =================
-  window.applyFilter = function () {
-    let search = document.getElementById("search").value;
-    let department = document.getElementById("department").value;
-    let project = document.getElementById("project").value;
-    let status = document.getElementById("status").value;
+  const configScript = document.getElementById("admin-users-config");
+  const config = configScript ? JSON.parse(configScript.textContent) : {};
 
-    let url = "?";
+  const popup = document.getElementById("popup");
+  const popupBody = document.getElementById("popup-body");
+  const popupTitle = document.getElementById("popup-title");
+  const saveBtn = document.getElementById("saveBtn");
 
-    if (search) url += `search=${encodeURIComponent(search)}&`;
-    if (department) url += `department=${department}&`;
-    if (project) url += `project=${project}&`;
-    if (status) url += `status=${status}&`;
+  const deletePopup = document.getElementById("deletePopup");
+  const deleteUserIdInput = document.getElementById("deleteUserId");
 
-    window.location.href = url;
-  };
-
-  // 🔥 REUSE FILTER DROPDOWN DATA
-  function getDeptOptions() {
-    return document
-      .getElementById("department")
-      .innerHTML.replace('<option value="">Dept</option>', "");
+  function renderRoleOptions(selectedRole) {
+    const role = selectedRole || "User";
+    return `
+      <option ${role === "User" ? "selected" : ""}>User</option>
+      <option ${role === "HOD" ? "selected" : ""}>HOD</option>
+      <option ${role === "Management" ? "selected" : ""}>Management</option>
+      <option ${role === "Admin" ? "selected" : ""}>Admin</option>
+    `;
   }
 
-  function getProjOptions() {
-    return document
-      .getElementById("project")
-      .innerHTML.replace('<option value="">Project</option>', "");
+  function renderDepartmentOptions(selectedDepartmentId) {
+    const selected = String(selectedDepartmentId || "");
+    const departmentOptions = (config.departments || [])
+      .map((department) => {
+        const isSelected = selected === String(department.id);
+        return `<option value="${department.id}" ${isSelected ? "selected" : ""}>${department.name}</option>`;
+      })
+      .join("");
+
+    return `<option value="">Select Dept</option>${departmentOptions}`;
   }
 
-  // ================= ADD USER =================
-  document.getElementById("addUserBtn").onclick = function () {
-    document.getElementById("popup").style.display = "flex";
-    document.getElementById("popup-title").innerText = "Add User";
-    document.getElementById("saveBtn").style.display = "inline-block";
+  function renderProjectOptions(selectedProjectId) {
+    const selected = String(selectedProjectId || "");
+    const projectOptions = (config.projects || [])
+      .map((project) => {
+        const isSelected = selected === String(project.id);
+        return `<option value="${project.id}" ${isSelected ? "selected" : ""}>${project.name} (${project.domain})</option>`;
+      })
+      .join("");
 
-    document.getElementById("popup-body").innerHTML = `
-      <form id="userForm" method="POST" action="/admin-create/">
+    return `<option value="">Select Project</option>${projectOptions}`;
+  }
 
-        <input type="hidden" name="form_type" value="user">
+  function renderUserForm({
+    mode,
+    action,
+    editId,
+    username,
+    firstName,
+    lastName,
+    role,
+    departmentId,
+    projectId,
+  }) {
+    const isAdd = mode === "add";
 
-        <label>Username</label>
-        <input name="username" required>
-
-        <label>Password</label>
-        <input type="password" name="password" required>
-
-        <label>First Name</label>
-        <input name="first_name">
-
-        <label>Last Name</label>
-        <input name="last_name">
-
-        <label>Role</label>
-        <select name="role">
-          <option>User</option>
-          <option>HOD</option>
-          <option>Management</option>
-          <option>Admin</option>
-        </select>
-
-        <label>Department</label>
-        <select name="department">
-          ${getDeptOptions()}
-        </select>
-
-        <label>Project</label>
-        <select name="project">
-          ${getProjOptions()}
-        </select>
+    return `
+      <form id="userForm" class="user-form-grid" method="POST" action="${action}">
+        <input type="hidden" name="csrfmiddlewaretoken" value="${config.csrfToken || ""}">
+        ${isAdd ? '<input type="hidden" name="form_type" value="user">' : `<input type="hidden" name="edit_id" value="${editId || ""}">`}
+        <div class="form-field">
+          <label>Username</label>
+          <input name="username" class="form-control" value="${username || ""}" required>
+        </div>
+        <div class="form-field">
+          <label>${isAdd ? "Password" : "Password (optional)"}</label>
+          <input type="password" name="password" class="form-control" ${isAdd ? "required" : ""}>
+        </div>
+        <div class="form-field">
+          <label>First Name</label>
+          <input name="first_name" class="form-control" value="${firstName || ""}">
+        </div>
+        <div class="form-field">
+          <label>Last Name</label>
+          <input name="last_name" class="form-control" value="${lastName || ""}">
+        </div>
+        <div class="form-field">
+          <label>Role</label>
+          <select name="role" class="form-control">${renderRoleOptions(role)}</select>
+        </div>
+        <div class="form-field">
+          <label>Department</label>
+          <select name="department" class="form-control">${renderDepartmentOptions(departmentId)}</select>
+        </div>
+        <div class="form-field form-field-full">
+          <label>Project</label>
+          <select name="project" class="form-control">${renderProjectOptions(projectId)}</select>
+        </div>
       </form>
     `;
-  };
+  }
 
-  // ================= VIEW =================
-  document.querySelectorAll(".view-btn").forEach((btn) => {
-    btn.onclick = function () {
-      document.getElementById("popup").style.display = "flex";
-      document.getElementById("popup-title").innerText = "User Details";
-      document.getElementById("saveBtn").style.display = "none";
+  function closePopup() {
+    popup.style.display = "none";
+  }
 
-      let status = this.dataset.status == "True" ? "Active" : "Inactive";
+  function closeDeletePopup() {
+    deletePopup.style.display = "none";
+    if (deleteUserIdInput) {
+      deleteUserIdInput.value = "";
+    }
+  }
 
-      document.getElementById("popup-body").innerHTML = `
-        <p><b>Username:</b> ${this.dataset.username}</p>
-        <p><b>Name:</b> ${this.dataset.first} ${this.dataset.last}</p>
-        <p><b>Role:</b> ${this.dataset.role}</p>
-        <p><b>Department:</b> ${this.dataset.dept}</p>
-        <p><b>Project:</b> ${this.dataset.project} (${this.dataset.domain})</p>
-        <p><b>Status:</b> ${status}</p>
-      `;
+  window.closePopup = closePopup;
+  window.closeDeletePopup = closeDeletePopup;
+
+  if (window.Chart) {
+    const charts = config.charts || {};
+    const pieCanvas = document.getElementById("paiChart");
+    if (pieCanvas) {
+      const pieCtx = pieCanvas.getContext("2d");
+      new Chart(pieCtx, {
+        type: "pie",
+        data: {
+          labels: ["Active", "Inactive"],
+          datasets: [{
+            data: [charts.active || 0, charts.inactive || 0],
+            backgroundColor: ["#28a745", "#dc3545"],
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "right" } },
+        },
+      });
+    }
+
+    const stackedCanvas = document.getElementById("stackedChart");
+    if (stackedCanvas) {
+      const stackedCtx = stackedCanvas.getContext("2d");
+      new Chart(stackedCtx, {
+        type: "bar",
+        data: {
+          labels: charts.deptLabels || [],
+          datasets: [
+            { label: "Active", data: charts.deptActiveData || [], backgroundColor: "#28a745" },
+            { label: "Inactive", data: charts.deptInactiveData || [], backgroundColor: "#dc3545" },
+          ],
+        },
+        options: {
+          scales: { x: { stacked: true }, y: { stacked: true } },
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+        },
+      });
+    }
+  }
+
+  const addUserBtn = document.getElementById("addUserBtn");
+  if (addUserBtn) {
+    addUserBtn.onclick = function () {
+      popup.style.display = "flex";
+      popupTitle.innerText = "Add New User";
+      saveBtn.style.display = "inline-block";
+      popupBody.innerHTML = renderUserForm({
+        mode: "add",
+        action: config.createUrl || "/admin-create/",
+      });
     };
-  });
+  }
 
-  // ================= EDIT =================
   document.querySelectorAll(".edit-btn").forEach((btn) => {
     btn.onclick = function () {
-      document.getElementById("popup").style.display = "flex";
-      document.getElementById("popup-title").innerText = "Edit User";
-      document.getElementById("saveBtn").style.display = "inline-block";
-
-      document.getElementById("popup-body").innerHTML = `
-        <form id="userForm" method="POST" action="/admin-user-action/">
-
-          <input type="hidden" name="edit_id" value="${this.dataset.id}">
-
-          <label>Username</label>
-          <input name="username" value="${this.dataset.username}">
-
-          <label>First Name</label>
-          <input name="first_name" value="${this.dataset.first}">
-
-          <label>Last Name</label>
-          <input name="last_name" value="${this.dataset.last}">
-
-          <label>Role</label>
-          <select name="role">
-            <option ${this.dataset.role == "User" ? "selected" : ""}>User</option>
-            <option ${this.dataset.role == "HOD" ? "selected" : ""}>HOD</option>
-            <option ${this.dataset.role == "Management" ? "selected" : ""}>Management</option>
-            <option ${this.dataset.role == "Admin" ? "selected" : ""}>Admin</option>
-          </select>
-
-          <label>Department</label>
-          <select name="department" id="editDept">
-            ${getDeptOptions()}
-          </select>
-
-          <label>Project</label>
-          <select name="project" id="editProj">
-            ${getProjOptions()}
-          </select>
-        </form>
-      `;
-
-      // 🔥 SET SELECTED VALUE
-      document.getElementById("editDept").value = this.dataset.deptId;
-      document.getElementById("editProj").value = this.dataset.projectId;
+      popup.style.display = "flex";
+      popupTitle.innerText = "Edit User";
+      saveBtn.style.display = "inline-block";
+      popupBody.innerHTML = renderUserForm({
+        mode: "edit",
+        action: config.editUrl || "/admin-user-action/",
+        editId: this.dataset.id,
+        username: this.dataset.username,
+        firstName: this.dataset.first,
+        lastName: this.dataset.last,
+        role: this.dataset.role,
+        departmentId: this.dataset.deptId,
+        projectId: this.dataset.projectId,
+      });
     };
   });
 
-  // ================= SAVE =================
-  document.getElementById("saveBtn").onclick = function () {
-    let form = document.getElementById("userForm");
-    if (form) form.submit();
+  document.querySelectorAll(".view-btn").forEach((btn) => {
+    btn.onclick = function () {
+      popup.style.display = "flex";
+      popupTitle.innerText = "User Information";
+      saveBtn.style.display = "none";
+      const statusText = this.dataset.status === "True" ? "Active" : "Inactive";
+      popupBody.innerHTML = `
+        <div style="line-height: 2;">
+          <p><b>Username:</b> ${this.dataset.username}</p>
+          <p><b>Name:</b> ${this.dataset.first} ${this.dataset.last}</p>
+          <p><b>Role:</b> ${this.dataset.role}</p>
+          <p><b>Department:</b> ${this.dataset.dept}</p>
+          <p><b>Project:</b> ${this.dataset.project}</p>
+          <p><b>Status:</b> ${statusText}</p>
+        </div>`;
+    };
+  });
+
+  document.querySelectorAll(".delete-btn").forEach((btn) => {
+    btn.onclick = function () {
+      if (deleteUserIdInput) {
+        deleteUserIdInput.value = this.dataset.userId;
+      }
+      deletePopup.style.display = "flex";
+    };
+  });
+
+  saveBtn.onclick = function () {
+    const form = document.getElementById("userForm");
+    if (form) {
+      form.submit();
+    }
   };
 
-  // ================= CLOSE =================
-  window.closePopup = function () {
-    document.getElementById("popup").style.display = "none";
+  window.onclick = function (event) {
+    if (event.target === popup) {
+      closePopup();
+    }
+    if (event.target === deletePopup) {
+      closeDeletePopup();
+    }
   };
 
-  window.onclick = function (e) {
-    if (e.target.id === "popup") closePopup();
-  };
-
-  document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closePopup();
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      closePopup();
+      closeDeletePopup();
+    }
   });
 });

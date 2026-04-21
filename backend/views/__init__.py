@@ -3,6 +3,7 @@ from .admin import (
     admin_dashboard,
     admin_departments,
     admin_master_create,
+    admin_master_create_legacy,
     admin_projects,
     admin_responses,
     admin_user_action,
@@ -29,6 +30,7 @@ __all__ = [
     'admin_checklists',
     'admin_responses',
     'admin_master_create',
+    'admin_master_create_legacy',
     'admin_user_action',
     'management_dashboard',
 ]
