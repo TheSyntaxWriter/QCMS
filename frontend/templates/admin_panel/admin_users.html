@@ -79,6 +79,7 @@
         <tr>
           <th><a class="sort-link" href="?{{ sort_links.username }}">Username{% if sort_by == 'username' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.full_name }}">Full Name{% if sort_by == 'full_name' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th>Email</th>
           <th><a class="sort-link" href="?{{ sort_links.role }}">Role{% if sort_by == 'role' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.department }}">Department{% if sort_by == 'department' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.project }}">Project{% if sort_by == 'project' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
@@ -91,6 +92,7 @@
         <tr>
           <td>{{ user.user.username }}</td>
           <td>{{ user.user.first_name }} {{ user.user.last_name }}</td>
+          <td>{{ user.user.email|default:"-" }}</td>
           <td>{{ user.role }}</td>
           <td>{{ user.department.name|default:"-" }}</td>
           <td>{{ user.project.name|default:"-" }}</td>
@@ -106,6 +108,7 @@
                     data-username="{{ user.user.username }}"
                     data-first="{{ user.user.first_name }}"
                     data-last="{{ user.user.last_name }}"
+                    data-email="{{ user.user.email }}"
                     data-role="{{ user.role }}"
                     data-dept="{{ user.department.name|default:'-' }}"
                     data-project="{{ user.project.name|default:'-' }}"
@@ -116,6 +119,7 @@
                     data-username="{{ user.user.username }}"
                     data-first="{{ user.user.first_name }}"
                     data-last="{{ user.user.last_name }}"
+                    data-email="{{ user.user.email }}"
                     data-role="{{ user.role }}"
                     data-dept-id="{{ user.department.id }}"
                     data-project-id="{{ user.project.id }}">Edit</button>
@@ -131,7 +135,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="users-empty-row">No users found.</td></tr>
+        <tr><td colspan="8" class="users-empty-row">No users found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -188,265 +192,7 @@
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-  // ================================
-  // 1. PIE CHART
-  // ================================
-  const pieCanvas = document.getElementById('paiChart');
-
-  if (pieCanvas) {
-    const paiCtx = pieCanvas.getContext('2d');
-
-    new Chart(paiCtx, {
-      type: 'pie',
-      data: {
-        labels: ['Active', 'Inactive'],
-        datasets: [{
-          data: [{{ active_users|default:0 }}, {{ inactive_users|default:0 }}],
-          backgroundColor: ['#087b0a', '#8a0b18'],
-
-          // 🔥 BORDER FIX
-          borderColor: '#170101',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right'
-          }
-        }
-      }
-    });
-  }
-
-  // ================================
-  // 2. STACKED BAR CHART
-  // ================================
-  const stackedCanvas = document.getElementById('stackedChart');
-
-  if (stackedCanvas) {
-    const stackedCtx = stackedCanvas.getContext('2d');
-
-    new Chart(stackedCtx, {
-      type: 'bar',
-      data: {
-        labels: {{ dept_labels|safe }},
-        datasets: [
-          {
-            label: 'Active',
-            data: {{ dept_active_data|safe }},
-            backgroundColor: '#087b0a',
-
-            // 🔥 BORDER FIX
-            borderColor: '#170101',
-            borderWidth: 1,
-            borderSkipped: false,
-  
-          },
-          {
-            label: 'Inactive',
-            data: {{ dept_inactive_data|safe }},
-            backgroundColor: '#8a0b18',
-
-            // 🔥 BORDER FIX
-            borderColor: '#170101',
-            borderWidth: 1,
-            borderSkipped: false,
-            
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-
-        scales: {
-          x: {
-            stacked: true
-          },
-          y: {
-            stacked: true
-          }
-        },
-
-        plugins: {
-          legend: {
-            display: false
-          }
-        }
-      }
-    });
-  }
-
-});
-
-  // --- 2. Popup Logic (Add, Edit, View) ---
-  const popup = document.getElementById("popup");
-  const popupBody = document.getElementById("popup-body");
-  const popupTitle = document.getElementById("popup-title");
-  const saveBtn = document.getElementById("saveBtn");
-
-  function renderRoleOptions(selectedRole = "User") {
-    return `
-      <option ${selectedRole === 'User' ? 'selected' : ''}>User</option>
-      <option ${selectedRole === 'HOD' ? 'selected' : ''}>HOD</option>
-      <option ${selectedRole === 'Management' ? 'selected' : ''}>Management</option>
-      <option ${selectedRole === 'Admin' ? 'selected' : ''}>Admin</option>
-    `;
-  }
-
-  function renderDepartmentOptions(selectedDepartmentId = "") {
-    return `
-      <option value="">Select Dept</option>
-      {% for d in departments %}
-        <option value="{{ d.id }}" ${String(selectedDepartmentId) === "{{ d.id }}" ? "selected" : ""}>{{ d.name|escapejs }}</option>
-      {% endfor %}
-    `;
-  }
-
-  function renderProjectOptions(selectedProjectId = "") {
-    return `
-      <option value="">Select Project</option>
-      {% for p in projects %}
-        <option value="{{ p.id }}" ${String(selectedProjectId) === "{{ p.id }}" ? "selected" : ""}>{{ p.name|escapejs }} ({{ p.domain|escapejs }})</option>
-      {% endfor %}
-    `;
-  }
-
-  function renderUserForm({
-    mode = "add",
-    action = "{% url 'admin_master_create' %}",
-    editId = "",
-    username = "",
-    firstName = "",
-    lastName = "",
-    role = "User",
-    departmentId = "",
-    projectId = ""
-  }) {
-    const isAdd = mode === "add";
-    return `
-      <form id="userForm" class="user-form-grid" method="POST" action="${action}">
-        {% csrf_token %}
-        ${isAdd ? '<input type="hidden" name="form_type" value="user">' : `<input type="hidden" name="edit_id" value="${editId}">`}
-        <div class="form-field">
-          <label>Username</label>
-          <input name="username" class="form-control" value="${username}" required>
-        </div>
-        <div class="form-field">
-          <label>${isAdd ? "Password" : "Password (optional)"}</label>
-          <input type="password" name="password" class="form-control" ${isAdd ? "required" : ""}>
-        </div>
-        <div class="form-field">
-          <label>First Name</label>
-          <input name="first_name" class="form-control" value="${firstName}">
-        </div>
-        <div class="form-field">
-          <label>Last Name</label>
-          <input name="last_name" class="form-control" value="${lastName}">
-        </div>
-        <div class="form-field">
-          <label>Role</label>
-          <select name="role" class="form-control">
-            ${renderRoleOptions(role)}
-          </select>
-        </div>
-        <div class="form-field">
-          <label>Department</label>
-          <select name="department" class="form-control">
-            ${renderDepartmentOptions(departmentId)}
-          </select>
-        </div>
-        <div class="form-field form-field-full">
-          <label>Project</label>
-          <select name="project" class="form-control">
-            ${renderProjectOptions(projectId)}
-          </select>
-        </div>
-      </form>`;
-  }
-
-  document.getElementById("addUserBtn").onclick = function() {
-    popup.style.display = "flex";
-    popupTitle.innerText = "Add New User";
-    saveBtn.style.display = "inline-block";
-    popupBody.innerHTML = renderUserForm({ mode: "add", action: "{% url 'admin_master_create' %}" });
-  };
-
-  document.querySelectorAll(".edit-btn").forEach(btn => {
-    btn.onclick = function() {
-      popup.style.display = "flex";
-      popupTitle.innerText = "Edit User";
-      saveBtn.style.display = "inline-block";
-      popupBody.innerHTML = renderUserForm({
-        mode: "edit",
-        action: "{% url 'admin_user_action' %}",
-        editId: this.dataset.id,
-        username: this.dataset.username,
-        firstName: this.dataset.first,
-        lastName: this.dataset.last,
-        role: this.dataset.role,
-        departmentId: this.dataset.deptId,
-        projectId: this.dataset.projectId
-      });
-    };
-  });
-
-  document.querySelectorAll(".view-btn").forEach(btn => {
-    btn.onclick = function() {
-      popup.style.display = "flex";
-      popupTitle.innerText = "User Information";
-      saveBtn.style.display = "none";
-      let statusText = this.dataset.status === "True" ? "Active" : "Inactive";
-      popupBody.innerHTML = `
-        <div style="line-height: 2;">
-          <p><b>Username:</b> ${this.dataset.username}</p>
-          <p><b>Name:</b> ${this.dataset.first} ${this.dataset.last}</p>
-          <p><b>Role:</b> ${this.dataset.role}</p>
-          <p><b>Department:</b> ${this.dataset.dept}</p>
-          <p><b>Project:</b> ${this.dataset.project}</p>
-          <p><b>Status:</b> ${statusText}</p>
-        </div>`;
-    };
-  });
-
-  saveBtn.onclick = function() {
-    const form = document.getElementById("userForm");
-    if(form) form.submit();
-  };
-
-  function closePopup() { popup.style.display = "none"; }
-
-  const deletePopup = document.getElementById("deletePopup");
-  const deleteUserIdInput = document.getElementById("deleteUserId");
-
-  document.querySelectorAll(".delete-btn").forEach(btn => {
-    btn.onclick = function() {
-      if (deleteUserIdInput) {
-        deleteUserIdInput.value = this.dataset.userId;
-      }
-      deletePopup.style.display = "flex";
-    };
-  });
-
-  function closeDeletePopup() {
-    deletePopup.style.display = "none";
-    if (deleteUserIdInput) {
-      deleteUserIdInput.value = "";
-    }
-  }
-
-  window.onclick = function(event) {
-    if (event.target == popup) closePopup();
-    if (event.target == deletePopup) closeDeletePopup();
-  }
-  </script>
-
+{{ admin_users_config|json_script:"admin-users-config" }}
+<script src="{% static 'admin_users/admin_users.js' %}"></script>
 
 {% endblock %}

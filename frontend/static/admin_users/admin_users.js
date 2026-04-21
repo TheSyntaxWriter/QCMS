@@ -10,6 +10,16 @@ document.addEventListener("DOMContentLoaded", function () {
   const deletePopup = document.getElementById("deletePopup");
   const deleteUserIdInput = document.getElementById("deleteUserId");
 
+  function escapeHtml(value) {
+    const text = value == null ? "" : String(value);
+    return text
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
   function renderRoleOptions(selectedRole) {
     const role = selectedRole || "User";
     return `
@@ -51,6 +61,7 @@ document.addEventListener("DOMContentLoaded", function () {
     username,
     firstName,
     lastName,
+    email,
     role,
     departmentId,
     projectId,
@@ -76,6 +87,10 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="form-field">
           <label>Last Name</label>
           <input name="last_name" class="form-control" value="${lastName || ""}">
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" name="email" class="form-control" value="${email || ""}" required>
         </div>
         <div class="form-field">
           <label>Role</label>
@@ -176,6 +191,7 @@ document.addEventListener("DOMContentLoaded", function () {
         username: this.dataset.username,
         firstName: this.dataset.first,
         lastName: this.dataset.last,
+        email: this.dataset.email,
         role: this.dataset.role,
         departmentId: this.dataset.deptId,
         projectId: this.dataset.projectId,
@@ -191,11 +207,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const statusText = this.dataset.status === "True" ? "Active" : "Inactive";
       popupBody.innerHTML = `
         <div style="line-height: 2;">
-          <p><b>Username:</b> ${this.dataset.username}</p>
-          <p><b>Name:</b> ${this.dataset.first} ${this.dataset.last}</p>
-          <p><b>Role:</b> ${this.dataset.role}</p>
-          <p><b>Department:</b> ${this.dataset.dept}</p>
-          <p><b>Project:</b> ${this.dataset.project}</p>
+          <p><b>Username:</b> ${escapeHtml(this.dataset.username)}</p>
+          <p><b>Name:</b> ${escapeHtml(this.dataset.first)} ${escapeHtml(this.dataset.last)}</p>
+          <p><b>Email:</b> ${escapeHtml(this.dataset.email || "-")}</p>
+          <p><b>Role:</b> ${escapeHtml(this.dataset.role)}</p>
+          <p><b>Department:</b> ${escapeHtml(this.dataset.dept)}</p>
+          <p><b>Project:</b> ${escapeHtml(this.dataset.project)}</p>
           <p><b>Status:</b> ${statusText}</p>
         </div>`;
     };

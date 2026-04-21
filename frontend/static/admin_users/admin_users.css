@@ -1,14 +1,26 @@
 /* =============================================================
-   ADMIN USERS MANAGEMENT - COMPLETE STYLESHEET
+   ADMIN USERS MANAGEMENT - STYLESHEET
    ============================================================= */
 
-/* 1. PAGE LAYOUT (Top Section with 3 Columns) */
+/* Prevent page-level horizontal scroll so fixed sidebar never gets overlapped visually */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.content {
+  max-width: calc(100vw - 240px);
+  box-sizing: border-box;
+}
+
 .header-section {
   display: flex;
   justify-content: space-between;
-  align-items: stretch; /* Taaki teeno panels ki height barabar dikhe */
+  align-items: stretch;
   gap: 20px;
   margin-bottom: 25px;
+  min-width: 0;
 }
 
 .users-header-section {
@@ -16,7 +28,6 @@
   margin-bottom: 20px;
 }
 
-/* Left Panel: Title aur Stacked Filters ke liye */
 .left-panel {
   width: 30%;
   display: flex;
@@ -27,12 +38,14 @@
 .users-right-panel {
   flex: 1;
   width: auto;
+  min-width: 0;
 }
 
 .users-stacked-chart-card {
   height: 220px;
   position: relative;
   margin-top: 14px;
+  min-width: 0;
 }
 
 .users-pie-chart-wrap {
@@ -105,61 +118,6 @@
   color: #12337b;
 }
 
-/* Center Panel: Pie Chart ke liye (No Background) */
-.center-panel {
-  width: 35%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Right Panel: Role Cards aur Bar Chart ke liye */
-.right-panel {
-  width: 30%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* 2. FILTER BOX ALIGNMENT (Stacked Layout) */
-.filter-box {
-  display: flex;
-  flex-direction: column;
-  gap: 10px; /* Har line ke beech ka gap */
-  margin-top: 15px;
-}
-
-/* Row 2: Dept aur Status ko ek line mein laane ke liye */
-.filter-row {
-  display: flex;
-  gap: 10px;
-}
-
-.filter-row select {
-  flex: 1; /* Dono dropdowns barabar width lenge */
-}
-
-/* Row 4: Go aur Reset buttons ek line mein */
-.filter-buttons {
-  display: flex;
-  gap: 18px;
-}
-
-.filter-buttons button,
-.filter-buttons a {
-  flex: 1; /* Buttons barabar width lenge */
-}
-
-/* Input aur Select ki common styling */
-.filter-box input,
-.filter-box select {
-  padding: 8px;
-  font-size: 13px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  background: #fff;
-}
-
 .users-toolbar {
   display: flex;
   gap: 10px;
@@ -196,7 +154,6 @@
   padding: 0 14px;
 }
 
-/* 3. MINI STATS (Role Cards) */
 .mini-stats {
   display: flex;
   gap: 10px;
@@ -208,7 +165,7 @@
   border-radius: 10px;
   text-align: center;
   color: white;
-  background: #0a1163; /* Default Blue */
+  background: #0a1163;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
@@ -217,64 +174,39 @@
   font-size: 18px;
 }
 
-/* 4. CHARTS (Transparent Background) */
 canvas {
-  background: transparent !important; /* White background hatane ke liye */
-  border: 1px solid none;
+  background: transparent !important;
   border-radius: 0;
   padding: 5px;
+  max-width: 100%;
 }
 
-/* 5. DATA TABLE STYLING */
 .card {
   background: #fff;
   padding: 15px;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .table-container {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
+  min-width: 980px;
 }
 
 thead {
-  background: #0a1163; /* Dark Blue Header */
+  background: #0a1163;
   color: white;
-}
-
-.sort-link {
-  color: white;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.sort-link:hover {
-  text-decoration: underline;
-}
-
-.sort-indicator {
-  font-size: 10px;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 10px;
-  padding: 2px 6px;
-}
-
-/* Ensure user table headers are centered */
-.card .table-container table thead th {
-  text-align: center;
-}
-
-.card .table-container table thead th .sort-link {
-  justify-content: center;
 }
 
 .sort-link {
@@ -297,6 +229,14 @@ thead {
   padding: 2px 6px;
 }
 
+.card .table-container table thead th {
+  text-align: center;
+}
+
+.card .table-container table thead th .sort-link {
+  justify-content: center;
+}
+
 th,
 td {
   padding: 12px 10px;
@@ -309,17 +249,16 @@ tr:hover {
   background-color: #f9f9f9;
 }
 
-/* Status Text Colors */
 .active-text {
   color: #28a745;
   font-weight: bold;
 }
+
 .inactive-text {
   color: #dc3545;
   font-weight: bold;
 }
 
-/* 6. BUTTONS (Actions) */
 .btn {
   padding: 6px 12px;
   border: none;
@@ -334,14 +273,17 @@ tr:hover {
   background: #2f7b02;
   color: white;
 }
+
 .btn-view {
   background: #2a4ec6;
   color: white;
 }
+
 .btn-edit {
   background: #5aca19;
   color: white;
 }
+
 .btn-delete {
   background: #810915;
   color: white;
@@ -350,11 +292,6 @@ tr:hover {
 .btn:hover {
   opacity: 0.85;
   transform: translateY(-1px);
-}
-
-/* Fixed width for Activate/Deactivate action button */
-.action-toggle-link {
-  display: inline-flex;
 }
 
 .action-toggle-btn {
@@ -372,7 +309,6 @@ tr:hover {
   margin: 0;
 }
 
-/* 7. POPUP MODAL STYLES */
 .popup {
   display: none;
   position: fixed;
@@ -473,6 +409,17 @@ tr:hover {
   min-width: 90px;
 }
 
+@media (max-width: 1024px) {
+  .header-section {
+    flex-direction: column;
+  }
+
+  .users-stacked-chart-card,
+  .users-pie-chart-wrap {
+    height: 260px;
+  }
+}
+
 @media (max-width: 640px) {
   .users-toolbar .toolbar-search {
     min-width: 100%;
@@ -489,7 +436,6 @@ tr:hover {
   }
 }
 
-/* Animation */
 @keyframes popupFade {
   from {
     transform: translateY(-20px);
