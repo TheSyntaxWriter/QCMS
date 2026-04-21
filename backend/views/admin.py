@@ -3,13 +3,32 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 
 from ..models import Checklist, ChecklistTransaction, Department, Project, UserProfile
 from .common import get_user_profile
+
+
+
+
+def _clean_email_or_error(request, raw_email):
+    email = (raw_email or '').strip()
+    if not email:
+        messages.error(request, "Email is required.")
+        return None
+
+    try:
+        validate_email(email)
+    except ValidationError:
+        messages.error(request, "Please enter a valid email address.")
+        return None
+
+    return email
 
 
 def admin_dashboard(request):
@@ -232,8 +251,11 @@ def admin_master_create(request):
         if request.POST.get("form_type") == "user":
             username = (request.POST.get('username') or '').strip()
             password = request.POST.get('password') or ''
+            email = _clean_email_or_error(request, request.POST.get('email'))
             if not username or not password:
                 messages.error(request, "Username and password are required.")
+                return redirect('admin_users')
+            if email is None:
                 return redirect('admin_users')
             if User.objects.filter(username=username).exists():
                 messages.error(request, "Username already exists. Please choose another.")
@@ -244,6 +266,7 @@ def admin_master_create(request):
                 password=password,
                 first_name=request.POST.get('first_name'),
                 last_name=request.POST.get('last_name'),
+                email=email,
             )
 
             UserProfile.objects.create(
@@ -325,8 +348,13 @@ def admin_user_action(request):
                 return redirect('admin_users')
 
             user.username = username
+            email = _clean_email_or_error(request, request.POST.get('email'))
+            if email is None:
+                return redirect('admin_users')
+
             user.first_name = request.POST.get('first_name')
             user.last_name = request.POST.get('last_name')
+            user.email = email
             password = request.POST.get('password')
             if password:
                 user.set_password(password)
