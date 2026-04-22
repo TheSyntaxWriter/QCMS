@@ -3,12 +3,10 @@
   if (!cfg) return;
   const chartData = JSON.parse(document.getElementById('response-chart-data').textContent);
   const rolePermissionData = JSON.parse(document.getElementById('role-permission-data')?.textContent || '{}');
-  const projectsData = JSON.parse(document.getElementById('response-project-data')?.textContent || '[]');
   const deletePopup = document.getElementById('deletePopup');
   const deleteResponseIdInput = document.getElementById('deleteResponseId');
   const permissionRoleEl = document.getElementById('permissionRole');
   const visibleColumnsInput = document.getElementById('visibleColumnsInput');
-  const selectedProjectsInput = document.getElementById('selectedProjectsInput');
   const allowedActionsInput = document.getElementById('allowedActionsInput');
 
   const selectionPopup = document.getElementById('selectionPopup');
@@ -18,7 +16,7 @@
   const selectionPopupCancel = document.getElementById('selectionPopupCancel');
   const selectionPopupSave = document.getElementById('selectionPopupSave');
   const selectColumnsBtn = document.getElementById('selectColumnsBtn');
-  const selectProjectsBtn = document.getElementById('selectProjectsBtn');
+  const selectActionsBtn = document.getElementById('selectActionsBtn');
   const RESPONSE_COLUMNS = [
     { key: 'checklist_id', label: 'Checklist ID' },
     { key: 'checklist_name', label: 'Checklist Name' },
@@ -33,7 +31,16 @@
     { key: 'last_updated', label: 'Last Updated' },
     { key: 'actions', label: 'Actions' },
   ];
+  const RESPONSE_ACTIONS = [
+    { key: 'view', label: 'View' },
+    { key: 'edit', label: 'Edit' },
+    { key: 'approve', label: 'Approve' },
+    { key: 'reject', label: 'Reject' },
+    { key: 'toggle', label: 'Activate/Deactivate' },
+    { key: 'delete', label: 'Delete' },
+  ];
   let selectionContext = null;
+  let selectedProjectsState = [];
 
   function parseArraySafe(value, fallback = []) {
     try {
@@ -48,11 +55,38 @@
     const rolePermission = rolePermissionData[role] || {};
     const visibleColumns = Array.isArray(rolePermission.visible_columns) ? rolePermission.visible_columns : [];
     const allowedActions = Array.isArray(rolePermission.allowed_actions) ? rolePermission.allowed_actions : [];
-    const selectedProjects = Array.isArray(rolePermission.selected_projects) ? rolePermission.selected_projects : [];
+    selectedProjectsState = Array.isArray(rolePermission.selected_projects) ? rolePermission.selected_projects : [];
 
     visibleColumnsInput.value = JSON.stringify(visibleColumns);
     allowedActionsInput.value = JSON.stringify(allowedActions);
-    selectedProjectsInput.value = JSON.stringify(selectedProjects);
+    updatePermissionInputViews();
+  }
+
+
+  function formatSelectedSummary(values, itemLabel) {
+    if (!Array.isArray(values) || values.length === 0) return `No ${itemLabel} selected`;
+    if (values.length <= 3) return values.join(', ');
+    return `${values.length} ${itemLabel} selected`;
+  }
+
+  function updatePermissionInputViews() {
+    const selectedColumns = parseArraySafe(visibleColumnsInput?.dataset.rawValue || visibleColumnsInput?.value);
+    const selectedActions = parseArraySafe(allowedActionsInput?.dataset.rawValue || allowedActionsInput?.value);
+
+    if (visibleColumnsInput) {
+      visibleColumnsInput.title = selectedColumns.join(', ');
+      visibleColumnsInput.value = formatSelectedSummary(selectedColumns, 'columns');
+      visibleColumnsInput.dataset.rawValue = JSON.stringify(selectedColumns);
+    }
+
+
+    if (allowedActionsInput) {
+      const actionLabels = selectedActions
+        .map((action) => RESPONSE_ACTIONS.find((item) => item.key === action)?.label || action);
+      allowedActionsInput.title = actionLabels.join(', ');
+      allowedActionsInput.value = formatSelectedSummary(actionLabels, 'actions');
+      allowedActionsInput.dataset.rawValue = JSON.stringify(selectedActions);
+    }
   }
 
   function openSelectionPopup({ type, title, options, selectedValues }) {
@@ -110,16 +144,16 @@
       type: 'columns',
       title: 'Select Columns',
       options: RESPONSE_COLUMNS.map((col) => ({ value: col.key, label: col.label })),
-      selectedValues: parseArraySafe(visibleColumnsInput.value),
+      selectedValues: parseArraySafe(visibleColumnsInput?.dataset.rawValue || visibleColumnsInput.value),
     });
   });
 
-  selectProjectsBtn?.addEventListener('click', () => {
+  selectActionsBtn?.addEventListener('click', () => {
     openSelectionPopup({
-      type: 'projects',
-      title: 'Select Projects',
-      options: projectsData.map((project) => ({ value: project.id, label: `${project.name} (${project.domain})` })),
-      selectedValues: parseArraySafe(selectedProjectsInput.value),
+      type: 'actions',
+      title: 'Select Allowed Actions',
+      options: RESPONSE_ACTIONS.map((action) => ({ value: action.key, label: action.label })),
+      selectedValues: parseArraySafe(allowedActionsInput?.dataset.rawValue || allowedActionsInput.value),
     });
   });
 
@@ -132,9 +166,10 @@
     if (selectionContext.type === 'columns') {
       visibleColumnsInput.value = JSON.stringify(selectedValues);
     }
-    if (selectionContext.type === 'projects') {
-      selectedProjectsInput.value = JSON.stringify(selectedValues.map((value) => Number(value)));
+    if (selectionContext.type === 'actions') {
+      allowedActionsInput.value = JSON.stringify(selectedValues);
     }
+    updatePermissionInputViews();
     closeSelectionPopup();
   });
 
@@ -172,16 +207,16 @@
     const fd = new FormData();
     fd.append('action', 'save_permissions');
     fd.append('role', permissionRoleEl.value);
-    fd.append('visible_columns', visibleColumnsInput.value || '[]');
-    fd.append('selected_projects', selectedProjectsInput.value || '[]');
-    fd.append('allowed_actions', allowedActionsInput.value || '[]');
+    fd.append('visible_columns', visibleColumnsInput?.dataset.rawValue || '[]');
+    fd.append('selected_projects', JSON.stringify(selectedProjectsState));
+    fd.append('allowed_actions', allowedActionsInput?.dataset.rawValue || '[]');
     fd.append('csrfmiddlewaretoken', cfg.csrfToken);
     await fetch(cfg.actionUrl, { method: 'POST', body: fd });
     rolePermissionData[permissionRoleEl.value] = {
       ...(rolePermissionData[permissionRoleEl.value] || {}),
-      visible_columns: parseArraySafe(visibleColumnsInput.value),
-      selected_projects: parseArraySafe(selectedProjectsInput.value),
-      allowed_actions: parseArraySafe(allowedActionsInput.value),
+      visible_columns: parseArraySafe(visibleColumnsInput?.dataset.rawValue || visibleColumnsInput.value),
+      selected_projects: selectedProjectsState,
+      allowed_actions: parseArraySafe(allowedActionsInput?.dataset.rawValue || allowedActionsInput.value),
     };
     alert('Role permissions saved');
   });
