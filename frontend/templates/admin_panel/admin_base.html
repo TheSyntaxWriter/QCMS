@@ -40,6 +40,21 @@
         margin-bottom: 30px;
       }
 
+      .sidebar-menu {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100vh - 90px);
+      }
+
+      .sidebar-menu-main {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-menu-footer {
+        margin-top: auto;
+      }
+
       /* 🔥 MENU */
       .sidebar a {
         display: flex;
@@ -53,7 +68,6 @@
         transition: 0.3s;
       }
 
-      /* 🔥 ACTIVE FIX (NO HARDCODE) */
       .sidebar a.active {
         background: white;
         color: #080870;
@@ -70,7 +84,7 @@
 
       /* ================= CONTENT ================= */
       .content {
-        margin-left: 240px; /* 🔥 FIX OVERLAP */
+        margin-left: 240px;
         padding: 20px;
       }
 
@@ -88,12 +102,12 @@
 
       /* ================= TABLE ================= */
       .table-container {
-        overflow-x: auto; /* 🔥 HORIZONTAL SCROLL */
+        overflow-x: auto;
       }
 
       table {
         width: 100%;
-        min-width: 1000px; /* 🔥 important */
+        min-width: 1000px;
         border-collapse: collapse;
       }
 
@@ -101,13 +115,13 @@
         background: #080870;
         color: white;
         padding: 10px;
-        font-size: 13px; /* 🔥 reduced */
+        font-size: 13px;
         text-align: left;
       }
 
       tbody td {
         padding: 10px;
-        font-size: 12px; /* 🔥 reduced */
+        font-size: 12px;
       }
 
       tr {
@@ -145,6 +159,7 @@
         background: #10087b;
         color: white;
       }
+
       /* ================= STATUS ================= */
       .active-text {
         color: green;
@@ -156,68 +171,18 @@
   </head>
 
   <body>
-    <!-- ================= SIDEBAR ================= -->
-    <div class="sidebar">
-      <h2>WMS</h2>
+    {% block sidebar %}
+      {% include 'admin_panel/partials/sidebar.html' with panel_title='WMS' menu_items=sidebar_menu %}
+    {% endblock %}
 
-      <!-- 🔥 DYNAMIC ACTIVE FIX -->
-      <a
-        href="/admin-dashboard/"
-        class="{% if request.path == '/admin-dashboard/' %}active{% endif %}"
-      >
-        <i class="fa-solid fa-chart-line"></i> Dashboard
-      </a>
-
-      <a
-        href="/admin-panel/users/"
-        class="{% if request.path == '/admin-panel/users/' %}active{% endif %}"
-      >
-        <i class="fa-solid fa-user"></i> Users
-      </a>
-
-      <a
-        href="/admin-panel/departments/"
-        class="{% if request.path == '/admin-panel/departments/' %}active{% endif %}"
-      >
-        <i class="fa-solid fa-building"></i> Departments
-      </a>
-
-      <a
-        href="/admin-panel/projects/"
-        class="{% if request.path == '/admin-panel/projects/' %}active{% endif %}"
-      >
-        <i class="fa-solid fa-folder"></i> Projects
-      </a>
-
-      <a
-        href="/admin-panel/checklists/"
-        class="{% if request.path == '/admin-panel/checklists/' %}active{% endif %}"
-      >
-        <i class="fa-solid fa-list-check"></i> Checklists
-      </a>
-
-      <a
-        href="/admin-panel/responses/"
-        class="{% if request.path == '/admin-panel/responses/' %}active{% endif %}"
-      >
-        <i class="fa-solid fa-file-lines"></i> Responses
-      </a>
-
-      <hr />
-
-      <a href="/logout/">
-        <i class="fa-solid fa-right-from-bracket"></i> Logout
-      </a>
-    </div>
-
-    <!-- ================= CONTENT ================= -->
     <div class="content">
       <div class="topbar">
-        <div>Admin Dashboard</div>
-        <div>Welcome, Admin</div>
+        <div>{% block topbar_title %}Admin Dashboard{% endblock %}</div>
+        <div>{% block topbar_welcome %}Welcome, Admin{% endblock %}</div>
       </div>
 
-      {% block content %}{% endblock %} {% block extra_js %}{% endblock %}
+      {% block content %}{% endblock %}
+      {% block extra_js %}{% endblock %}
     </div>
   </body>
 </html>
