@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from ..models import ChecklistDefinition, ChecklistResponse, RolePermission
-from .common import get_user_profile
+from .common import ensure_legacy_checklists_synced, get_user_profile, redirect_for_profile
 
 DEFAULT_VISIBLE_COLUMNS = [
     'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by',
@@ -15,15 +15,17 @@ DEFAULT_ALLOWED_ACTIONS = ['view', 'edit', 'approve', 'reject', 'delete', 'toggl
 
 def _sidebar_menu_for_role(role):
     items = [
-        {'url': '/my-checklists/', 'label': 'My Checklists', 'icon': 'fa-solid fa-list-check'},
-        {'url': '/my-submissions/', 'label': 'My Submissions', 'icon': 'fa-solid fa-file-lines'},
+        {'url': '/my-checklists/', 'label': 'My Checklists'},
+        {'url': '/my-submissions/', 'label': 'My Submissions'},
+        {'url': '/profile/', 'label': 'Profile'},
     ]
     if role == 'Management':
-        items.insert(0, {'url': '/dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'})
+        items.insert(0, {'url': '/dashboard/', 'label': 'Dashboard'})
     return items
 
 
 def _checklists_for_profile(profile):
+    ensure_legacy_checklists_synced()
     qs = ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments')
     if profile.role == 'Management':
         return qs
@@ -62,7 +64,7 @@ def my_checklists(request):
 
     profile = get_user_profile(request.user)
     if not profile or profile.role not in {'User', 'HOD', 'Management'}:
-        return redirect('home')
+        return redirect_for_profile(profile)
 
     checklists = Paginator(_checklists_for_profile(profile).order_by('-updated_at'), 8).get_page(request.GET.get('page'))
 
@@ -78,7 +80,7 @@ def my_submissions(request):
 
     profile = get_user_profile(request.user)
     if not profile or profile.role not in {'User', 'HOD', 'Management'}:
-        return redirect('home')
+        return redirect_for_profile(profile)
 
     visible_columns, allowed_actions = _permission_for_role(profile.role)
     responses = Paginator(_responses_for_profile(profile, request.user).order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
@@ -97,8 +99,22 @@ def dashboard(request):
 
     profile = get_user_profile(request.user)
     if not profile or profile.role != 'Management':
-        return redirect('home')
+        return redirect_for_profile(profile)
 
     return render(request, 'user_panel/dashboard.html', {
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
+    })
+
+
+def profile(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile_obj = get_user_profile(request.user)
+    if not profile_obj:
+        return redirect('login')
+
+    return render(request, 'user_panel/profile.html', {
+        'profile_obj': profile_obj,
+        'sidebar_menu': _sidebar_menu_for_role(profile_obj.role),
     })

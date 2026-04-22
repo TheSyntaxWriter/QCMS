@@ -1,0 +1,23 @@
+{% extends 'admin_panel/admin_base.html' %}
+
+{% block topbar_title %}Profile{% endblock %}
+{% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 760px; margin: 0 auto; padding: 28px; border-radius: 14px;">
+  <div style="display:flex; align-items:center; gap:20px;">
+    <div style="width:84px; height:84px; border-radius:50%; background:linear-gradient(135deg,#080870,#4f69ff); color:#fff; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:600;">{{ request.user.username|first|upper }}</div>
+    <div>
+      <h2 style="margin:0 0 4px; color:#080870;">{{ request.user.username }}</h2>
+      <p style="margin:0; color:#5a5f81;">Role: {{ profile_obj.role }}</p>
+    </div>
+  </div>
+  <hr style="margin:20px 0; border:none; border-top:1px solid #e6e9f8;" />
+  <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:16px;">
+    <div><strong>Username</strong><div>{{ request.user.username }}</div></div>
+    <div><strong>Role</strong><div>{{ profile_obj.role }}</div></div>
+    <div><strong>Department</strong><div>{{ profile_obj.department.name|default:'N/A' }}</div></div>
+    <div><strong>Project / Domain</strong><div>{% if profile_obj.project %}{{ profile_obj.project.name }} ({{ profile_obj.project.domain }}){% else %}N/A{% endif %}</div></div>
+  </div>
+</div>
+{% endblock %}

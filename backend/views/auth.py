@@ -1,37 +1,19 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect, render
 
-from ..models import Checklist, ChecklistTransaction
-from .common import get_user_profile
+from .common import get_user_profile, redirect_for_profile
 
 
 def home(request):
     if not request.user.is_authenticated:
         return redirect('login')
 
-    profile = get_user_profile(request.user)
-    if not profile:
-        return redirect('login')
-
-    if profile.role == "HOD":
-        return redirect('my_checklists')
-    if profile.role == "Admin":
-        return redirect('admin_dashboard')
-    if profile.role == "Management":
-        return redirect('dashboard')
-
-    checklists = Checklist.objects.filter(department=profile.department)
-    transactions = ChecklistTransaction.objects.all().order_by('-submitted_date')[:10]
-
-    return render(request, 'home.html', {
-        'checklists': checklists,
-        'transactions': transactions,
-    })
+    return redirect_for_profile(get_user_profile(request.user))
 
 
 def user_login(request):
     if request.user.is_authenticated:
-        return redirect('home')
+        return redirect_for_profile(get_user_profile(request.user))
 
     if request.method == "POST":
         user = authenticate(
@@ -42,17 +24,7 @@ def user_login(request):
 
         if user:
             login(request, user)
-            profile = get_user_profile(user)
-
-            if profile:
-                if profile.role == "HOD":
-                    return redirect('my_checklists')
-                if profile.role == "Admin":
-                    return redirect('admin_dashboard')
-                if profile.role == "Management":
-                    return redirect('dashboard')
-
-            return redirect('home')
+            return redirect_for_profile(get_user_profile(user))
 
         return render(request, 'login.html', {'error': 'Invalid credentials'})
 
