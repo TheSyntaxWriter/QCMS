@@ -86,49 +86,7 @@
 
 <div class="card-lite"><canvas id="responseLineChart" height="110"></canvas></div>
 
-<div class="card">
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Checklist ID</th><th>Checklist Name</th><th>Checklist Type</th><th>Submitted By</th><th>Project</th><th>Department</th><th>HOD Name</th><th>Submission DateTime</th><th>Status</th><th>Last Updated By</th><th>Last Updated</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for response in responses %}
-        <tr>
-          <td>{{ response.checklist.checklist_id }}</td>
-          <td>{{ response.checklist.name }}</td>
-          <td>{{ response.checklist.checklist_type.name }}</td>
-          <td>{{ response.submitted_by.username }}</td>
-          <td>{{ response.project.name }} ({{ response.project.domain }})</td>
-          <td>{{ response.department.name }}</td>
-          <td>{% if response.hod %}{{ response.hod.get_full_name|default:response.hod.username }}{% endif %}</td>
-          <td>{{ response.submitted_at|date:'d-m-Y H:i' }}</td>
-          <td>{{ response.status }}</td>
-          <td>{% if response.updated_by %}{{ response.updated_by.username }}{% endif %}</td>
-          <td>{{ response.updated_at|date:'d-m-Y H:i' }}</td>
-          <td>
-            <button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>
-            <button class="btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}">Edit</button>
-            <button class="btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>
-            <button class="btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>
-            <form method="POST" action="{% url 'admin_response_action' %}" class="inline-action-form">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="toggle">
-              <input type="hidden" name="response_id" value="{{ response.id }}">
-              <button type="submit" class="btn btn-view action-toggle-btn">{% if response.status == 'Rejected' %}Activate{% else %}Deactivate{% endif %}</button>
-            </form>
-            <button class="btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="12">No responses found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+{% include 'admin_panel/partials/response_table.html' %}
 
 <div id="responseViewModal" class="dashboard-modal" aria-hidden="true">
   <div class="dashboard-modal-content">

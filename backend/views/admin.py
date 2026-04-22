@@ -136,6 +136,14 @@ def admin_dashboard(request):
     }
 
     return render(request, 'admin_panel/admin_dashboard.html', {
+        'sidebar_menu': [
+            {'url': '/admin-dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'},
+            {'url': '/admin-panel/users/', 'label': 'Users', 'icon': 'fa-solid fa-user'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments', 'icon': 'fa-solid fa-building'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects', 'icon': 'fa-solid fa-folder'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists', 'icon': 'fa-solid fa-list-check'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses', 'icon': 'fa-solid fa-file-lines'},
+        ],
         'transactions': txns[:8],
         'total_users': total_users,
         'total_checklists': total_checklists,
@@ -241,6 +249,14 @@ def admin_users(request):
     users_page = paginator.get_page(page_number)
 
     context = {
+        'sidebar_menu': [
+            {'url': '/admin-dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'},
+            {'url': '/admin-panel/users/', 'label': 'Users', 'icon': 'fa-solid fa-user'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments', 'icon': 'fa-solid fa-building'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects', 'icon': 'fa-solid fa-folder'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists', 'icon': 'fa-solid fa-list-check'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses', 'icon': 'fa-solid fa-file-lines'},
+        ],
         'users': users_page,
         'departments': Department.objects.all(),
         'projects': Project.objects.all(),
@@ -295,6 +311,14 @@ def admin_departments(request):
 
     departments = Department.objects.all().order_by('id')
     return render(request, 'admin_panel/admin_departments.html', {
+        'sidebar_menu': [
+            {'url': '/admin-dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'},
+            {'url': '/admin-panel/users/', 'label': 'Users', 'icon': 'fa-solid fa-user'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments', 'icon': 'fa-solid fa-building'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects', 'icon': 'fa-solid fa-folder'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists', 'icon': 'fa-solid fa-list-check'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses', 'icon': 'fa-solid fa-file-lines'},
+        ],
         'departments': departments,
         'admin_departments_config': {
             'createUrl': '/admin-create/',
@@ -314,6 +338,14 @@ def admin_projects(request):
 
     projects = Project.objects.all().order_by('id')
     return render(request, 'admin_panel/admin_projects.html', {
+        'sidebar_menu': [
+            {'url': '/admin-dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'},
+            {'url': '/admin-panel/users/', 'label': 'Users', 'icon': 'fa-solid fa-user'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments', 'icon': 'fa-solid fa-building'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects', 'icon': 'fa-solid fa-folder'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists', 'icon': 'fa-solid fa-list-check'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses', 'icon': 'fa-solid fa-file-lines'},
+        ],
         'projects': projects,
         'admin_projects_config': {
             'createUrl': '/admin-create/',
@@ -371,6 +403,14 @@ def admin_checklists(request):
         })
 
     return render(request, 'admin_panel/admin_checklists.html', {
+        'sidebar_menu': [
+            {'url': '/admin-dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'},
+            {'url': '/admin-panel/users/', 'label': 'Users', 'icon': 'fa-solid fa-user'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments', 'icon': 'fa-solid fa-building'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects', 'icon': 'fa-solid fa-folder'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists', 'icon': 'fa-solid fa-list-check'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses', 'icon': 'fa-solid fa-file-lines'},
+        ],
         'checklists': page_obj,
         'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
         'projects': Project.objects.filter(is_active=True).order_by('name'),
@@ -453,6 +493,16 @@ def admin_responses(request):
     }
 
     return render(request, 'admin_panel/admin_responses.html', {
+        'sidebar_menu': [
+            {'url': '/admin-dashboard/', 'label': 'Dashboard', 'icon': 'fa-solid fa-chart-line'},
+            {'url': '/admin-panel/users/', 'label': 'Users', 'icon': 'fa-solid fa-user'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments', 'icon': 'fa-solid fa-building'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects', 'icon': 'fa-solid fa-folder'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists', 'icon': 'fa-solid fa-list-check'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses', 'icon': 'fa-solid fa-file-lines'},
+        ],
+        'visible_columns': ['checklist_id','checklist_name','checklist_type','submitted_by','project','department','hod_name','submission_datetime','status','last_updated_by','last_updated','actions'],
+        'allowed_actions': ['view','edit','approve','reject','delete','toggle'],
         'responses': page_obj,
         'projects': active_projects,
         'departments': Department.objects.filter(is_active=True).order_by('name'),

@@ -14,11 +14,11 @@ def home(request):
         return redirect('login')
 
     if profile.role == "HOD":
-        return redirect('hod_dashboard')
+        return redirect('my_checklists')
     if profile.role == "Admin":
         return redirect('admin_dashboard')
     if profile.role == "Management":
-        return redirect('management_dashboard')
+        return redirect('dashboard')
 
     checklists = Checklist.objects.filter(department=profile.department)
     transactions = ChecklistTransaction.objects.all().order_by('-submitted_date')[:10]
@@ -46,11 +46,11 @@ def user_login(request):
 
             if profile:
                 if profile.role == "HOD":
-                    return redirect('hod_dashboard')
+                    return redirect('my_checklists')
                 if profile.role == "Admin":
                     return redirect('admin_dashboard')
                 if profile.role == "Management":
-                    return redirect('management_dashboard')
+                    return redirect('dashboard')
 
             return redirect('home')
 

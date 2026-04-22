@@ -1,0 +1,19 @@
+<div class="sidebar">
+  <h2>{{ panel_title|default:'WMS' }}</h2>
+  <div class="sidebar-menu">
+    <div class="sidebar-menu-main">
+      {% for item in menu_items %}
+      <a href="{{ item.url }}" class="{% if request.path == item.url %}active{% endif %}">
+        <i class="{{ item.icon }}"></i> {{ item.label }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <div class="sidebar-menu-footer">
+      <hr />
+      <a href="{% url 'logout' %}">
+        <i class="fa-solid fa-right-from-bracket"></i> Logout
+      </a>
+    </div>
+  </div>
+</div>

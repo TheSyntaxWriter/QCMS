@@ -1,0 +1,62 @@
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          {% if 'checklist_id' in visible_columns %}<th>Checklist ID</th>{% endif %}
+          {% if 'checklist_name' in visible_columns %}<th>Checklist Name</th>{% endif %}
+          {% if 'checklist_type' in visible_columns %}<th>Checklist Type</th>{% endif %}
+          {% if 'submitted_by' in visible_columns %}<th>Submitted By</th>{% endif %}
+          {% if 'project' in visible_columns %}<th>Project</th>{% endif %}
+          {% if 'department' in visible_columns %}<th>Department</th>{% endif %}
+          {% if 'hod_name' in visible_columns %}<th>HOD Name</th>{% endif %}
+          {% if 'submission_datetime' in visible_columns %}<th>Submission DateTime</th>{% endif %}
+          {% if 'status' in visible_columns %}<th>Status</th>{% endif %}
+          {% if 'last_updated_by' in visible_columns %}<th>Last Updated By</th>{% endif %}
+          {% if 'last_updated' in visible_columns %}<th>Last Updated</th>{% endif %}
+          {% if 'actions' in visible_columns %}<th>Actions</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for response in responses %}
+        <tr>
+          {% if 'checklist_id' in visible_columns %}<td>{{ response.checklist.checklist_id }}</td>{% endif %}
+          {% if 'checklist_name' in visible_columns %}<td>{{ response.checklist.name }}</td>{% endif %}
+          {% if 'checklist_type' in visible_columns %}<td>{{ response.checklist.checklist_type.name }}</td>{% endif %}
+          {% if 'submitted_by' in visible_columns %}<td>{{ response.submitted_by.username }}</td>{% endif %}
+          {% if 'project' in visible_columns %}<td>{% if response.project %}{{ response.project.name }} ({{ response.project.domain }}){% else %}-{% endif %}</td>{% endif %}
+          {% if 'department' in visible_columns %}<td>{% if response.department %}{{ response.department.name }}{% else %}-{% endif %}</td>{% endif %}
+          {% if 'hod_name' in visible_columns %}<td>{% if response.hod %}{{ response.hod.get_full_name|default:response.hod.username }}{% else %}-{% endif %}</td>{% endif %}
+          {% if 'submission_datetime' in visible_columns %}<td>{{ response.submitted_at|date:'d-m-Y H:i' }}</td>{% endif %}
+          {% if 'status' in visible_columns %}<td>{{ response.status }}</td>{% endif %}
+          {% if 'last_updated_by' in visible_columns %}<td>{% if response.updated_by %}{{ response.updated_by.username }}{% else %}-{% endif %}</td>{% endif %}
+          {% if 'last_updated' in visible_columns %}<td>{{ response.updated_at|date:'d-m-Y H:i' }}</td>{% endif %}
+          {% if 'actions' in visible_columns %}
+          <td>
+            {% if response_view_mode %}
+              <span>-</span>
+            {% else %}
+              {% if 'view' in allowed_actions %}<button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
+              {% if 'edit' in allowed_actions %}<button class="btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}">Edit</button>{% endif %}
+              {% if 'approve' in allowed_actions %}<button class="btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>{% endif %}
+              {% if 'reject' in allowed_actions %}<button class="btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>{% endif %}
+              {% if 'toggle' in allowed_actions %}
+              <form method="POST" action="{% url 'admin_response_action' %}" class="inline-action-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle">
+                <input type="hidden" name="response_id" value="{{ response.id }}">
+                <button type="submit" class="btn btn-view action-toggle-btn">{% if response.status == 'Rejected' %}Activate{% else %}Deactivate{% endif %}</button>
+              </form>
+              {% endif %}
+              {% if 'delete' in allowed_actions %}<button class="btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>{% endif %}
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="12">No responses found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

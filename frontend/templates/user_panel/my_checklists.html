@@ -1,0 +1,16 @@
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
+
+{% block topbar_title %}My Checklists{% endblock %}
+{% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
+<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
+
+<div class="panel-header">
+  <h2>My Checklists</h2>
+</div>
+
+{% include 'admin_panel/partials/checklist_table.html' with checklist_view_mode=True %}
+{% endblock %}

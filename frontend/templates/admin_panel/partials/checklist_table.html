@@ -1,0 +1,46 @@
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Checklist ID</th>
+          <th>Checklist Name</th>
+          <th>Checklist Type</th>
+          <th>Departments</th>
+          <th>Last Updated</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="checklistBody">
+        {% for checklist in checklists %}
+        <tr>
+          <td>{{ checklist.checklist_id }}</td>
+          <td>{{ checklist.name }}</td>
+          <td>{{ checklist.checklist_type.name }}</td>
+          <td>{% for department in checklist.departments.all %}{{ department.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+          <td>{{ checklist.updated_at|date:'d-m-Y H:i' }}</td>
+          <td>{% if checklist.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
+          <td>
+            {% if checklist_view_mode %}
+              <button class="btn btn-view" type="button">Fill / View Checklist</button>
+            {% else %}
+              <button class="btn btn-view checklist-action" data-action="view" data-id="{{ checklist.id }}">View</button>
+              <button class="btn btn-edit checklist-action" data-action="edit" data-id="{{ checklist.id }}">Edit</button>
+              <form method="POST" action="{% url 'admin_checklist_action' %}" class="inline-action-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle">
+                <input type="hidden" name="checklist_pk" value="{{ checklist.id }}">
+                <button type="submit" class="btn btn-view action-toggle-btn">{% if checklist.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+              </form>
+              <button class="btn btn-delete delete-btn" data-checklist-id="{{ checklist.id }}">Delete</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">No checklists found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

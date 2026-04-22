@@ -29,7 +29,9 @@ urlpatterns = [
     # 🔍 VIEW + HISTORY
     # =====================================================
     path('view/<int:txn_id>/', views.view_checklist, name='view_checklist'),
+    path('my-checklists/', views.my_checklists, name='my_checklists'),
     path('my-submissions/', views.my_submissions, name='my_submissions'),
+    path('dashboard/', views.dashboard, name='dashboard'),
 
     # =====================================================
     # 📊 ADMIN PANEL

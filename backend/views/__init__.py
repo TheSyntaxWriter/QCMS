@@ -14,9 +14,10 @@ from .admin import (
     admin_users,
 )
 from .auth import home, user_login, user_logout
-from .checklist import checklist_detail, my_submissions, view_checklist
+from .checklist import checklist_detail, view_checklist
 from .hod import hod_dashboard, update_status
 from .management import management_dashboard
+from .user_panel import dashboard, my_checklists, my_submissions
 
 __all__ = [
     'home',
@@ -24,7 +25,6 @@ __all__ = [
     'user_logout',
     'checklist_detail',
     'view_checklist',
-    'my_submissions',
     'hod_dashboard',
     'update_status',
     'admin_dashboard',
@@ -41,4 +41,7 @@ __all__ = [
     'admin_user_action',
     'admin_response_action',
     'management_dashboard',
+    'my_checklists',
+    'my_submissions',
+    'dashboard',
 ]
