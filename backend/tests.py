@@ -13,6 +13,7 @@ class AccessControlTests(TestCase):
 
     def test_admin_pages_require_login(self):
         admin_urls = [
+            "admin_dashboard",
             "admin_departments",
             "admin_projects",
             "admin_checklists",
@@ -30,6 +31,7 @@ class AccessControlTests(TestCase):
         self.client.force_login(user)
 
         admin_urls = [
+            "admin_dashboard",
             "admin_departments",
             "admin_projects",
             "admin_checklists",
@@ -40,35 +42,32 @@ class AccessControlTests(TestCase):
         for url_name in admin_urls:
             with self.subTest(url_name=url_name):
                 response = self.client.get(reverse(url_name))
-                self.assertRedirects(response, reverse("home"))
+                self.assertRedirects(response, reverse("my_checklists"))
 
-    def test_admin_pages_allow_admin_users(self):
-        user = self.create_user_with_role("admin_user", "Admin")
-        self.client.force_login(user)
-
-        admin_urls = [
-            "admin_departments",
-            "admin_projects",
-            "admin_checklists",
-            "admin_responses",
-            "admin_create",
-        ]
-
-        for url_name in admin_urls:
-            with self.subTest(url_name=url_name):
-                response = self.client.get(reverse(url_name))
-                self.assertEqual(response.status_code, 200)
-
-    def test_management_dashboard_access_control(self):
-        response = self.client.get(reverse("management_dashboard"))
+    def test_dashboard_access_control(self):
+        response = self.client.get(reverse("dashboard"))
         self.assertRedirects(response, reverse("login"))
 
         user = self.create_user_with_role("hod_user", "HOD")
         self.client.force_login(user)
-        response = self.client.get(reverse("management_dashboard"))
-        self.assertRedirects(response, reverse("home"))
+        response = self.client.get(reverse("dashboard"))
+        self.assertRedirects(response, reverse("my_checklists"))
 
         management_user = self.create_user_with_role("mgmt_user", "Management")
         self.client.force_login(management_user)
-        response = self.client.get(reverse("management_dashboard"))
+        response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
+
+    def test_home_redirects_by_role(self):
+        role_expected = {
+            'User': 'my_checklists',
+            'HOD': 'my_checklists',
+            'Management': 'dashboard',
+            'Admin': 'admin_dashboard',
+        }
+        for role, expected in role_expected.items():
+            user = self.create_user_with_role(f'{role.lower()}_user', role)
+            self.client.force_login(user)
+            response = self.client.get(reverse('home'))
+            self.assertRedirects(response, reverse(expected))
+            self.client.logout()

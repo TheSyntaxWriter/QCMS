@@ -1,172 +1,38 @@
 <!doctype html>
 <html>
   <head>
-    <title>Admin Panel</title>
+        <title>Admin Panel</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23080870'/%3E%3Ctext x='50%25' y='58%25' text-anchor='middle' font-size='34' fill='white' font-family='Arial'%3EW%3C/text%3E%3C/svg%3E" />
 
-    <!-- FONT -->
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
 
-    <!-- ICON -->
-    <link
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-      rel="stylesheet"
-    />
-
     <style>
-      /* ================= GLOBAL ================= */
-      body {
-        margin: 0;
-        font-family: "Poppins", sans-serif;
-        background: #f1f3f9;
-      }
-
-      /* ================= SIDEBAR ================= */
-      .sidebar {
-        width: 200px;
-        background: #080870;
-        height: 100vh;
-        position: fixed;
-        top: 0;
-        left: 0;
-        padding: 20px;
-        color: white;
-      }
-
-      .sidebar h2 {
-        text-align: center;
-        margin-bottom: 30px;
-      }
-
-      .sidebar-menu {
-        display: flex;
-        flex-direction: column;
-        min-height: calc(100vh - 90px);
-      }
-
-      .sidebar-menu-main {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .sidebar-menu-footer {
-        margin-top: auto;
-      }
-
-      /* 🔥 MENU */
-      .sidebar a {
-        display: flex;
-        align-items: center;
-        padding: 12px;
-        margin-bottom: 10px;
-        color: white;
-        text-decoration: none;
-        border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: 0.3s;
-      }
-
-      .sidebar a.active {
-        background: white;
-        color: #080870;
-      }
-
-      .sidebar a:hover {
-        background: white;
-        color: #080870;
-      }
-
-      .sidebar i {
-        margin-right: 10px;
-      }
-
-      /* ================= CONTENT ================= */
-      .content {
-        margin-left: 240px;
-        padding: 20px;
-      }
-
-      /* ================= TOPBAR ================= */
-      .topbar {
-        background: #080870;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-      }
-
-      /* ================= TABLE ================= */
-      .table-container {
-        overflow-x: auto;
-      }
-
-      table {
-        width: 100%;
-        min-width: 1000px;
-        border-collapse: collapse;
-      }
-
-      thead th {
-        background: #080870;
-        color: white;
-        padding: 10px;
-        font-size: 13px;
-        text-align: left;
-      }
-
-      tbody td {
-        padding: 10px;
-        font-size: 12px;
-      }
-
-      tr {
-        border-bottom: 1px solid #eee;
-      }
-
-      tr:hover {
-        background: #eef2ff;
-      }
-
-      /* ================= BUTTONS ================= */
-      .btn {
-        padding: 5px 10px;
-        font-size: 12px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        margin: 2px;
-        display: inline-block;
-      }
-
-      .btn-view {
-        background: #10087b;
-        color: white;
-      }
-      .btn-edit {
-        background: #058405;
-        color: white;
-      }
-      .btn-delete {
-        background: #8d0808;
-        color: white;
-      }
-      .btn-add {
-        background: #10087b;
-        color: white;
-      }
-
-      /* ================= STATUS ================= */
-      .active-text {
-        color: green;
-      }
-      .inactive-text {
-        color: red;
-      }
+      body { margin: 0; font-family: "Poppins", sans-serif; background: #f1f3f9; }
+      .sidebar { width: 200px; background: #080870; height: 100vh; position: fixed; top: 0; left: 0; padding: 20px; color: white; }
+      .sidebar h2 { text-align: center; margin-bottom: 30px; }
+      .sidebar-menu { display: flex; flex-direction: column; min-height: calc(100vh - 90px); }
+      .sidebar-menu-main { display: flex; flex-direction: column; }
+      .sidebar-menu-footer { margin-top: auto; }
+      .sidebar a { display: block; padding: 12px; margin-bottom: 10px; color: white; text-decoration: none; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; }
+      .sidebar a.active, .sidebar a:hover { background: white; color: #080870; }
+      .content { margin-left: 240px; padding: 20px; }
+      .topbar { background: #080870; color: white; padding: 12px 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+      .table-container { overflow-x: auto; }
+      table { width: 100%; min-width: 1000px; border-collapse: collapse; }
+      thead th { background: #080870; color: white; padding: 10px; font-size: 13px; text-align: left; }
+      tbody td { padding: 10px; font-size: 12px; }
+      tr { border-bottom: 1px solid #eee; }
+      tr:hover { background: #eef2ff; }
+      .btn { padding: 5px 10px; font-size: 12px; border: none; border-radius: 6px; cursor: pointer; margin: 2px; display: inline-block; }
+      .btn-view { background: #10087b; color: white; }
+      .btn-edit { background: #058405; color: white; }
+      .btn-delete { background: #8d0808; color: white; }
+      .btn-add { background: #10087b; color: white; }
+      .active-text { color: green; }
+      .inactive-text { color: red; }
     </style>
   </head>
 
