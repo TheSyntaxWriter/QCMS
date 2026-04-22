@@ -9,37 +9,45 @@
 <div class="card-lite control-panel">
   <div class="control-panel-header">
     <h3>Role-Based Control Panel</h3>
-    <p>Configure which columns and actions each role can access.</p>
+    <p>Manage visible columns and actions per role.</p>
   </div>
-  <div class="permissions-grid">
-    <div class="permission-field role-field">
-      <label for="permissionRole">Role</label>
-      <select id="permissionRole">
-        <option>User</option>
-        <option>HOD</option>
-        <option>Management</option>
-      </select>
-    </div>
-
-    <div class="permission-field selection-field">
-      <label for="visibleColumnsInput">Visible Columns</label>
-      <div class="inline-control-group">
-        <input id="visibleColumnsInput" readonly />
-        <button class="btn btn-view" id="selectColumnsBtn" type="button">Select Columns</button>
-      </div>
-    </div>
-
-    <div class="permission-field selection-field">
-      <label for="allowedActionsInput">Allowed Actions</label>
-      <div class="inline-control-group">
-        <input id="allowedActionsInput" readonly />
-        <button class="btn btn-view" id="selectActionsBtn" type="button">Select Actions</button>
-      </div>
-    </div>
-
-    <div class="permission-save-wrap">
-      <button class="btn btn-add" id="savePermissionsBtn" type="button">Save Permissions</button>
-    </div>
+  <div class="table-container role-permissions-table-wrap">
+    <table class="role-permissions-table">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Selected Columns (CSV format display)</th>
+          <th>Allowed Actions (CSV format display)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-role="User">
+          <td>User</td>
+          <td class="role-columns-csv">-</td>
+          <td class="role-actions-csv">-</td>
+          <td><button type="button" class="btn btn-edit role-edit-btn" data-role="User">Edit</button></td>
+        </tr>
+        <tr data-role="HOD">
+          <td>HOD</td>
+          <td class="role-columns-csv">-</td>
+          <td class="role-actions-csv">-</td>
+          <td><button type="button" class="btn btn-edit role-edit-btn" data-role="HOD">Edit</button></td>
+        </tr>
+        <tr data-role="Management">
+          <td>Management</td>
+          <td class="role-columns-csv">-</td>
+          <td class="role-actions-csv">-</td>
+          <td><button type="button" class="btn btn-edit role-edit-btn" data-role="Management">Edit</button></td>
+        </tr>
+        <tr data-role="Admin">
+          <td>Admin</td>
+          <td class="role-columns-csv">-</td>
+          <td class="role-actions-csv">-</td>
+          <td><button type="button" class="btn btn-edit role-edit-btn" data-role="Admin">Edit</button></td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -168,18 +176,25 @@ window.responsePageConfig = {
   </div>
 </div>
 
-<div id="selectionPopup" class="popup">
+<div id="permissionEditPopup" class="popup">
   <div class="popup-content">
     <div class="popup-header">
-      <h3 id="selectionPopupTitle">Select Items</h3>
-      <span class="close-btn" id="selectionPopupClose">✖</span>
+      <h3 id="permissionPopupTitle">Edit Permissions</h3>
+      <span class="close-btn" id="permissionPopupClose">✖</span>
     </div>
-    <div class="popup-body">
-      <div id="selectionPopupList" class="selection-list"></div>
+    <div class="popup-body permission-popup-body">
+      <div class="permission-popup-section">
+        <h4>Columns</h4>
+        <div id="permissionColumnsList" class="selection-list"></div>
+      </div>
+      <div class="permission-popup-section">
+        <h4>Actions</h4>
+        <div id="permissionActionsList" class="selection-list"></div>
+      </div>
     </div>
     <div class="popup-footer selection-popup-footer">
-      <button class="btn btn-view" type="button" id="selectionPopupCancel">Cancel</button>
-      <button class="btn btn-add" type="button" id="selectionPopupSave">Save</button>
+      <button class="btn btn-view" type="button" id="permissionPopupCancel">Cancel</button>
+      <button class="btn btn-add" type="button" id="permissionPopupSave">Save</button>
     </div>
   </div>
 </div>
