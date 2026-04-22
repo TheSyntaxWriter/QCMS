@@ -455,7 +455,6 @@ def admin_responses(request):
     return render(request, 'admin_panel/admin_responses.html', {
         'responses': page_obj,
         'projects': active_projects,
-        'projects_json': list(active_projects.values('id', 'name', 'domain')),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
         'stats': stats,
         'role_permissions': role_permissions,

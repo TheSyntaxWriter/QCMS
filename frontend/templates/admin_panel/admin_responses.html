@@ -7,23 +7,39 @@
 
 <h2>Responses</h2>
 <div class="card-lite control-panel">
-  <h3>Role-Based Control Panel</h3>
-  <div class="filter-grid">
-    <select id="permissionRole">
-      <option>User</option>
-      <option>HOD</option>
-      <option>Management</option>
-    </select>
-    <div class="inline-control-group">
-      <input id="visibleColumnsInput" placeholder='Visible Columns JSON (e.g. ["checklist_id","status"])' readonly />
-      <button class="btn btn-view" id="selectColumnsBtn" type="button">Select Columns</button>
+  <div class="control-panel-header">
+    <h3>Role-Based Control Panel</h3>
+    <p>Configure which columns and actions each role can access.</p>
+  </div>
+  <div class="permissions-grid">
+    <div class="permission-field role-field">
+      <label for="permissionRole">Role</label>
+      <select id="permissionRole">
+        <option>User</option>
+        <option>HOD</option>
+        <option>Management</option>
+      </select>
     </div>
-    <div class="inline-control-group">
-      <input id="selectedProjectsInput" placeholder='Selected Projects JSON (e.g. [1,2])' readonly />
-      <button class="btn btn-view" id="selectProjectsBtn" type="button">Select Projects</button>
+
+    <div class="permission-field selection-field">
+      <label for="visibleColumnsInput">Visible Columns</label>
+      <div class="inline-control-group">
+        <input id="visibleColumnsInput" readonly />
+        <button class="btn btn-view" id="selectColumnsBtn" type="button">Select Columns</button>
+      </div>
     </div>
-    <input id="allowedActionsInput" placeholder='Allowed Actions JSON (e.g. ["view","approve"])' />
-    <button class="btn btn-add" id="savePermissionsBtn">Save Permissions</button>
+
+    <div class="permission-field selection-field">
+      <label for="allowedActionsInput">Allowed Actions</label>
+      <div class="inline-control-group">
+        <input id="allowedActionsInput" readonly />
+        <button class="btn btn-view" id="selectActionsBtn" type="button">Select Actions</button>
+      </div>
+    </div>
+
+    <div class="permission-save-wrap">
+      <button class="btn btn-add" id="savePermissionsBtn" type="button">Save Permissions</button>
+    </div>
   </div>
 </div>
 
@@ -129,7 +145,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {{ chart_data|json_script:'response-chart-data' }}
 {{ role_permissions|json_script:'role-permission-data' }}
-{{ projects_json|json_script:'response-project-data' }}
 <script>
 window.responsePageConfig = {
   actionUrl: "{% url 'admin_response_action' %}",
