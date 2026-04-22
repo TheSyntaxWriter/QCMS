@@ -423,13 +423,26 @@ def admin_responses(request):
         rejected=Count('id', filter=Q(status='Rejected')),
     )
 
-    project_chart = responses.values(
-        'project__name', 'project__domain',
-    ).annotate(total=Count('id')).order_by('project__name')
-    department_chart = responses.values('department__name').annotate(total=Count('id')).order_by('department__name')
-    line_chart = responses.annotate(day=TruncDate('submitted_at')).values('day').annotate(total=Count('id')).order_by('day')
+    project_chart = list(
+        responses.values('project__name', 'project__domain')
+        .annotate(total=Count('id'))
+        .order_by('project__name')
+    )
+    department_chart = list(
+        responses.values('department__name')
+        .annotate(total=Count('id'))
+        .order_by('department__name')
+    )
+    line_chart = list(
+        responses.annotate(day=TruncDate('submitted_at'))
+        .values('day')
+        .annotate(total=Count('id'))
+        .order_by('day')
+    )
 
     page_obj = Paginator(responses.order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+
+    active_projects = Project.objects.filter(is_active=True).order_by('name')
 
     role_permissions = {
         permission.role: {
@@ -441,7 +454,8 @@ def admin_responses(request):
 
     return render(request, 'admin_panel/admin_responses.html', {
         'responses': page_obj,
-        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'projects': active_projects,
+        'projects_json': list(active_projects.values('id', 'name', 'domain')),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
         'stats': stats,
         'role_permissions': role_permissions,
@@ -451,7 +465,7 @@ def admin_responses(request):
             'department_labels': [row['department__name'] or 'N/A' for row in department_chart],
             'department_values': [row['total'] for row in department_chart],
             'day_labels': [row['day'].strftime('%d-%m-%Y') for row in line_chart if row['day']],
-            'day_values': [row['total'] for row in line_chart],
+            'day_values': [row['total'] for row in line_chart if row['day']],
         },
     })
 

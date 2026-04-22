@@ -129,7 +129,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {{ chart_data|json_script:'response-chart-data' }}
 {{ role_permissions|json_script:'role-permission-data' }}
-{{ projects|json_script:'response-project-data' }}
+{{ projects_json|json_script:'response-project-data' }}
 <script>
 window.responsePageConfig = {
   actionUrl: "{% url 'admin_response_action' %}",
