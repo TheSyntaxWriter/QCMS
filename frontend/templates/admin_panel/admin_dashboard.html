@@ -1,49 +1,47 @@
-{% extends 'admin_panel/admin_base.html' %} {% block content %}
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
 
-<!-- ================= PAGE TITLE ================= -->
-<h2 style="margin-bottom: 15px">📊 Dashboard Overview</h2>
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_dashboard/admin_dashboard.css' %}" />
 
-<!-- ================= SUMMARY CARDS ================= -->
-<div
-  style="
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-    margin-bottom: 20px;
-  "
->
-  <!-- CARD -->
-  <div class="card" style="border-left: 5px solid #080870">
-    <h4>Total Users</h4>
-    <h2>{{ total_users }}</h2>
-  </div>
-
-  <div class="card" style="border-left: 5px solid #10b981">
-    <h4>Total Checklists</h4>
-    <h2>{{ total_checklists }}</h2>
-  </div>
-
-  <div class="card" style="border-left: 5px solid #f59e0b">
-    <h4>Pending</h4>
-    <h2>{{ pending }}</h2>
-  </div>
-
-  <div class="card" style="border-left: 5px solid #16a34a">
-    <h4>Approved</h4>
-    <h2>{{ approved }}</h2>
-  </div>
-
-  <div class="card" style="border-left: 5px solid #ef4444">
-    <h4>Rejected</h4>
-    <h2>{{ rejected }}</h2>
-  </div>
+<!-- ================= DASHBOARD HEADER ================= -->
+<div class="dashboard-title-wrap">
+  <h2>📊 Dashboard Overview</h2>
+  <p>Click any mini card to view a detailed chart in the modal.</p>
 </div>
 
-<!-- ================= RECENT ACTIVITY ================= -->
-<div class="card">
-  <h3 style="margin-bottom: 15px">📄 Recent Submissions</h3>
+<!-- ================= MINI DASHBOARD CARDS ================= -->
+<!-- Interactive cards keep metrics visible while opening chart modal on click. -->
+<section class="dashboard-mini-grid">
+  <button class="dashboard-mini-card card card-users" data-chart-key="users" type="button">
+    <span class="card-title">Total Users</span>
+    <span class="card-value">{{ total_users }}</span>
+  </button>
 
-  <!-- 🔥 TABLE WRAPPER (SCROLL FIX) -->
+  <button class="dashboard-mini-card card card-checklists" data-chart-key="checklists" type="button">
+    <span class="card-title">Total Checklists</span>
+    <span class="card-value">{{ total_checklists }}</span>
+  </button>
+
+  <button class="dashboard-mini-card card card-departments" data-chart-key="departments" type="button">
+    <span class="card-title">Total Departments</span>
+    <span class="card-value">{{ total_departments }}</span>
+  </button>
+
+  <button class="dashboard-mini-card card card-projects" data-chart-key="projects" type="button">
+    <span class="card-title">Total Projects</span>
+    <span class="card-value">{{ total_projects }}</span>
+  </button>
+
+  <button class="dashboard-mini-card card card-submissions" data-chart-key="submittedChecklists" type="button">
+    <span class="card-title">Submitted Checklists</span>
+    <span class="card-value">{{ total_submitted_checklists }}</span>
+  </button>
+</section>
+
+<!-- ================= RECENT ACTIVITY TABLE ================= -->
+<div class="card">
+  <h3 class="recent-heading">📄 Recent Submissions</h3>
   <div class="table-container">
     <table>
       <thead>
@@ -54,23 +52,20 @@
           <th>Date</th>
         </tr>
       </thead>
-
       <tbody>
         {% for txn in transactions %}
         <tr>
           <td>{{ txn.checklist.name }}</td>
           <td>{{ txn.user.username }}</td>
-
           <td>
             {% if txn.status == "Approved" %}
             <span class="active-text">Approved</span>
             {% elif txn.status == "Rejected" %}
             <span class="inactive-text">Rejected</span>
             {% else %}
-            <span style="color: #f59e0b">Pending</span>
+            <span class="pending-text">Pending</span>
             {% endif %}
           </td>
-
           <td>{{ txn.submitted_date }}</td>
         </tr>
         {% empty %}
@@ -83,4 +78,21 @@
   </div>
 </div>
 
+<!-- ================= CHART MODAL ================= -->
+<!-- Reusable modal: a single Chart.js canvas updates based on selected card. -->
+<div id="dashboardChartModal" class="dashboard-modal" aria-hidden="true">
+  <div class="dashboard-modal-content">
+    <div class="dashboard-modal-header">
+      <h3 id="dashboardChartTitle">Dashboard Chart</h3>
+      <button id="dashboardModalClose" type="button" aria-label="Close chart modal">✖</button>
+    </div>
+    <div class="dashboard-modal-body">
+      <canvas id="dashboardChartCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ admin_dashboard_config|json_script:"admin-dashboard-config" }}
+<script src="{% static 'admin_dashboard/admin_dashboard.js' %}"></script>
 {% endblock %}
