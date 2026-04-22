@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
@@ -10,7 +11,19 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 
-from ..models import Checklist, ChecklistTransaction, Department, Project, UserProfile
+from ..models import (
+    Checklist,
+    ChecklistAnswer,
+    ChecklistDefinition,
+    ChecklistQuestion,
+    ChecklistResponse,
+    ChecklistTransaction,
+    ChecklistType,
+    Department,
+    Project,
+    RolePermission,
+    UserProfile,
+)
 from .common import get_user_profile
 
 
@@ -109,7 +122,7 @@ def admin_dashboard(request):
             },
             # Column chart data for active/inactive users in each project.
             'projects': {
-                'labels': [project.name for project in project_stats],
+                'labels': [f'{project.name} ({project.domain})' for project in project_stats],
                 'activeUsers': [project.active_users for project in project_stats],
                 'inactiveUsers': [project.inactive_users for project in project_stats],
             },
@@ -318,8 +331,53 @@ def admin_checklists(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
+    search = (request.GET.get('search') or '').strip()
+    checklist_type = (request.GET.get('checklist_type') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+    page_no = request.GET.get('page')
+
+    checklists = ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments')
+
+    if search:
+        checklists = checklists.filter(Q(checklist_id__icontains=search) | Q(name__icontains=search))
+    if checklist_type:
+        checklists = checklists.filter(checklist_type_id=checklist_type)
+    if status in {'active', 'inactive'}:
+        checklists = checklists.filter(is_active=(status == 'active'))
+
+    paginator = Paginator(checklists.order_by('-updated_at'), 8)
+    page_obj = paginator.get_page(page_no)
+
+    if request.GET.get('ajax') == '1':
+        rows = []
+        for item in page_obj:
+            rows.append({
+                'id': item.id,
+                'checklist_id': item.checklist_id,
+                'name': item.name,
+                'checklist_type': item.checklist_type.name,
+                'departments': [department.name for department in item.departments.all()],
+                'updated_at': item.updated_at.strftime('%d-%m-%Y %H:%M'),
+                'status': 'Active' if item.is_active else 'Inactive',
+            })
+        return JsonResponse({
+            'rows': rows,
+            'pagination': {
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+                'number': page_obj.number,
+                'num_pages': paginator.num_pages,
+            },
+        })
+
     return render(request, 'admin_panel/admin_checklists.html', {
-        'checklists': Checklist.objects.all(),
+        'checklists': page_obj,
+        'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'departments': Department.objects.filter(is_active=True).order_by('name'),
+        'questions_json_help': {
+            'types': [{'value': key, 'label': label} for key, label in ChecklistQuestion.QUESTION_TYPES],
+        },
     })
 
 
@@ -331,9 +389,176 @@ def admin_responses(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
+    project_filter = (request.GET.get('project') or '').strip()
+    department_filter = (request.GET.get('department') or '').strip()
+    status_filter = (request.GET.get('status') or '').strip()
+    search = (request.GET.get('search') or '').strip()
+    date_from = (request.GET.get('date_from') or '').strip()
+    date_to = (request.GET.get('date_to') or '').strip()
+
+    responses = ChecklistResponse.objects.select_related(
+        'checklist', 'submitted_by', 'project', 'department', 'hod', 'updated_by', 'checklist__checklist_type',
+    )
+    if project_filter:
+        responses = responses.filter(project_id=project_filter)
+    if department_filter:
+        responses = responses.filter(department_id=department_filter)
+    if status_filter:
+        responses = responses.filter(status=status_filter)
+    if date_from:
+        responses = responses.filter(submitted_at__date__gte=date_from)
+    if date_to:
+        responses = responses.filter(submitted_at__date__lte=date_to)
+    if search:
+        responses = responses.filter(
+            Q(checklist__checklist_id__icontains=search)
+            | Q(checklist__name__icontains=search)
+            | Q(submitted_by__username__icontains=search)
+        )
+
+    stats = responses.aggregate(
+        total=Count('id'),
+        pending=Count('id', filter=Q(status='Pending')),
+        approved=Count('id', filter=Q(status='Approved')),
+        rejected=Count('id', filter=Q(status='Rejected')),
+    )
+
+    project_chart = responses.values(
+        'project__name', 'project__domain',
+    ).annotate(total=Count('id')).order_by('project__name')
+    department_chart = responses.values('department__name').annotate(total=Count('id')).order_by('department__name')
+    line_chart = responses.annotate(day=TruncDate('submitted_at')).values('day').annotate(total=Count('id')).order_by('day')
+
+    page_obj = Paginator(responses.order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+
+    role_permissions = {
+        permission.role: {
+            'visible_columns': permission.visible_columns,
+            'allowed_actions': permission.allowed_actions,
+        } for permission in RolePermission.objects.all()
+    }
+
     return render(request, 'admin_panel/admin_responses.html', {
-        'transactions': ChecklistTransaction.objects.all(),
+        'responses': page_obj,
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'departments': Department.objects.filter(is_active=True).order_by('name'),
+        'stats': stats,
+        'role_permissions': role_permissions,
+        'chart_data': {
+            'project_labels': [f"{row['project__name']} ({row['project__domain']})" for row in project_chart],
+            'project_values': [row['total'] for row in project_chart],
+            'department_labels': [row['department__name'] or 'N/A' for row in department_chart],
+            'department_values': [row['total'] for row in department_chart],
+            'day_labels': [row['day'].strftime('%d-%m-%Y') for row in line_chart if row['day']],
+            'day_values': [row['total'] for row in line_chart],
+        },
     })
+
+
+def admin_checklist_action(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+    if request.method != 'POST':
+        return redirect('admin_checklists')
+
+    action = request.POST.get('action')
+    checklist_id = request.POST.get('checklist_pk')
+
+    if action == 'delete' and checklist_id:
+        ChecklistDefinition.objects.filter(id=checklist_id).delete()
+        return JsonResponse({'ok': True})
+    if action == 'toggle' and checklist_id:
+        item = ChecklistDefinition.objects.filter(id=checklist_id).first()
+        if item:
+            item.is_active = not item.is_active
+            item.save(update_fields=['is_active', 'updated_at'])
+        return JsonResponse({'ok': True, 'is_active': item.is_active if item else None})
+
+    if action in {'create', 'edit'}:
+        item = ChecklistDefinition.objects.filter(id=checklist_id).first() if checklist_id else None
+        if action == 'create':
+            item = ChecklistDefinition.objects.create(
+                checklist_id=request.POST.get('checklist_id'),
+                name=request.POST.get('name'),
+                checklist_type_id=request.POST.get('checklist_type'),
+                is_active=True,
+            )
+        else:
+            item.name = request.POST.get('name')
+            item.checklist_type_id = request.POST.get('checklist_type')
+            item.save(update_fields=['name', 'checklist_type', 'updated_at'])
+
+        item.projects.set(request.POST.getlist('projects'))
+        item.departments.set(request.POST.getlist('departments'))
+
+        import json
+        questions = json.loads(request.POST.get('questions_json') or '[]')
+        item.questions.all().delete()
+        ChecklistQuestion.objects.bulk_create([
+            ChecklistQuestion(
+                checklist=item,
+                question_text=question.get('question_text', ''),
+                type=question.get('type', 'short_text'),
+                options=question.get('options', []),
+                order=question.get('order', index + 1),
+                section=question.get('section', ''),
+                required=bool(question.get('required')),
+            ) for index, question in enumerate(questions)
+        ])
+        return JsonResponse({'ok': True})
+
+    return JsonResponse({'ok': False}, status=400)
+
+
+def admin_response_action(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'save_permissions':
+            role = request.POST.get('role')
+            import json
+            permission, _ = RolePermission.objects.get_or_create(role=role)
+            permission.visible_columns = json.loads(request.POST.get('visible_columns') or '[]')
+            permission.allowed_actions = json.loads(request.POST.get('allowed_actions') or '[]')
+            permission.save()
+            return JsonResponse({'ok': True})
+
+        response_id = request.POST.get('response_id')
+        response = ChecklistResponse.objects.filter(id=response_id).first()
+        if not response:
+            return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
+        if action in {'approve', 'reject'}:
+            response.status = 'Approved' if action == 'approve' else 'Rejected'
+        response.updated_by = request.user
+        response.save(update_fields=['status', 'updated_by', 'updated_at'])
+        return JsonResponse({'ok': True})
+
+    if request.GET.get('action') == 'view':
+        response = ChecklistResponse.objects.select_related('checklist', 'project', 'department', 'submitted_by').prefetch_related(
+            'answers__question',
+        ).filter(id=request.GET.get('response_id')).first()
+        if not response:
+            return JsonResponse({'ok': False}, status=404)
+        return JsonResponse({
+            'checklist_id': response.checklist.checklist_id,
+            'checklist_name': response.checklist.name,
+            'submitted_by': response.submitted_by.username if response.submitted_by else '',
+            'answers': [{
+                'question': answer.question.question_text,
+                'answer_text': answer.answer_text,
+                'file_url': answer.file.url if answer.file else '',
+            } for answer in response.answers.all()],
+        })
+
+    return JsonResponse({'ok': False}, status=400)
 
 
 def admin_master_create(request):

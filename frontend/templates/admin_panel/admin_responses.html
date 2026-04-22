@@ -1,27 +1,122 @@
-{% extends 'admin_panel/admin_base.html' %} {% block content %}
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
 
-<h1>📄 All Responses</h1>
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
 
-<table>
-  <tr>
-    <th>Checklist</th>
-    <th>User</th>
-    <th>Status</th>
-    <th>Date</th>
-  </tr>
+<h2>Responses</h2>
+<div class="card-lite control-panel">
+  <h3>Role-Based Control Panel</h3>
+  <div class="filter-grid">
+    <select id="permissionRole">
+      <option>User</option>
+      <option>HOD</option>
+      <option>Management</option>
+    </select>
+    <input id="visibleColumnsInput" placeholder='Visible Columns JSON (e.g. ["checklist_id","status"])' />
+    <input id="allowedActionsInput" placeholder='Allowed Actions JSON (e.g. ["view","approve"])' />
+    <button class="btn btn-add" id="savePermissionsBtn">Save Permissions</button>
+  </div>
+</div>
 
-  {% for txn in transactions %}
-  <tr>
-    <td>{{ txn.checklist.name }}</td>
-    <td>{{ txn.user.username }}</td>
-    <td>{{ txn.status }}</td>
-    <td>{{ txn.submitted_date }}</td>
-  </tr>
-  {% empty %}
-  <tr>
-    <td colspan="4">No responses</td>
-  </tr>
-  {% endfor %}
-</table>
+<div class="filter-grid card-lite">
+  <select id="responseProjectFilter" name="project">
+    <option value="">All Projects</option>
+    {% for p in projects %}
+    <option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }} ({{ p.domain }})</option>
+    {% endfor %}
+  </select>
+  <select id="responseDepartmentFilter" name="department">
+    <option value="">All Departments</option>
+    {% for d in departments %}
+    <option value="{{ d.id }}" {% if request.GET.department == d.id|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>
+    {% endfor %}
+  </select>
+  <select id="responseStatusFilter" name="status">
+    <option value="">All Status</option>
+    <option value="Pending" {% if request.GET.status == 'Pending' %}selected{% endif %}>Pending</option>
+    <option value="Approved" {% if request.GET.status == 'Approved' %}selected{% endif %}>Approved</option>
+    <option value="Rejected" {% if request.GET.status == 'Rejected' %}selected{% endif %}>Rejected</option>
+  </select>
+  <input type="date" id="dateFromFilter" value="{{ request.GET.date_from }}" />
+  <input type="date" id="dateToFilter" value="{{ request.GET.date_to }}" />
+  <input type="text" id="responseSearch" placeholder="Global Search" value="{{ request.GET.search }}" />
+</div>
 
+<div class="stats-grid">
+  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Total Submitted</span><strong>{{ stats.total }}</strong></button>
+  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Pending</span><strong>{{ stats.pending }}</strong></button>
+  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Approved</span><strong>{{ stats.approved }}</strong></button>
+  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Rejected</span><strong>{{ stats.rejected }}</strong></button>
+</div>
+
+<div class="card-lite"><canvas id="responseLineChart" height="110"></canvas></div>
+
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Checklist ID</th><th>Checklist Name</th><th>Checklist Type</th><th>Submitted By</th><th>Project</th><th>Department</th><th>HOD Name</th><th>Submission DateTime</th><th>Status</th><th>Last Updated By</th><th>Last Updated</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for response in responses %}
+        <tr>
+          <td>{{ response.checklist.checklist_id }}</td>
+          <td>{{ response.checklist.name }}</td>
+          <td>{{ response.checklist.checklist_type.name }}</td>
+          <td>{{ response.submitted_by.username }}</td>
+          <td>{{ response.project.name }} ({{ response.project.domain }})</td>
+          <td>{{ response.department.name }}</td>
+          <td>{% if response.hod %}{{ response.hod.get_full_name|default:response.hod.username }}{% endif %}</td>
+          <td>{{ response.submitted_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ response.status }}</td>
+          <td>{% if response.updated_by %}{{ response.updated_by.username }}{% endif %}</td>
+          <td>{{ response.updated_at|date:'d-m-Y H:i' }}</td>
+          <td>
+            <button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>
+            <button class="btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}">Edit</button>
+            <button class="btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>
+            <button class="btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="12">No responses found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="responseViewModal" class="dashboard-modal" aria-hidden="true">
+  <div class="dashboard-modal-content">
+    <div class="dashboard-modal-header">
+      <h3>Response Detail</h3>
+      <button id="closeResponseView" type="button">✖</button>
+    </div>
+    <div class="dashboard-modal-body" id="responseViewContent"></div>
+  </div>
+</div>
+
+<div id="statusChartModal" class="dashboard-modal" aria-hidden="true">
+  <div class="dashboard-modal-content">
+    <div class="dashboard-modal-header">
+      <h3>Submission Distribution</h3>
+      <button id="closeStatusChart" type="button">✖</button>
+    </div>
+    <div class="dashboard-modal-body"><canvas id="statusPopupChart"></canvas></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ chart_data|json_script:'response-chart-data' }}
+{{ role_permissions|json_script:'role-permission-data' }}
+<script>
+window.responsePageConfig = {
+  actionUrl: "{% url 'admin_response_action' %}",
+  csrfToken: "{{ csrf_token }}"
+};
+</script>
+<script src="{% static 'admin_panel/admin_responses.js' %}"></script>
 {% endblock %}

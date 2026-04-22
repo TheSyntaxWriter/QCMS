@@ -78,4 +78,6 @@ urlpatterns = [
     path('admin-user-action/', views.admin_user_action, name='admin_user_action'),
     path('admin-department-action/', views.admin_department_action, name='admin_department_action'),
     path('admin-project-action/', views.admin_project_action, name='admin_project_action'),
+    path('admin-checklist-action/', views.admin_checklist_action, name='admin_checklist_action'),
+    path('admin-response-action/', views.admin_response_action, name='admin_response_action'),
 ]
