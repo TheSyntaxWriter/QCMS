@@ -350,6 +350,7 @@ class RolePermission(models.Model):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, unique=True)
     visible_columns = models.JSONField(default=list, blank=True)
+    selected_projects = models.JSONField(default=list, blank=True)
     allowed_actions = models.JSONField(default=list, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
