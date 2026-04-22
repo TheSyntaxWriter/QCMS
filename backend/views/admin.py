@@ -39,15 +39,100 @@ def admin_dashboard(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
-    txns = ChecklistTransaction.objects.all()
+    # Keep a base queryset so summary cards and table stay consistent.
+    txns = ChecklistTransaction.objects.select_related('checklist', 'user').order_by('-submitted_date')
+
+    # ---------------------------
+    # Card totals + pie datasets
+    # ---------------------------
+    total_users = UserProfile.objects.count()
+    total_checklists = Checklist.objects.count()
+    total_departments = Department.objects.count()
+    total_projects = Project.objects.count()
+    total_submitted = txns.count()
+
+    users_active = UserProfile.objects.filter(is_active=True).count()
+    users_inactive = UserProfile.objects.filter(is_active=False).count()
+
+    checklists_active = Checklist.objects.filter(is_active=True).count()
+    checklists_inactive = Checklist.objects.filter(is_active=False).count()
+
+    approved = txns.filter(status="Approved").count()
+    pending = txns.filter(status="Pending").count()
+    rejected = txns.filter(status="Rejected").count()
+
+    # ---------------------------------------------
+    # Column chart datasets (users by master entity)
+    # ---------------------------------------------
+    department_stats = (
+        Department.objects
+        .annotate(
+            active_users=Count('userprofile', filter=Q(userprofile__is_active=True)),
+            inactive_users=Count('userprofile', filter=Q(userprofile__is_active=False)),
+        )
+        .order_by('name')
+    )
+
+    project_stats = (
+        Project.objects
+        .annotate(
+            active_users=Count('userprofile', filter=Q(userprofile__is_active=True)),
+            inactive_users=Count('userprofile', filter=Q(userprofile__is_active=False)),
+        )
+        .order_by('name')
+    )
+
+    dashboard_config = {
+        'totals': {
+            'users': total_users,
+            'checklists': total_checklists,
+            'departments': total_departments,
+            'projects': total_projects,
+            'submittedChecklists': total_submitted,
+        },
+        'charts': {
+            # Pie chart data for user activation split.
+            'users': {
+                'active': users_active,
+                'inactive': users_inactive,
+            },
+            # Pie chart data for checklist activation split.
+            'checklists': {
+                'active': checklists_active,
+                'inactive': checklists_inactive,
+            },
+            # Column chart data for active/inactive users in each department.
+            'departments': {
+                'labels': [department.name for department in department_stats],
+                'activeUsers': [department.active_users for department in department_stats],
+                'inactiveUsers': [department.inactive_users for department in department_stats],
+            },
+            # Column chart data for active/inactive users in each project.
+            'projects': {
+                'labels': [project.name for project in project_stats],
+                'activeUsers': [project.active_users for project in project_stats],
+                'inactiveUsers': [project.inactive_users for project in project_stats],
+            },
+            # Pie chart data for checklist submission status split.
+            'submittedChecklists': {
+                'approved': approved,
+                'pending': pending,
+                'rejected': rejected,
+            },
+        },
+    }
 
     return render(request, 'admin_panel/admin_dashboard.html', {
-        'transactions': txns,
-        'total_users': UserProfile.objects.count(),
-        'total_checklists': Checklist.objects.count(),
-        'pending': txns.filter(status="Pending").count(),
-        'approved': txns.filter(status="Approved").count(),
-        'rejected': txns.filter(status="Rejected").count(),
+        'transactions': txns[:8],
+        'total_users': total_users,
+        'total_checklists': total_checklists,
+        'total_departments': total_departments,
+        'total_projects': total_projects,
+        'total_submitted_checklists': total_submitted,
+        'pending': pending,
+        'approved': approved,
+        'rejected': rejected,
+        'admin_dashboard_config': dashboard_config,
     })
 
 
