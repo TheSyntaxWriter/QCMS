@@ -14,7 +14,14 @@
       <option>HOD</option>
       <option>Management</option>
     </select>
-    <input id="visibleColumnsInput" placeholder='Visible Columns JSON (e.g. ["checklist_id","status"])' />
+    <div class="inline-control-group">
+      <input id="visibleColumnsInput" placeholder='Visible Columns JSON (e.g. ["checklist_id","status"])' readonly />
+      <button class="btn btn-view" id="selectColumnsBtn" type="button">Select Columns</button>
+    </div>
+    <div class="inline-control-group">
+      <input id="selectedProjectsInput" placeholder='Selected Projects JSON (e.g. [1,2])' readonly />
+      <button class="btn btn-view" id="selectProjectsBtn" type="button">Select Projects</button>
+    </div>
     <input id="allowedActionsInput" placeholder='Allowed Actions JSON (e.g. ["view","approve"])' />
     <button class="btn btn-add" id="savePermissionsBtn">Save Permissions</button>
   </div>
@@ -122,6 +129,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {{ chart_data|json_script:'response-chart-data' }}
 {{ role_permissions|json_script:'role-permission-data' }}
+{{ projects|json_script:'response-project-data' }}
 <script>
 window.responsePageConfig = {
   actionUrl: "{% url 'admin_response_action' %}",
@@ -141,6 +149,22 @@ window.responsePageConfig = {
     <div class="popup-footer delete-popup-footer">
       <button class="btn btn-view" type="button" onclick="closeDeletePopup()">Cancel</button>
       <button id="confirmDeleteBtn" type="submit" form="deleteResponseForm" class="btn btn-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="selectionPopup" class="popup">
+  <div class="popup-content">
+    <div class="popup-header">
+      <h3 id="selectionPopupTitle">Select Items</h3>
+      <span class="close-btn" id="selectionPopupClose">✖</span>
+    </div>
+    <div class="popup-body">
+      <div id="selectionPopupList" class="selection-list"></div>
+    </div>
+    <div class="popup-footer selection-popup-footer">
+      <button class="btn btn-view" type="button" id="selectionPopupCancel">Cancel</button>
+      <button class="btn btn-add" type="button" id="selectionPopupSave">Save</button>
     </div>
   </div>
 </div>

@@ -434,6 +434,7 @@ def admin_responses(request):
     role_permissions = {
         permission.role: {
             'visible_columns': permission.visible_columns,
+            'selected_projects': permission.selected_projects,
             'allowed_actions': permission.allowed_actions,
         } for permission in RolePermission.objects.all()
     }
@@ -533,6 +534,7 @@ def admin_response_action(request):
             import json
             permission, _ = RolePermission.objects.get_or_create(role=role)
             permission.visible_columns = json.loads(request.POST.get('visible_columns') or '[]')
+            permission.selected_projects = json.loads(request.POST.get('selected_projects') or '[]')
             permission.allowed_actions = json.loads(request.POST.get('allowed_actions') or '[]')
             permission.save()
             return JsonResponse({'ok': True})
