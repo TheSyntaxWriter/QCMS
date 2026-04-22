@@ -3,26 +3,29 @@
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
+<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
 
 <div class="panel-header">
   <h2>Checklist Management</h2>
   <button class="btn btn-add" id="openChecklistBuilder">+ Add Checklist</button>
 </div>
 
-<div class="filter-grid card-lite">
-  <input id="searchChecklist" type="text" placeholder="Search by Checklist ID / Name" />
-  <select id="filterChecklistType">
+<form method="GET" class="users-toolbar">
+  <input type="text" name="search" id="searchChecklist" placeholder="Search by Checklist ID / Name" value="{{ request.GET.search }}" class="form-control toolbar-search" />
+  <select id="filterChecklistType" name="checklist_type" class="form-control">
     <option value="">All Types</option>
     {% for t in checklist_types %}
-    <option value="{{ t.id }}">{{ t.name }}</option>
+    <option value="{{ t.id }}" {% if request.GET.checklist_type == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
     {% endfor %}
   </select>
-  <select id="filterChecklistStatus">
+  <select id="filterChecklistStatus" name="status" class="form-control">
     <option value="">All Status</option>
-    <option value="active">Active</option>
-    <option value="inactive">Inactive</option>
+    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
   </select>
-</div>
+  <button type="submit" class="btn btn-add icon-btn" title="Search">🔍</button>
+  <a href="{% url 'admin_checklists' %}" class="btn btn-delete reset-link">Reset Filters</a>
+</form>
 
 <div class="card">
   <div class="table-container">
@@ -50,8 +53,13 @@
           <td>
             <button class="btn btn-view checklist-action" data-action="view" data-id="{{ checklist.id }}">View</button>
             <button class="btn btn-edit checklist-action" data-action="edit" data-id="{{ checklist.id }}">Edit</button>
-            <button class="btn btn-edit checklist-action" data-action="toggle" data-id="{{ checklist.id }}">Toggle Active</button>
-            <button class="btn btn-delete checklist-action" data-action="delete" data-id="{{ checklist.id }}">Delete</button>
+            <form method="POST" action="{% url 'admin_checklist_action' %}" class="inline-action-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle">
+              <input type="hidden" name="checklist_pk" value="{{ checklist.id }}">
+              <button type="submit" class="btn btn-view action-toggle-btn">{% if checklist.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+            </form>
+            <button class="btn btn-delete delete-btn" data-checklist-id="{{ checklist.id }}">Delete</button>
           </td>
         </tr>
         {% empty %}
@@ -119,5 +127,28 @@
     csrfToken: "{{ csrf_token }}"
   };
 </script>
+
+<div id="deletePopup" class="popup">
+  <div class="popup-content delete-popup-content">
+    <div class="popup-header danger-header">
+      <h3>⚠ Delete Checklist</h3>
+      <span class="close-btn" onclick="closeDeletePopup()">✖</span>
+    </div>
+    <div class="popup-body delete-popup-body">
+      <p>Are you sure you want to delete this checklist?</p>
+    </div>
+    <div class="popup-footer delete-popup-footer">
+      <button class="btn btn-view" type="button" onclick="closeDeletePopup()">Cancel</button>
+      <button id="confirmDeleteBtn" type="submit" form="deleteChecklistForm" class="btn btn-delete">Delete</button>
+    </div>
+  </div>
+</div>
+
+<form id="deleteChecklistForm" method="POST" action="{% url 'admin_checklist_action' %}" class="hidden-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="delete">
+  <input type="hidden" name="checklist_pk" id="deleteChecklistId" value="">
+</form>
+
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
 {% endblock %}

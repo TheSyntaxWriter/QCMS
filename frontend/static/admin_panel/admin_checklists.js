@@ -9,6 +9,8 @@
   const addSectionBtn = document.getElementById('addSectionBtn');
   const form = document.getElementById('checklistForm');
   const questionsJson = document.getElementById('questionsJson');
+  const deletePopup = document.getElementById('deletePopup');
+  const deleteChecklistIdInput = document.getElementById('deleteChecklistId');
   let sectionName = 'Section 1';
 
   const qTypes = JSON.parse(document.getElementById('checklist-question-types').textContent).types;
@@ -45,17 +47,43 @@
   openBtn.onclick = () => modal.classList.add('is-open');
   closeBtn.onclick = () => modal.classList.remove('is-open');
 
+  function closeDeletePopup() {
+    if (deletePopup) {
+      deletePopup.style.display = 'none';
+    }
+    if (deleteChecklistIdInput) {
+      deleteChecklistIdInput.value = '';
+    }
+  }
+  window.closeDeletePopup = closeDeletePopup;
+
   document.querySelectorAll('.checklist-action').forEach(btn => {
     btn.onclick = async () => {
       const action = btn.dataset.action;
-      const id = btn.dataset.id;
-      if (action === 'delete' && !confirm('Delete this checklist?')) return;
-      if (action === 'toggle' || action === 'delete') {
-        const fd = new FormData();
-        fd.append('action', action); fd.append('checklist_pk', id); fd.append('csrfmiddlewaretoken', cfg.csrfToken);
-        await fetch(cfg.actionUrl, {method:'POST', body:fd});
-        location.reload();
+      if (action === 'view' || action === 'edit') return;
+    }
+  });
+
+  document.querySelectorAll('.delete-btn').forEach((btn) => {
+    btn.onclick = () => {
+      if (deleteChecklistIdInput) {
+        deleteChecklistIdInput.value = btn.dataset.checklistId;
       }
+      if (deletePopup) {
+        deletePopup.style.display = 'flex';
+      }
+    };
+  });
+
+  window.onclick = function (event) {
+    if (event.target === deletePopup) {
+      closeDeletePopup();
+    }
+  };
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      closeDeletePopup();
     }
   });
 
