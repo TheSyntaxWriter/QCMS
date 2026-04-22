@@ -466,16 +466,21 @@ def admin_checklist_action(request):
 
     action = request.POST.get('action')
     checklist_id = request.POST.get('checklist_pk')
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if action == 'delete' and checklist_id:
         ChecklistDefinition.objects.filter(id=checklist_id).delete()
-        return JsonResponse({'ok': True})
+        if is_ajax:
+            return JsonResponse({'ok': True})
+        return redirect('admin_checklists')
     if action == 'toggle' and checklist_id:
         item = ChecklistDefinition.objects.filter(id=checklist_id).first()
         if item:
             item.is_active = not item.is_active
             item.save(update_fields=['is_active', 'updated_at'])
-        return JsonResponse({'ok': True, 'is_active': item.is_active if item else None})
+        if is_ajax:
+            return JsonResponse({'ok': True, 'is_active': item.is_active if item else None})
+        return redirect('admin_checklists')
 
     if action in {'create', 'edit'}:
         item = ChecklistDefinition.objects.filter(id=checklist_id).first() if checklist_id else None
@@ -522,6 +527,7 @@ def admin_response_action(request):
 
     if request.method == 'POST':
         action = request.POST.get('action')
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
         if action == 'save_permissions':
             role = request.POST.get('role')
             import json
@@ -535,6 +541,18 @@ def admin_response_action(request):
         response = ChecklistResponse.objects.filter(id=response_id).first()
         if not response:
             return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
+        if action == 'delete':
+            response.delete()
+            if is_ajax:
+                return JsonResponse({'ok': True})
+            return redirect('admin_responses')
+        if action == 'toggle':
+            response.status = 'Pending' if response.status == 'Rejected' else 'Rejected'
+            response.updated_by = request.user
+            response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            if is_ajax:
+                return JsonResponse({'ok': True, 'status': response.status})
+            return redirect('admin_responses')
         if action in {'approve', 'reject'}:
             response.status = 'Approved' if action == 'approve' else 'Rejected'
         response.updated_by = request.user

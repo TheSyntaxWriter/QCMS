@@ -2,6 +2,8 @@
   const cfg = window.responsePageConfig;
   if (!cfg) return;
   const chartData = JSON.parse(document.getElementById('response-chart-data').textContent);
+  const deletePopup = document.getElementById('deletePopup');
+  const deleteResponseIdInput = document.getElementById('deleteResponseId');
 
   const lineCtx = document.getElementById('responseLineChart');
   if (lineCtx) {
@@ -29,12 +31,15 @@
   });
   closeStatus.onclick = () => statusModal.classList.remove('is-open');
 
-  const qs = new URLSearchParams(window.location.search);
-  [['responseProjectFilter','project'],['responseDepartmentFilter','department'],['responseStatusFilter','status'],['dateFromFilter','date_from'],['dateToFilter','date_to'],['responseSearch','search']]
-    .forEach(([id,key]) => {
-      const el = document.getElementById(id); if (!el) return;
-      el.onchange = () => { if (el.value) qs.set(key, el.value); else qs.delete(key); window.location.search = qs.toString(); };
-    });
+  function closeDeletePopup() {
+    if (deletePopup) {
+      deletePopup.style.display = 'none';
+    }
+    if (deleteResponseIdInput) {
+      deleteResponseIdInput.value = '';
+    }
+  }
+  window.closeDeletePopup = closeDeletePopup;
 
   document.querySelectorAll('.response-action').forEach(btn => btn.onclick = async () => {
     const action = btn.dataset.action;
@@ -65,5 +70,28 @@
     fd.append('csrfmiddlewaretoken', cfg.csrfToken);
     await fetch(cfg.actionUrl, { method: 'POST', body: fd });
     alert('Role permissions saved');
+  });
+
+  document.querySelectorAll('.delete-btn').forEach((btn) => {
+    btn.onclick = () => {
+      if (deleteResponseIdInput) {
+        deleteResponseIdInput.value = btn.dataset.responseId;
+      }
+      if (deletePopup) {
+        deletePopup.style.display = 'flex';
+      }
+    };
+  });
+
+  window.onclick = function (event) {
+    if (event.target === deletePopup) {
+      closeDeletePopup();
+    }
+  };
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      closeDeletePopup();
+    }
   });
 })();
