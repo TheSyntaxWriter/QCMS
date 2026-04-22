@@ -1,29 +1,123 @@
-{% extends 'admin_panel/admin_base.html' %} {% block content %}
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
 
-<h2>📋 Checklists</h2>
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
 
-<button class="btn btn-add">+ Add Checklist</button>
-
-<div class="card">
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Department</th>
-        <th>Type</th>
-      </tr>
-    </thead>
-
-    <tbody>
-      {% for checklist in checklists %}
-      <tr>
-        <td>{{ checklist.name }}</td>
-        <td>{{ checklist.department.name }}</td>
-        <td>{{ checklist.type }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="panel-header">
+  <h2>Checklist Management</h2>
+  <button class="btn btn-add" id="openChecklistBuilder">+ Add Checklist</button>
 </div>
 
+<div class="filter-grid card-lite">
+  <input id="searchChecklist" type="text" placeholder="Search by Checklist ID / Name" />
+  <select id="filterChecklistType">
+    <option value="">All Types</option>
+    {% for t in checklist_types %}
+    <option value="{{ t.id }}">{{ t.name }}</option>
+    {% endfor %}
+  </select>
+  <select id="filterChecklistStatus">
+    <option value="">All Status</option>
+    <option value="active">Active</option>
+    <option value="inactive">Inactive</option>
+  </select>
+</div>
+
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Checklist ID</th>
+          <th>Checklist Name</th>
+          <th>Checklist Type</th>
+          <th>Departments</th>
+          <th>Last Updated</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="checklistBody">
+        {% for checklist in checklists %}
+        <tr>
+          <td>{{ checklist.checklist_id }}</td>
+          <td>{{ checklist.name }}</td>
+          <td>{{ checklist.checklist_type.name }}</td>
+          <td>{% for department in checklist.departments.all %}{{ department.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+          <td>{{ checklist.updated_at|date:'d-m-Y H:i' }}</td>
+          <td>{% if checklist.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
+          <td>
+            <button class="btn btn-view checklist-action" data-action="view" data-id="{{ checklist.id }}">View</button>
+            <button class="btn btn-edit checklist-action" data-action="edit" data-id="{{ checklist.id }}">Edit</button>
+            <button class="btn btn-edit checklist-action" data-action="toggle" data-id="{{ checklist.id }}">Toggle Active</button>
+            <button class="btn btn-delete checklist-action" data-action="delete" data-id="{{ checklist.id }}">Delete</button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">No checklists found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="checklistBuilderModal" class="dashboard-modal" aria-hidden="true">
+  <div class="dashboard-modal-content builder-modal-content">
+    <div class="dashboard-modal-header">
+      <h3 id="builderTitle">Create Checklist</h3>
+      <button id="closeChecklistBuilder" type="button">✖</button>
+    </div>
+    <div class="dashboard-modal-body">
+      <form id="checklistForm">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create" id="checklistAction" />
+        <input type="hidden" name="checklist_pk" id="checklistPk" />
+        <input type="hidden" name="questions_json" id="questionsJson" />
+
+        <h4>Section 1: Checklist Details</h4>
+        <div class="builder-grid">
+          <input type="text" name="checklist_id" id="checklistIdInput" placeholder="Checklist ID (CL01)" required />
+          <input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" required />
+          <select name="checklist_type" id="checklistTypeInput" required>
+            <option value="">Select Checklist Type</option>
+            {% for t in checklist_types %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <select multiple name="projects" id="projectsInput">
+            {% for p in projects %}
+            <option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>
+            {% endfor %}
+          </select>
+          <select multiple name="departments" id="departmentsInput">
+            {% for d in departments %}
+            <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <h4>Section 2: Checklist Builder</h4>
+        <div class="builder-actions">
+          <button type="button" class="btn btn-add" id="addSectionBtn">+ Add Section</button>
+          <button type="button" class="btn btn-add" id="addQuestionBtn">+ Add Question</button>
+        </div>
+        <div id="questionBuilderContainer"></div>
+
+        <div class="builder-footer">
+          <button class="btn btn-add" type="submit">Save Checklist</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{{ questions_json_help|json_script:'checklist-question-types' }}
+<script>
+  window.checklistPageConfig = {
+    actionUrl: "{% url 'admin_checklist_action' %}",
+    csrfToken: "{{ csrf_token }}"
+  };
+</script>
+<script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
 {% endblock %}
