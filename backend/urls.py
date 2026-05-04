@@ -11,6 +11,11 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('profile/', views.profile, name='profile'),
 
+    path('checklist/<int:checklist_id>/', views.checklist_detail, name='checklist_detail'),
+    path('submission/<int:txn_id>/', views.view_checklist, name='view_checklist'),
+    path('submission/<int:txn_id>/update-status/', views.update_status, name='update_status'),
+    path('management-dashboard/', views.management_dashboard, name='management_dashboard'),
+
     path('admin-panel/', views.admin_dashboard, name='admin_dashboard'),
     path('admin-panel/users/', views.admin_users, name='admin_users'),
     path('admin-panel/departments/', views.admin_departments, name='admin_departments'),
