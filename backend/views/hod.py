@@ -20,9 +20,12 @@ def hod_dashboard(request):
     return render(request, 'hod_dashboard.html', {'transactions': txns})
 
 
-def update_status(request, txn_id, action):
+def update_status(request, txn_id):
     if not request.user.is_authenticated:
         return redirect('login')
+
+    if request.method != 'POST':
+        return redirect('hod_dashboard')
 
     profile = get_user_profile(request.user)
     if not profile or profile.role != "HOD":
@@ -32,6 +35,8 @@ def update_status(request, txn_id, action):
 
     if txn.department != profile.department:
         return redirect('home')
+
+    action = request.POST.get('action')
 
     if action == "approve":
         txn.status = "Approved"
