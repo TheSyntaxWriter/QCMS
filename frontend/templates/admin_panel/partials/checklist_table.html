@@ -26,7 +26,7 @@
               <button class="btn btn-view" type="button">Fill / View Checklist</button>
             {% else %}
               <button class="btn btn-view checklist-action" data-action="view" data-id="{{ checklist.id }}">View</button>
-              <button class="btn btn-edit checklist-action" data-action="edit" data-id="{{ checklist.id }}">Edit</button>
+              <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
               <form method="POST" action="{% url 'admin_checklist_action' %}" class="inline-action-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="toggle">

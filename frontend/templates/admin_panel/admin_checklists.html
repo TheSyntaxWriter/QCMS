@@ -7,7 +7,7 @@
 
 <div class="panel-header">
   <h2>Checklist Management</h2>
-  <button class="btn btn-add" id="openChecklistBuilder">+ Add Checklist</button>
+  <a class="btn btn-add" href="{% url 'admin_checklist_create' %}">+ Add Checklist</a>
 </div>
 
 <form method="GET" class="users-toolbar">
@@ -28,118 +28,6 @@
 </form>
 
 {% include 'admin_panel/partials/checklist_table.html' %}
-
-<div id="checklistBuilderModal" class="dashboard-modal" aria-hidden="true">
-  <div class="dashboard-modal-content builder-modal-content">
-    <div class="dashboard-modal-header">
-      <h3 id="builderTitle">Create Checklist</h3>
-      <button id="closeChecklistBuilder" type="button">✖</button>
-    </div>
-    <div class="dashboard-modal-body">
-      <form id="checklistForm">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="create" id="checklistAction" />
-        <input type="hidden" name="checklist_pk" id="checklistPk" />
-        <input type="hidden" name="questions_json" id="questionsJson" />
-
-        <h4>Section 1: Checklist Details</h4>
-        <div class="section-one-control-panel">
-          <table>
-            <thead>
-              <tr>
-                <th>Checklist ID</th>
-                <th>Checklist Name</th>
-                <th>Checklist Type</th>
-                <th>Project</th>
-                <th>Department</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <input type="text" name="checklist_id" id="checklistIdInput" readonly required />
-                </td>
-                <td>
-                  <input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" required />
-                </td>
-                <td><span id="selectedTypesCsv">-</span></td>
-                <td><span id="selectedProjectsCsv">-</span></td>
-                <td><span id="selectedDepartmentsCsv">-</span></td>
-                <td>
-                  <button type="button" class="btn btn-edit" id="openChecklistMetaEditor">Edit</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <input type="hidden" name="checklist_type" id="checklistTypeInput" required />
-        <select id="checklistTypesSource" hidden>
-          {% for t in checklist_types %}
-          <option value="{{ t.id }}">{{ t.name }}</option>
-          {% endfor %}
-        </select>
-        <select multiple name="projects" id="projectsInput" hidden>
-          {% for p in projects %}
-          <option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>
-          {% endfor %}
-        </select>
-        <select multiple name="departments" id="departmentsInput" hidden>
-          {% for d in departments %}
-          <option value="{{ d.id }}">{{ d.name }}</option>
-          {% endfor %}
-        </select>
-
-        <div id="checklistMetaModal" class="popup">
-          <div class="popup-content" style="max-width:640px;">
-            <div class="popup-header">
-              <h3>Edit Permissions</h3>
-              <span class="close-btn" id="closeChecklistMetaModal">✖</span>
-            </div>
-            <div class="popup-body" style="display:grid;gap:14px;max-height:60vh;overflow:auto;">
-              <div>
-                <strong>Checklist Types</strong>
-                <div id="metaTypeList" class="meta-checkbox-grid"></div>
-              </div>
-              <div>
-                <strong>Projects</strong>
-                <div id="metaProjectList" class="meta-checkbox-grid"></div>
-              </div>
-              <div>
-                <strong>Departments</strong>
-                <div id="metaDepartmentList" class="meta-checkbox-grid"></div>
-              </div>
-            </div>
-            <div class="popup-footer">
-              <button type="button" class="btn btn-view" id="cancelChecklistMetaModal">Cancel</button>
-              <button type="button" class="btn btn-add" id="saveChecklistMetaModal">Save</button>
-            </div>
-          </div>
-        </div>
-
-        <h4>Section 2: Checklist Builder</h4>
-        <div class="builder-actions">
-          <button type="button" class="btn btn-add" id="addSectionBtn">+ Add Section</button>
-          <button type="button" class="btn btn-add" id="addQuestionBtn">+ Add Question</button>
-        </div>
-        <div id="questionBuilderContainer"></div>
-
-        <div class="builder-footer">
-          <button class="btn btn-add" type="submit">Save Checklist</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-{{ questions_json_help|json_script:'checklist-question-types' }}
-<script>
-  window.checklistPageConfig = {
-    actionUrl: "{% url 'admin_checklist_action' %}",
-    csrfToken: "{{ csrf_token }}"
-  };
-</script>
 
 <div id="deletePopup" class="popup">
   <div class="popup-content delete-popup-content">
@@ -163,6 +51,12 @@
   <input type="hidden" name="checklist_pk" id="deleteChecklistId" value="">
 </form>
 
+<script>
+  window.checklistPageConfig = {
+    actionUrl: "{% url 'admin_checklist_action' %}",
+    csrfToken: "{{ csrf_token }}"
+  };
+</script>
 
 <style>
   .question-card { background:#fff;border:1px solid #d5dcef;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(8,8,112,.06); }
@@ -171,11 +65,18 @@
   .option-row{display:flex;gap:8px;margin-bottom:6px;}
   .option-row input{flex:1;}
   .checkpoint-preview{display:grid;gap:8px;opacity:.75;}
-  .section-one-control-panel table{width:100%;border-collapse:separate;border-spacing:0 8px;}
-  .section-one-control-panel th,.section-one-control-panel td{background:#fff;padding:10px 12px;border:1px solid #d5dcef;}
-  .section-one-control-panel th{font-size:13px;color:#2f3f68;}
-  .section-one-control-panel input[readonly]{background:#eef2fb;color:#3d4d77;font-weight:600;cursor:not-allowed;}
-  .meta-checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px;}
+  .section-one-control-panel{margin-bottom:16px;}
+  .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
+  .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
+  .checklist-meta-popup-body{max-height:60vh;overflow:auto;}
+  .checklist-meta-popup-content{max-width:1000px;width:90%;}
+  .checklist-meta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start;}
+  .checklist-meta-col{min-width:0;padding:4px;}
+  .checklist-meta-col .selection-list{max-height:300px;overflow-y:auto;}
+  @media (max-width: 900px){
+    .checklist-meta-row{grid-template-columns:1fr;}
+    .checklist-meta-col .selection-list{max-height:28vh;}
+  }
 </style>
 
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>

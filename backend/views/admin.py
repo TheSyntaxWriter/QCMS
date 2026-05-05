@@ -10,7 +10,7 @@ from django.core.paginator import Paginator
 from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from ..models import (
     ChecklistAnswer,
@@ -426,6 +426,79 @@ def admin_checklists(request):
             ],
         },
     })
+
+
+def _checklist_builder_context(request, item=None):
+    latest = ChecklistDefinition.objects.filter(checklist_id__iregex=r'^CL[0-9]+$').order_by('-id')
+    max_num = 0
+    for row in latest:
+        digits = ''.join(ch for ch in (row.checklist_id or '') if ch.isdigit())
+        if digits:
+            max_num = max(max_num, int(digits))
+    next_checklist_id = f"CL{str(max_num + 1).zfill(2)}"
+
+    questions = []
+    if item:
+        questions = [
+            {
+                'question_text': q.question_text,
+                'type': q.type,
+                'options': q.options or [],
+                'required': q.required,
+                'section': q.section,
+                'order': q.order,
+            } for q in item.questions.all().order_by('order', 'id')
+        ]
+    return {
+        'sidebar_menu': [
+            {'url': '/admin-panel/', 'label': 'Dashboard'},
+            {'url': '/admin-panel/users/', 'label': 'Users'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses'},
+        ],
+        'builder_mode': 'edit' if item else 'create',
+        'builder_item': item,
+        'next_checklist_id': next_checklist_id,
+        'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'departments': Department.objects.filter(is_active=True).order_by('name'),
+        'questions_json_help': {
+            'types': [
+                {'value': 'text', 'label': 'Text'},
+                {'value': 'checkbox', 'label': 'Checkbox (Multiple)'},
+                {'value': 'dropdown', 'label': 'Dropdown (Single)'},
+                {'value': 'file_upload', 'label': 'File Upload'},
+                {'value': 'date', 'label': 'Date'},
+                {'value': 'rating', 'label': 'Rating (5 Star)'},
+                {'value': 'checkpoint', 'label': 'Checkpoint'},
+            ],
+        },
+        'initial_builder_data': {'questions': questions},
+    }
+
+
+def admin_checklist_create(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+    return render(request, 'admin_panel/checklist_create.html', _checklist_builder_context(request))
+
+
+def admin_checklist_edit(request, checklist_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+    item = get_object_or_404(
+        ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments', 'questions'),
+        id=checklist_id,
+    )
+    return render(request, 'admin_panel/checklist_create.html', _checklist_builder_context(request, item=item))
 
 
 def admin_responses(request):
