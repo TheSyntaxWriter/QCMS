@@ -1,4 +1,6 @@
 from .admin import (
+    admin_checklist_create,
+    admin_checklist_edit,
     admin_checklists,
     admin_dashboard,
     admin_departments,
@@ -26,6 +28,8 @@ __all__ = [
     'admin_departments',
     'admin_projects',
     'admin_checklists',
+    'admin_checklist_create',
+    'admin_checklist_edit',
     'admin_responses',
     'admin_master_create',
     'admin_master_create_legacy',
