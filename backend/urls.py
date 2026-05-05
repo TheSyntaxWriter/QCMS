@@ -18,6 +18,8 @@ urlpatterns = [
     path('admin-panel/departments/', views.admin_departments, name='admin_departments'),
     path('admin-panel/projects/', views.admin_projects, name='admin_projects'),
     path('admin-panel/checklists/', views.admin_checklists, name='admin_checklists'),
+    path('admin-panel/checklists/create/', views.admin_checklist_create, name='admin_checklist_create'),
+    path('admin-panel/checklists/<int:checklist_id>/edit/', views.admin_checklist_edit, name='admin_checklist_edit'),
     path('admin-panel/responses/', views.admin_responses, name='admin_responses'),
 
     path('admin-create/', views.admin_master_create, name='admin_master_create'),
