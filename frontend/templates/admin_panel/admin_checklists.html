@@ -103,17 +103,19 @@
               <span class="close-btn" id="closeChecklistMetaModal">✖</span>
             </div>
             <div class="popup-body permission-popup-body checklist-meta-popup-body">
-              <div class="permission-popup-section">
+              <div class="checklist-meta-row">
+              <div class="permission-popup-section checklist-meta-col">
                 <h4>Checklist Types</h4>
                 <div id="metaTypeList" class="selection-list"></div>
               </div>
-              <div class="permission-popup-section">
+              <div class="permission-popup-section checklist-meta-col">
                 <h4>Projects</h4>
                 <div id="metaProjectList" class="selection-list"></div>
               </div>
-              <div class="permission-popup-section">
+              <div class="permission-popup-section checklist-meta-col">
                 <h4>Departments</h4>
                 <div id="metaDepartmentList" class="selection-list"></div>
+              </div>
               </div>
             </div>
             <div class="popup-footer selection-popup-footer">
@@ -180,6 +182,13 @@
   .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
   .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
   .checklist-meta-popup-body{max-height:60vh;overflow:auto;}
+  .checklist-meta-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start;}
+  .checklist-meta-col{min-width:0;}
+  .checklist-meta-col .selection-list{max-height:42vh;overflow:auto;}
+  @media (max-width: 900px){
+    .checklist-meta-row{grid-template-columns:1fr;}
+    .checklist-meta-col .selection-list{max-height:28vh;}
+  }
 </style>
 
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
