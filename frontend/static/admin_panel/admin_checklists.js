@@ -23,6 +23,8 @@
   const selectedTypesCsv = document.getElementById('selectedTypesCsv');
   const selectedProjectsCsv = document.getElementById('selectedProjectsCsv');
   const selectedDepartmentsCsv = document.getElementById('selectedDepartmentsCsv');
+  const checklistNameDisplay = document.getElementById('checklistNameDisplay');
+  const checklistBuilderTitleInput = document.getElementById('checklistBuilderTitleInput');
 
   const checklistMetaModal = document.getElementById('checklistMetaModal');
   const openChecklistMetaEditor = document.getElementById('openChecklistMetaEditor');
@@ -34,6 +36,7 @@
   const metaDepartmentList = document.getElementById('metaDepartmentList');
 
   let sectionName = 'Section 1';
+  const state = { checklist: { id: '', name: '', types: [], projects: [], departments: [] } };
 
   const qTypeNode = document.getElementById('checklist-question-types');
   const qTypes = qTypeNode ? JSON.parse(qTypeNode.textContent).types : [];
@@ -142,6 +145,9 @@
     selectedTypesCsv.textContent = typeLabels.length ? typeLabels.join(', ') : '-';
     selectedProjectsCsv.textContent = projectLabels.length ? projectLabels.join(', ') : '-';
     selectedDepartmentsCsv.textContent = departmentLabels.length ? departmentLabels.join(', ') : '-';
+    state.checklist.types = selectedTypeIds;
+    state.checklist.projects = [...projectsInput.selectedOptions].map((o) => o.value);
+    state.checklist.departments = [...departmentsInput.selectedOptions].map((o) => o.value);
   };
 
   const openMetaModal = () => {
@@ -207,6 +213,27 @@
       closeMetaModal();
     };
   }
+  const filterSelectionList = (containerId, term) => {
+    const termValue = (term || '').toLowerCase();
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    [...container.querySelectorAll('.selection-item')].forEach((item) => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(termValue) ? '' : 'none';
+    });
+  };
+  document.getElementById('metaTypeSearch')?.addEventListener('input', (e) => filterSelectionList('metaTypeList', e.target.value));
+  document.getElementById('metaProjectSearch')?.addEventListener('input', (e) => filterSelectionList('metaProjectList', e.target.value));
+  document.getElementById('metaDepartmentSearch')?.addEventListener('input', (e) => filterSelectionList('metaDepartmentList', e.target.value));
+  document.querySelectorAll('.selection-tools .mini-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const container = document.getElementById(btn.dataset.target);
+      if (!container) return;
+      [...container.querySelectorAll('input[type=\"checkbox\"]')].forEach((input) => {
+        input.checked = btn.dataset.action === 'all';
+      });
+    });
+  });
 
   function closeDeletePopup() {
     if (deletePopup) deletePopup.style.display = 'none';
@@ -234,6 +261,15 @@
   });
   ensureChecklistId();
   syncCsvDisplay();
+  state.checklist.id = checklistIdInput?.value || '';
+  if (checklistBuilderTitleInput) {
+    const syncName = () => {
+      state.checklist.name = checklistBuilderTitleInput.value.trim();
+      if (checklistNameDisplay) checklistNameDisplay.textContent = state.checklist.name || '-';
+    };
+    checklistBuilderTitleInput.addEventListener('input', syncName);
+    syncName();
+  }
 
   if (container) {
     const initialBuilderData = JSON.parse(document.getElementById('checklist-builder-initial-data')?.textContent || '{"questions": []}');
