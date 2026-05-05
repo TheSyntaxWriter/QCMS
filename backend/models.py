@@ -191,6 +191,55 @@ class ChecklistAnswer(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class Checklist(models.Model):
+    name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Section(models.Model):
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name='sections')
+    title = models.CharField(max_length=255)
+    order = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+
+class Question(models.Model):
+    TYPE_SHORT_TEXT = 'short_text'
+    TYPE_LONG_TEXT = 'long_text'
+    TYPE_MULTIPLE_CHOICE = 'multiple_choice'
+    TYPE_CHECKBOX = 'checkbox'
+    TYPE_DROPDOWN = 'dropdown'
+    TYPE_FILE_UPLOAD = 'file_upload'
+    TYPE_YES_NO = 'yes_no'
+    TYPE_DATE = 'date'
+
+    QUESTION_TYPES = (
+        (TYPE_SHORT_TEXT, 'Short Text'),
+        (TYPE_LONG_TEXT, 'Long Text'),
+        (TYPE_MULTIPLE_CHOICE, 'Multiple Choice'),
+        (TYPE_CHECKBOX, 'Checkbox'),
+        (TYPE_DROPDOWN, 'Dropdown'),
+        (TYPE_FILE_UPLOAD, 'File Upload'),
+        (TYPE_YES_NO, 'Yes / No'),
+        (TYPE_DATE, 'Date'),
+    )
+
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    type = models.CharField(max_length=30, choices=QUESTION_TYPES)
+    options = models.JSONField(default=list, blank=True)
+    required = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+
 class RolePermission(models.Model):
     ROLE_CHOICES = (
         ('User', 'User'),

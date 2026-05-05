@@ -2,8 +2,7 @@
 {% load static %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
-<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_builder.css' %}" />
 
 <div class="panel-header">
   <h2>{% if builder_mode == 'edit' %}Edit Checklist{% else %}Create Checklist{% endif %}</h2>
@@ -12,15 +11,15 @@
 
 <form id="checklistForm">
   {% csrf_token %}
-  <input type="hidden" name="action" value="{% if builder_mode == 'edit' %}edit{% else %}create{% endif %}" id="checklistAction" />
-  <input type="hidden" name="checklist_pk" id="checklistPk" value="{% if builder_item %}{{ builder_item.id }}{% endif %}" />
-  <input type="hidden" name="questions_json" id="questionsJson" />
+  <input type="hidden" name="action" value="{% if builder_mode == 'edit' %}edit{% else %}create{% endif %}" />
+  <input type="hidden" name="checklist_pk" value="{% if builder_item %}{{ builder_item.id }}{% endif %}" />
+  <input type="hidden" id="builderStateJson" name="builder_state_json" />
 
   <h4>Section 1: Checklist Details</h4>
   <div class="card-lite control-panel section-one-control-panel">
     <div class="control-panel-header">
       <h3>Checklist Details Control Panel</h3>
-      <p>Manage checklist meta selections and visibility.</p>
+      <p>Manage checklist metadata and visibility.</p>
     </div>
     <div class="table-container role-permissions-table-wrap">
       <table class="role-permissions-table">
@@ -29,8 +28,8 @@
         </thead>
         <tbody>
           <tr>
-            <td><span id="checklistIdDisplay" class="checklist-id-display">{% if builder_item %}{{ builder_item.checklist_id }}{% else %}{{ next_checklist_id }}{% endif %}</span></td>
-            <td><input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" value="{{ builder_item.name|default:'' }}" required /></td>
+            <td><span id="checklistIdDisplay" class="checklist-id-display">{% if builder_item %}CL{{ builder_item.id|stringformat:'02d' }}{% else %}Auto{% endif %}</span></td>
+            <td><input id="checklistNameInput" name="name" type="text" placeholder="Untitled checklist" value="{{ builder_item.name|default:'' }}" required /></td>
             <td><span id="selectedTypesCsv">-</span></td>
             <td><span id="selectedProjectsCsv">-</span></td>
             <td><span id="selectedDepartmentsCsv">-</span></td>
@@ -41,22 +40,21 @@
     </div>
   </div>
 
-  <input type="hidden" name="checklist_id" id="checklistIdInput" value="{% if builder_item %}{{ builder_item.checklist_id }}{% else %}{{ next_checklist_id }}{% endif %}" required />
-  <input type="hidden" name="checklist_type" id="checklistTypeInput" value="{% if builder_item and builder_item.checklist_type_id %}{{ builder_item.checklist_type_id }}{% endif %}" required />
+  <input type="hidden" name="checklist_type" id="checklistTypeInput" value="" />
   <select id="checklistTypesSource" hidden>
     {% for t in checklist_types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
   </select>
   <select multiple name="projects" id="projectsInput" hidden>
-    {% for p in projects %}<option value="{{ p.id }}" {% if builder_item and p in builder_item.projects.all %}selected{% endif %}>{{ p.name }} ({{ p.domain }})</option>{% endfor %}
+    {% for p in projects %}<option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>{% endfor %}
   </select>
   <select multiple name="departments" id="departmentsInput" hidden>
-    {% for d in departments %}<option value="{{ d.id }}" {% if builder_item and d in builder_item.departments.all %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
   </select>
 
   <div id="checklistMetaModal" class="popup">
     <div class="popup-content checklist-meta-popup-content">
-      <div class="popup-header"><h3>Edit Permissions</h3><span class="close-btn" id="closeChecklistMetaModal">✖</span></div>
-      <div class="popup-body permission-popup-body checklist-meta-popup-body checklist-meta-row">
+      <div class="popup-header"><h3>Edit Metadata</h3><span class="close-btn" id="closeChecklistMetaModal">✖</span></div>
+      <div class="popup-body checklist-meta-popup-body checklist-meta-row">
         <div class="permission-popup-section checklist-meta-col"><h4>Checklist Types</h4><div id="metaTypeList" class="selection-list"></div></div>
         <div class="permission-popup-section checklist-meta-col"><h4>Projects</h4><div id="metaProjectList" class="selection-list"></div></div>
         <div class="permission-popup-section checklist-meta-col"><h4>Departments</h4><div id="metaDepartmentList" class="selection-list"></div></div>
@@ -66,35 +64,21 @@
   </div>
 
   <h4>Section 2: Checklist Builder</h4>
-  <div class="builder-actions">
-    <button type="button" class="btn btn-add" id="addSectionBtn">+ Add Section</button>
-    <button type="button" class="btn btn-add" id="addQuestionBtn">+ Add Question</button>
+  <div class="card-lite builder-shell">
+    <div class="builder-topbar">
+      <div class="builder-actions">
+        <button id="addSectionBtn" type="button" class="btn btn-add">+ Add Section</button>
+        <button id="togglePreviewBtn" type="button" class="btn btn-view">Preview Mode</button>
+      </div>
+    </div>
+    <div id="builderRoot" class="builder-root"></div>
+    <div class="builder-footer"><button class="btn btn-add" type="submit">Save Checklist</button></div>
   </div>
-  <div id="questionBuilderContainer"></div>
-  <div class="builder-footer"><button class="btn btn-add" type="submit">Save Checklist</button></div>
 </form>
 
-{{ questions_json_help|json_script:'checklist-question-types' }}
-{{ initial_builder_data|json_script:'checklist-builder-initial-data' }}
+{{ initial_builder_state|json_script:'builder-initial-state' }}
 <script>
-window.checklistPageConfig = { actionUrl: "{% url 'admin_checklist_action' %}", csrfToken: "{{ csrf_token }}" };
+window.checklistBuilderConfig = { actionUrl: "{% url 'admin_checklist_action' %}", csrfToken: "{{ csrf_token }}" };
 </script>
-
-<style>
-  .question-card { background:#fff;border:1px solid #d5dcef;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(8,8,112,.06); }
-  .question-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .question-row{grid-template-columns:2fr 1fr auto;}
-  .option-row{display:flex;gap:8px;margin-bottom:6px;}
-  .option-row input{flex:1;}
-  .checkpoint-preview{display:grid;gap:8px;opacity:.75;}
-  .section-one-control-panel{margin-bottom:16px;}
-  .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
-  .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
-  .checklist-meta-popup-body{max-height:60vh;overflow:auto;}
-  .checklist-meta-popup-content{max-width:1000px;width:90%;}
-  .checklist-meta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start;}
-  .checklist-meta-col{min-width:0;padding:4px;}
-  .checklist-meta-col .selection-list{max-height:300px;overflow-y:auto;}
-</style>
-<script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
+<script src="{% static 'admin_panel/checklist_builder.js' %}"></script>
 {% endblock %}
