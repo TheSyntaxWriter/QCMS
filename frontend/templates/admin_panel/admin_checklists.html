@@ -43,8 +43,13 @@
         <input type="hidden" name="questions_json" id="questionsJson" />
 
         <h4>Section 1: Checklist Details</h4>
-        <div class="section-one-control-panel">
-          <table>
+        <div class="card-lite control-panel section-one-control-panel">
+          <div class="control-panel-header">
+            <h3>Checklist Details Control Panel</h3>
+            <p>Manage checklist meta selections and visibility.</p>
+          </div>
+          <div class="table-container role-permissions-table-wrap">
+          <table class="role-permissions-table">
             <thead>
               <tr>
                 <th>Checklist ID</th>
@@ -57,9 +62,7 @@
             </thead>
             <tbody>
               <tr>
-                <td>
-                  <input type="text" name="checklist_id" id="checklistIdInput" readonly required />
-                </td>
+                <td><span id="checklistIdDisplay" class="checklist-id-display">-</span></td>
                 <td>
                   <input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" required />
                 </td>
@@ -72,8 +75,10 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
 
+        <input type="hidden" name="checklist_id" id="checklistIdInput" required />
         <input type="hidden" name="checklist_type" id="checklistTypeInput" required />
         <select id="checklistTypesSource" hidden>
           {% for t in checklist_types %}
@@ -97,21 +102,23 @@
               <h3>Edit Permissions</h3>
               <span class="close-btn" id="closeChecklistMetaModal">✖</span>
             </div>
-            <div class="popup-body" style="display:grid;gap:14px;max-height:60vh;overflow:auto;">
-              <div>
-                <strong>Checklist Types</strong>
-                <div id="metaTypeList" class="meta-checkbox-grid"></div>
+            <div class="popup-body permission-popup-body checklist-meta-popup-body">
+              <div class="checklist-meta-row">
+              <div class="permission-popup-section checklist-meta-col">
+                <h4>Checklist Types</h4>
+                <div id="metaTypeList" class="selection-list"></div>
               </div>
-              <div>
-                <strong>Projects</strong>
-                <div id="metaProjectList" class="meta-checkbox-grid"></div>
+              <div class="permission-popup-section checklist-meta-col">
+                <h4>Projects</h4>
+                <div id="metaProjectList" class="selection-list"></div>
               </div>
-              <div>
-                <strong>Departments</strong>
-                <div id="metaDepartmentList" class="meta-checkbox-grid"></div>
+              <div class="permission-popup-section checklist-meta-col">
+                <h4>Departments</h4>
+                <div id="metaDepartmentList" class="selection-list"></div>
+              </div>
               </div>
             </div>
-            <div class="popup-footer">
+            <div class="popup-footer selection-popup-footer">
               <button type="button" class="btn btn-view" id="cancelChecklistMetaModal">Cancel</button>
               <button type="button" class="btn btn-add" id="saveChecklistMetaModal">Save</button>
             </div>
@@ -171,11 +178,17 @@
   .option-row{display:flex;gap:8px;margin-bottom:6px;}
   .option-row input{flex:1;}
   .checkpoint-preview{display:grid;gap:8px;opacity:.75;}
-  .section-one-control-panel table{width:100%;border-collapse:separate;border-spacing:0 8px;}
-  .section-one-control-panel th,.section-one-control-panel td{background:#fff;padding:10px 12px;border:1px solid #d5dcef;}
-  .section-one-control-panel th{font-size:13px;color:#2f3f68;}
-  .section-one-control-panel input[readonly]{background:#eef2fb;color:#3d4d77;font-weight:600;cursor:not-allowed;}
-  .meta-checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px;}
+  .section-one-control-panel{margin-bottom:16px;}
+  .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
+  .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
+  .checklist-meta-popup-body{max-height:60vh;overflow:auto;}
+  .checklist-meta-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start;}
+  .checklist-meta-col{min-width:0;}
+  .checklist-meta-col .selection-list{max-height:42vh;overflow:auto;}
+  @media (max-width: 900px){
+    .checklist-meta-row{grid-template-columns:1fr;}
+    .checklist-meta-col .selection-list{max-height:28vh;}
+  }
 </style>
 
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
