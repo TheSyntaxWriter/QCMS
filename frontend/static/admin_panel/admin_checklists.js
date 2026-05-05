@@ -14,6 +14,7 @@
   const deleteChecklistIdInput = document.getElementById('deleteChecklistId');
 
   const checklistIdInput = document.getElementById('checklistIdInput');
+  const checklistIdDisplay = document.getElementById('checklistIdDisplay');
   const checklistTypeInput = document.getElementById('checklistTypeInput');
   const checklistTypesSource = document.getElementById('checklistTypesSource');
   const projectsInput = document.getElementById('projectsInput');
@@ -34,7 +35,8 @@
 
   let sectionName = 'Section 1';
 
-  const qTypes = JSON.parse(document.getElementById('checklist-question-types').textContent).types;
+  const qTypeNode = document.getElementById('checklist-question-types');
+  const qTypes = qTypeNode ? JSON.parse(qTypeNode.textContent).types : [];
   const optionTypes = new Set(['checkbox', 'dropdown']);
   const checkpointType = 'checkpoint';
 
@@ -113,54 +115,86 @@
     const next = (ids.length ? Math.max(...ids) : 0) + 1;
     return `CL${String(next).padStart(2, '0')}`;
   };
+  const ensureChecklistId = () => {
+    if (!checklistIdInput) return;
+    if (!checklistIdInput.value) {
+      checklistIdInput.value = nextChecklistId();
+    }
+    if (checklistIdDisplay) {
+      checklistIdDisplay.textContent = checklistIdInput.value || '-';
+    }
+  };
 
   const renderCheckboxes = (target, sourceSelect) => {
     if (!target || !sourceSelect) return;
     target.innerHTML = [...sourceSelect.options].map((opt) =>
-      `<label><input type="checkbox" value="${opt.value}"> ${opt.textContent}</label>`).join('');
+      `<label class="selection-item"><input type="checkbox" value="${opt.value}"> <span>${opt.textContent}</span></label>`).join('');
   };
 
   const syncCsvDisplay = () => {
-    const typeLabel = checklistTypesSource && checklistTypeInput && checklistTypeInput.value
-      ? ([...checklistTypesSource.options].find((option) => option.value === checklistTypeInput.value)?.textContent || '-')
-      : '-';
+    const selectedTypeIds = checklistTypeInput?.value ? checklistTypeInput.value.split(',').filter(Boolean) : [];
+    const typeLabels = checklistTypesSource
+      ? [...checklistTypesSource.options].filter((option) => selectedTypeIds.includes(option.value)).map((option) => option.textContent)
+      : [];
     const projectLabels = projectsInput ? [...projectsInput.selectedOptions].map((o) => o.textContent) : [];
     const departmentLabels = departmentsInput ? [...departmentsInput.selectedOptions].map((o) => o.textContent) : [];
 
-    selectedTypesCsv.textContent = typeLabel;
+    selectedTypesCsv.textContent = typeLabels.length ? typeLabels.join(', ') : '-';
     selectedProjectsCsv.textContent = projectLabels.length ? projectLabels.join(', ') : '-';
     selectedDepartmentsCsv.textContent = departmentLabels.length ? departmentLabels.join(', ') : '-';
   };
 
   const openMetaModal = () => {
+    ensureChecklistId();
+    const selectedTypeIds = checklistTypeInput?.value ? checklistTypeInput.value.split(',').filter(Boolean) : [];
+    [...metaTypeList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      input.checked = selectedTypeIds.includes(input.value);
+    });
+    [...metaProjectList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      const option = [...projectsInput.options].find((opt) => opt.value === input.value);
+      input.checked = Boolean(option?.selected);
+    });
+    [...metaDepartmentList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      const option = [...departmentsInput.options].find((opt) => opt.value === input.value);
+      input.checked = Boolean(option?.selected);
+    });
     if (checklistMetaModal) checklistMetaModal.style.display = 'flex';
   };
   const closeMetaModal = () => {
     if (checklistMetaModal) checklistMetaModal.style.display = 'none';
   };
 
-  addQuestionBtn.onclick = () => container.appendChild(questionNode());
-  addSectionBtn.onclick = () => { sectionName = `Section ${container.querySelectorAll('.question-item').length + 1}`; container.appendChild(questionNode(sectionName)); };
+  if (addQuestionBtn && container) addQuestionBtn.onclick = () => container.appendChild(questionNode());
+  if (addSectionBtn && container) addSectionBtn.onclick = () => { sectionName = `Section ${container.querySelectorAll('.question-item').length + 1}`; container.appendChild(questionNode(sectionName)); };
 
-  openBtn.onclick = () => {
-    checklistIdInput.value = nextChecklistId();
-    syncCsvDisplay();
-    modal.classList.add('is-open');
-  };
-  closeBtn.onclick = () => modal.classList.remove('is-open');
+  if (openBtn && modal) {
+    openBtn.onclick = () => {
+      ensureChecklistId();
+      syncCsvDisplay();
+      modal.classList.add('is-open');
+    };
+  }
+  if (closeBtn && modal) closeBtn.onclick = () => modal.classList.remove('is-open');
 
   renderCheckboxes(metaTypeList, checklistTypesSource);
   renderCheckboxes(metaProjectList, projectsInput);
   renderCheckboxes(metaDepartmentList, departmentsInput);
 
   if (openChecklistMetaEditor) openChecklistMetaEditor.onclick = openMetaModal;
+  document.addEventListener('click', (event) => {
+    const editBtn = event.target.closest('#openChecklistMetaEditor');
+    if (editBtn) {
+      event.preventDefault();
+      openMetaModal();
+    }
+  });
   if (closeChecklistMetaModal) closeChecklistMetaModal.onclick = closeMetaModal;
   if (cancelChecklistMetaModal) cancelChecklistMetaModal.onclick = closeMetaModal;
 
   if (saveChecklistMetaModal) {
     saveChecklistMetaModal.onclick = () => {
       const selectedTypeIds = [...metaTypeList.querySelectorAll('input:checked')].map((input) => input.value);
-      checklistTypeInput.value = selectedTypeIds[0] || '';
+      checklistTypeInput.value = selectedTypeIds.join(',');
       [...metaProjectList.querySelectorAll('input')].forEach((input) => {
         const option = [...projectsInput.options].find((opt) => opt.value === input.value);
         if (option) option.selected = input.checked;
@@ -198,8 +232,28 @@
       closeMetaModal();
     }
   });
+  ensureChecklistId();
+  syncCsvDisplay();
 
-  form.onsubmit = async (event) => {
+  if (container) {
+    const initialBuilderData = JSON.parse(document.getElementById('checklist-builder-initial-data')?.textContent || '{"questions": []}');
+    if (Array.isArray(initialBuilderData.questions) && initialBuilderData.questions.length) {
+      initialBuilderData.questions.forEach((question) => {
+        const node = questionNode(question.section || sectionName);
+        node.querySelector('.q-text').value = question.question_text || '';
+        node.querySelector('.q-type').value = question.type || 'text';
+        node.querySelector('.q-required').checked = Boolean(question.required);
+        syncTypeVisibility(node);
+        if (optionTypes.has(question.type) && Array.isArray(question.options)) {
+          const list = node.querySelector('.q-options-list');
+          question.options.forEach((opt) => list.appendChild(createOptionField(String(opt))));
+        }
+        container.appendChild(node);
+      });
+    }
+  }
+
+  if (form) form.onsubmit = async (event) => {
     event.preventDefault();
     const questionPayload = [...container.querySelectorAll('.question-item')].map((node, index) => {
       const type = node.querySelector('.q-type').value;
@@ -218,7 +272,12 @@
     questionsJson.value = JSON.stringify(questionPayload);
     const formData = new FormData(form);
     formData.append('csrfmiddlewaretoken', cfg.csrfToken);
-    await fetch(cfg.actionUrl, { method: 'POST', body: formData });
+    const res = await fetch(cfg.actionUrl, { method: 'POST', body: formData });
+    if (!res.ok) return;
+    if (window.location.pathname.includes('/admin-panel/checklists/create/')) {
+      window.location.href = '/admin-panel/checklists/';
+      return;
+    }
     location.reload();
   };
 })();
