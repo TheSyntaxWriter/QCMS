@@ -109,5 +109,15 @@
   <input type="hidden" name="checklist_pk" id="deleteChecklistId" value="">
 </form>
 
+
+<style>
+  .question-card { background:#fff;border:1px solid #d5dcef;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(8,8,112,.06); }
+  .question-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .question-row{grid-template-columns:2fr 1fr auto;}
+  .option-row{display:flex;gap:8px;margin-bottom:6px;}
+  .option-row input{flex:1;}
+  .checkpoint-preview{display:grid;gap:8px;opacity:.75;}
+</style>
+
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
 {% endblock %}

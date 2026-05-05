@@ -2,6 +2,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.core.exceptions import ValidationError
@@ -414,7 +415,15 @@ def admin_checklists(request):
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
         'questions_json_help': {
-            'types': [{'value': key, 'label': label} for key, label in ChecklistQuestion.QUESTION_TYPES],
+            'types': [
+                {'value': 'text', 'label': 'Text'},
+                {'value': 'checkbox', 'label': 'Checkbox (Multiple)'},
+                {'value': 'dropdown', 'label': 'Dropdown (Single)'},
+                {'value': 'file_upload', 'label': 'File Upload'},
+                {'value': 'date', 'label': 'Date'},
+                {'value': 'rating', 'label': 'Rating (5 Star)'},
+                {'value': 'checkpoint', 'label': 'Checkpoint'},
+            ],
         },
     })
 
@@ -545,36 +554,49 @@ def admin_checklist_action(request):
         return redirect('admin_checklists')
 
     if action in {'create', 'edit'}:
-        item = ChecklistDefinition.objects.filter(id=checklist_id).first() if checklist_id else None
-        if action == 'create':
-            item = ChecklistDefinition.objects.create(
-                checklist_id=request.POST.get('checklist_id'),
-                name=request.POST.get('name'),
-                checklist_type_id=request.POST.get('checklist_type'),
-                is_active=True,
-            )
-        else:
-            item.name = request.POST.get('name')
-            item.checklist_type_id = request.POST.get('checklist_type')
-            item.save(update_fields=['name', 'checklist_type', 'updated_at'])
-
-        item.projects.set(request.POST.getlist('projects'))
-        item.departments.set(request.POST.getlist('departments'))
-
         import json
+
         questions = json.loads(request.POST.get('questions_json') or '[]')
-        item.questions.all().delete()
-        ChecklistQuestion.objects.bulk_create([
-            ChecklistQuestion(
-                checklist=item,
-                question_text=question.get('question_text', ''),
-                type=question.get('type', 'short_text'),
-                options=question.get('options', []),
-                order=question.get('order', index + 1),
-                section=question.get('section', ''),
-                required=bool(question.get('required')),
-            ) for index, question in enumerate(questions)
-        ])
+        for index, question in enumerate(questions, start=1):
+            question_text = (question.get('question_text') or '').strip()
+            q_type = question.get('type') or 'text'
+            options = question.get('options') or []
+            if not question_text:
+                return JsonResponse({'ok': False, 'error': f'Question {index} text is required.'}, status=400)
+            if q_type in {'checkbox', 'dropdown'} and not [option for option in options if str(option).strip()]:
+                return JsonResponse({'ok': False, 'error': f'Question {index} requires at least one option.'}, status=400)
+            if q_type == 'checkpoint':
+                question['options'] = []
+
+        with transaction.atomic():
+            item = ChecklistDefinition.objects.filter(id=checklist_id).first() if checklist_id else None
+            if action == 'create':
+                item = ChecklistDefinition.objects.create(
+                    checklist_id=request.POST.get('checklist_id'),
+                    name=request.POST.get('name'),
+                    checklist_type_id=request.POST.get('checklist_type'),
+                    is_active=True,
+                )
+            else:
+                item.name = request.POST.get('name')
+                item.checklist_type_id = request.POST.get('checklist_type')
+                item.save(update_fields=['name', 'checklist_type', 'updated_at'])
+
+            item.projects.set(request.POST.getlist('projects'))
+            item.departments.set(request.POST.getlist('departments'))
+
+            item.questions.all().delete()
+            ChecklistQuestion.objects.bulk_create([
+                ChecklistQuestion(
+                    checklist=item,
+                    question_text=(question.get('question_text') or '').strip(),
+                    type=question.get('type', 'text'),
+                    options=[option for option in (question.get('options') or []) if str(option).strip()],
+                    order=question.get('order', index + 1),
+                    section=question.get('section', ''),
+                    required=bool(question.get('required')),
+                ) for index, question in enumerate(questions)
+            ])
         return JsonResponse({'ok': True})
 
     return JsonResponse({'ok': False}, status=400)
