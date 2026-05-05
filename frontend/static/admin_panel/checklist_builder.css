@@ -12,3 +12,5 @@
 .option-row input{flex:1}
 .hidden{display:none}
 @media(max-width:768px){.builder-topbar,.section-header,.question-meta{flex-direction:column;align-items:stretch}}
+.section-one-control-panel{margin-bottom:16px}
+.checklist-id-display{font-weight:600;color:#2f3f68}

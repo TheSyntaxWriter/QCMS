@@ -15,9 +15,30 @@
   <input type="hidden" name="checklist_pk" value="{% if builder_item %}{{ builder_item.id }}{% endif %}" />
   <input type="hidden" id="builderStateJson" name="builder_state_json" />
 
+  <h4>Section 1: Checklist Details</h4>
+  <div class="card-lite control-panel section-one-control-panel">
+    <div class="control-panel-header">
+      <h3>Checklist Details Control Panel</h3>
+      <p>Manage high-level checklist details before building sections and questions.</p>
+    </div>
+    <div class="table-container role-permissions-table-wrap">
+      <table class="role-permissions-table">
+        <thead>
+          <tr><th>Checklist Record ID</th><th>Checklist Name</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="checklist-id-display">{% if builder_item %}{{ builder_item.id }}{% else %}New{% endif %}</span></td>
+            <td><input id="checklistNameInput" name="name" type="text" placeholder="Untitled checklist" value="{{ builder_item.name|default:'' }}" required /></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h4>Section 2: Checklist Builder</h4>
   <div class="card-lite builder-shell">
     <div class="builder-topbar">
-      <input id="checklistNameInput" name="name" type="text" placeholder="Untitled checklist" value="{{ builder_item.name|default:'' }}" required />
       <div class="builder-actions">
         <button id="addSectionBtn" type="button" class="btn btn-add">+ Add Section</button>
         <button id="togglePreviewBtn" type="button" class="btn btn-view">Preview Mode</button>
