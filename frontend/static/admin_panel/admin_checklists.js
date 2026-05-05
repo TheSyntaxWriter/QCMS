@@ -35,7 +35,8 @@
 
   let sectionName = 'Section 1';
 
-  const qTypes = JSON.parse(document.getElementById('checklist-question-types').textContent).types;
+  const qTypeNode = document.getElementById('checklist-question-types');
+  const qTypes = qTypeNode ? JSON.parse(qTypeNode.textContent).types : [];
   const optionTypes = new Set(['checkbox', 'dropdown']);
   const checkpointType = 'checkpoint';
 
@@ -163,15 +164,17 @@
     if (checklistMetaModal) checklistMetaModal.style.display = 'none';
   };
 
-  addQuestionBtn.onclick = () => container.appendChild(questionNode());
-  addSectionBtn.onclick = () => { sectionName = `Section ${container.querySelectorAll('.question-item').length + 1}`; container.appendChild(questionNode(sectionName)); };
+  if (addQuestionBtn && container) addQuestionBtn.onclick = () => container.appendChild(questionNode());
+  if (addSectionBtn && container) addSectionBtn.onclick = () => { sectionName = `Section ${container.querySelectorAll('.question-item').length + 1}`; container.appendChild(questionNode(sectionName)); };
 
-  openBtn.onclick = () => {
-    ensureChecklistId();
-    syncCsvDisplay();
-    modal.classList.add('is-open');
-  };
-  closeBtn.onclick = () => modal.classList.remove('is-open');
+  if (openBtn && modal) {
+    openBtn.onclick = () => {
+      ensureChecklistId();
+      syncCsvDisplay();
+      modal.classList.add('is-open');
+    };
+  }
+  if (closeBtn && modal) closeBtn.onclick = () => modal.classList.remove('is-open');
 
   renderCheckboxes(metaTypeList, checklistTypesSource);
   renderCheckboxes(metaProjectList, projectsInput);
@@ -232,7 +235,25 @@
   ensureChecklistId();
   syncCsvDisplay();
 
-  form.onsubmit = async (event) => {
+  if (container) {
+    const initialBuilderData = JSON.parse(document.getElementById('checklist-builder-initial-data')?.textContent || '{"questions": []}');
+    if (Array.isArray(initialBuilderData.questions) && initialBuilderData.questions.length) {
+      initialBuilderData.questions.forEach((question) => {
+        const node = questionNode(question.section || sectionName);
+        node.querySelector('.q-text').value = question.question_text || '';
+        node.querySelector('.q-type').value = question.type || 'text';
+        node.querySelector('.q-required').checked = Boolean(question.required);
+        syncTypeVisibility(node);
+        if (optionTypes.has(question.type) && Array.isArray(question.options)) {
+          const list = node.querySelector('.q-options-list');
+          question.options.forEach((opt) => list.appendChild(createOptionField(String(opt))));
+        }
+        container.appendChild(node);
+      });
+    }
+  }
+
+  if (form) form.onsubmit = async (event) => {
     event.preventDefault();
     const questionPayload = [...container.querySelectorAll('.question-item')].map((node, index) => {
       const type = node.querySelector('.q-type').value;

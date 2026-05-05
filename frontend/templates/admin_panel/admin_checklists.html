@@ -7,7 +7,7 @@
 
 <div class="panel-header">
   <h2>Checklist Management</h2>
-  <button class="btn btn-add" id="openChecklistBuilder">+ Add Checklist</button>
+  <a class="btn btn-add" href="{% url 'admin_checklist_create' %}">+ Add Checklist</a>
 </div>
 
 <form method="GET" class="users-toolbar">
@@ -28,123 +28,6 @@
 </form>
 
 {% include 'admin_panel/partials/checklist_table.html' %}
-
-<div id="checklistBuilderModal" class="dashboard-modal" aria-hidden="true">
-  <div class="dashboard-modal-content builder-modal-content">
-    <div class="dashboard-modal-header">
-      <h3 id="builderTitle">Create Checklist</h3>
-      <button id="closeChecklistBuilder" type="button">✖</button>
-    </div>
-    <div class="dashboard-modal-body">
-      <form id="checklistForm">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="create" id="checklistAction" />
-        <input type="hidden" name="checklist_pk" id="checklistPk" />
-        <input type="hidden" name="questions_json" id="questionsJson" />
-
-        <h4>Section 1: Checklist Details</h4>
-        <div class="card-lite control-panel section-one-control-panel">
-          <div class="control-panel-header">
-            <h3>Checklist Details Control Panel</h3>
-            <p>Manage checklist meta selections and visibility.</p>
-          </div>
-          <div class="table-container role-permissions-table-wrap">
-          <table class="role-permissions-table">
-            <thead>
-              <tr>
-                <th>Checklist ID</th>
-                <th>Checklist Name</th>
-                <th>Checklist Type</th>
-                <th>Project</th>
-                <th>Department</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><span id="checklistIdDisplay" class="checklist-id-display">-</span></td>
-                <td>
-                  <input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" required />
-                </td>
-                <td><span id="selectedTypesCsv">-</span></td>
-                <td><span id="selectedProjectsCsv">-</span></td>
-                <td><span id="selectedDepartmentsCsv">-</span></td>
-                <td>
-                  <button type="button" class="btn btn-edit" id="openChecklistMetaEditor">Edit</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        </div>
-
-        <input type="hidden" name="checklist_id" id="checklistIdInput" required />
-        <input type="hidden" name="checklist_type" id="checklistTypeInput" required />
-        <select id="checklistTypesSource" hidden>
-          {% for t in checklist_types %}
-          <option value="{{ t.id }}">{{ t.name }}</option>
-          {% endfor %}
-        </select>
-        <select multiple name="projects" id="projectsInput" hidden>
-          {% for p in projects %}
-          <option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>
-          {% endfor %}
-        </select>
-        <select multiple name="departments" id="departmentsInput" hidden>
-          {% for d in departments %}
-          <option value="{{ d.id }}">{{ d.name }}</option>
-          {% endfor %}
-        </select>
-
-        <div id="checklistMetaModal" class="popup">
-          <div class="popup-content checklist-meta-popup-content">
-            <div class="popup-header">
-              <h3>Edit Permissions</h3>
-              <span class="close-btn" id="closeChecklistMetaModal">✖</span>
-            </div>
-            <div class="popup-body permission-popup-body checklist-meta-popup-body checklist-meta-row">
-              <div class="permission-popup-section checklist-meta-col">
-                <h4>Checklist Types</h4>
-                <div id="metaTypeList" class="selection-list"></div>
-              </div>
-              <div class="permission-popup-section checklist-meta-col">
-                <h4>Projects</h4>
-                <div id="metaProjectList" class="selection-list"></div>
-              </div>
-              <div class="permission-popup-section checklist-meta-col">
-                <h4>Departments</h4>
-                <div id="metaDepartmentList" class="selection-list"></div>
-              </div>
-            </div>
-            <div class="popup-footer selection-popup-footer">
-              <button type="button" class="btn btn-view" id="cancelChecklistMetaModal">Cancel</button>
-              <button type="button" class="btn btn-add" id="saveChecklistMetaModal">Save</button>
-            </div>
-          </div>
-        </div>
-
-        <h4>Section 2: Checklist Builder</h4>
-        <div class="builder-actions">
-          <button type="button" class="btn btn-add" id="addSectionBtn">+ Add Section</button>
-          <button type="button" class="btn btn-add" id="addQuestionBtn">+ Add Question</button>
-        </div>
-        <div id="questionBuilderContainer"></div>
-
-        <div class="builder-footer">
-          <button class="btn btn-add" type="submit">Save Checklist</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-{{ questions_json_help|json_script:'checklist-question-types' }}
-<script>
-  window.checklistPageConfig = {
-    actionUrl: "{% url 'admin_checklist_action' %}",
-    csrfToken: "{{ csrf_token }}"
-  };
-</script>
 
 <div id="deletePopup" class="popup">
   <div class="popup-content delete-popup-content">
@@ -168,6 +51,12 @@
   <input type="hidden" name="checklist_pk" id="deleteChecklistId" value="">
 </form>
 
+<script>
+  window.checklistPageConfig = {
+    actionUrl: "{% url 'admin_checklist_action' %}",
+    csrfToken: "{{ csrf_token }}"
+  };
+</script>
 
 <style>
   .question-card { background:#fff;border:1px solid #d5dcef;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(8,8,112,.06); }
