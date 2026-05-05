@@ -272,7 +272,12 @@
     questionsJson.value = JSON.stringify(questionPayload);
     const formData = new FormData(form);
     formData.append('csrfmiddlewaretoken', cfg.csrfToken);
-    await fetch(cfg.actionUrl, { method: 'POST', body: formData });
+    const res = await fetch(cfg.actionUrl, { method: 'POST', body: formData });
+    if (!res.ok) return;
+    if (window.location.pathname.includes('/admin-panel/checklists/create/')) {
+      window.location.href = '/admin-panel/checklists/';
+      return;
+    }
     location.reload();
   };
 })();

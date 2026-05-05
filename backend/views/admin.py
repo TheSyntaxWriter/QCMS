@@ -429,6 +429,14 @@ def admin_checklists(request):
 
 
 def _checklist_builder_context(request, item=None):
+    latest = ChecklistDefinition.objects.filter(checklist_id__iregex=r'^CL[0-9]+$').order_by('-id')
+    max_num = 0
+    for row in latest:
+        digits = ''.join(ch for ch in (row.checklist_id or '') if ch.isdigit())
+        if digits:
+            max_num = max(max_num, int(digits))
+    next_checklist_id = f"CL{str(max_num + 1).zfill(2)}"
+
     questions = []
     if item:
         questions = [
@@ -452,6 +460,7 @@ def _checklist_builder_context(request, item=None):
         ],
         'builder_mode': 'edit' if item else 'create',
         'builder_item': item,
+        'next_checklist_id': next_checklist_id,
         'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
