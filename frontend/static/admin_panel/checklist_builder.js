@@ -15,6 +15,22 @@
     previewToggle: document.getElementById('togglePreviewBtn'),
     form: document.getElementById('checklistForm'),
     checklistName: document.getElementById('checklistNameInput'),
+    checklistIdDisplay: document.getElementById('checklistIdDisplay'),
+    checklistTypeInput: document.getElementById('checklistTypeInput'),
+    checklistTypesSource: document.getElementById('checklistTypesSource'),
+    projectsInput: document.getElementById('projectsInput'),
+    departmentsInput: document.getElementById('departmentsInput'),
+    selectedTypesCsv: document.getElementById('selectedTypesCsv'),
+    selectedProjectsCsv: document.getElementById('selectedProjectsCsv'),
+    selectedDepartmentsCsv: document.getElementById('selectedDepartmentsCsv'),
+    checklistMetaModal: document.getElementById('checklistMetaModal'),
+    openChecklistMetaEditor: document.getElementById('openChecklistMetaEditor'),
+    closeChecklistMetaModal: document.getElementById('closeChecklistMetaModal'),
+    cancelChecklistMetaModal: document.getElementById('cancelChecklistMetaModal'),
+    saveChecklistMetaModal: document.getElementById('saveChecklistMetaModal'),
+    metaTypeList: document.getElementById('metaTypeList'),
+    metaProjectList: document.getElementById('metaProjectList'),
+    metaDepartmentList: document.getElementById('metaDepartmentList'),
   };
 
   const uid = () => `tmp_${Math.random().toString(36).slice(2, 10)}`;
@@ -30,6 +46,50 @@
     state = nextState;
     els.stateInput.value = JSON.stringify(state);
     render();
+  };
+
+
+  const nextChecklistId = () => {
+    const ids = [...document.querySelectorAll('#checklistBody tr td:first-child')]
+      .map((cell) => (cell.textContent || '').trim())
+      .filter((value) => /^CL\d+$/i.test(value))
+      .map((value) => parseInt(value.replace(/\D/g, ''), 10));
+    const next = (ids.length ? Math.max(...ids) : 0) + 1;
+    return `CL${String(next).padStart(2, '0')}`;
+  };
+
+  const renderCheckboxes = (target, sourceSelect) => {
+    if (!target || !sourceSelect) return;
+    target.innerHTML = [...sourceSelect.options].map((opt) =>
+      `<label class="selection-item"><input type="checkbox" value="${opt.value}"> <span>${opt.textContent}</span></label>`).join('');
+  };
+
+  const syncCsvDisplay = () => {
+    const selectedTypeIds = els.checklistTypeInput?.value ? els.checklistTypeInput.value.split(',').filter(Boolean) : [];
+    const typeLabels = els.checklistTypesSource
+      ? [...els.checklistTypesSource.options].filter((option) => selectedTypeIds.includes(option.value)).map((option) => option.textContent)
+      : [];
+    const projectLabels = els.projectsInput ? [...els.projectsInput.selectedOptions].map((o) => o.textContent) : [];
+    const departmentLabels = els.departmentsInput ? [...els.departmentsInput.selectedOptions].map((o) => o.textContent) : [];
+    if (els.selectedTypesCsv) els.selectedTypesCsv.textContent = typeLabels.length ? typeLabels.join(', ') : '-';
+    if (els.selectedProjectsCsv) els.selectedProjectsCsv.textContent = projectLabels.length ? projectLabels.join(', ') : '-';
+    if (els.selectedDepartmentsCsv) els.selectedDepartmentsCsv.textContent = departmentLabels.length ? departmentLabels.join(', ') : '-';
+  };
+
+  const openMetaModal = () => {
+    const selectedTypeIds = els.checklistTypeInput?.value ? els.checklistTypeInput.value.split(',').filter(Boolean) : [];
+    [...(els.metaTypeList?.querySelectorAll('input[type="checkbox"]') || [])].forEach((input) => {
+      input.checked = selectedTypeIds.includes(input.value);
+    });
+    [...(els.metaProjectList?.querySelectorAll('input[type="checkbox"]') || [])].forEach((input) => {
+      const option = [...els.projectsInput.options].find((opt) => opt.value === input.value);
+      input.checked = Boolean(option?.selected);
+    });
+    [...(els.metaDepartmentList?.querySelectorAll('input[type="checkbox"]') || [])].forEach((input) => {
+      const option = [...els.departmentsInput.options].find((opt) => opt.value === input.value);
+      input.checked = Boolean(option?.selected);
+    });
+    if (els.checklistMetaModal) els.checklistMetaModal.style.display = 'flex';
   };
 
   const initial = JSON.parse(document.getElementById('builder-initial-state')?.textContent || '{"sections": []}');
@@ -166,6 +226,23 @@
   });
 
   window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  if (els.checklistIdDisplay && els.checklistIdDisplay.textContent.trim() === 'Auto') els.checklistIdDisplay.textContent = nextChecklistId();
+  renderCheckboxes(els.metaTypeList, els.checklistTypesSource);
+  renderCheckboxes(els.metaProjectList, els.projectsInput);
+  renderCheckboxes(els.metaDepartmentList, els.departmentsInput);
+  syncCsvDisplay();
+  if (els.openChecklistMetaEditor) els.openChecklistMetaEditor.onclick = openMetaModal;
+  if (els.closeChecklistMetaModal) els.closeChecklistMetaModal.onclick = () => { if (els.checklistMetaModal) els.checklistMetaModal.style.display = 'none'; };
+  if (els.cancelChecklistMetaModal) els.cancelChecklistMetaModal.onclick = () => { if (els.checklistMetaModal) els.checklistMetaModal.style.display = 'none'; };
+  if (els.saveChecklistMetaModal) els.saveChecklistMetaModal.onclick = () => {
+    const selectedTypeIds = [...els.metaTypeList.querySelectorAll('input:checked')].map((input) => input.value);
+    els.checklistTypeInput.value = selectedTypeIds.join(',');
+    [...els.metaProjectList.querySelectorAll('input')].forEach((input) => { const option = [...els.projectsInput.options].find((opt) => opt.value === input.value); if (option) option.selected = input.checked; });
+    [...els.metaDepartmentList.querySelectorAll('input')].forEach((input) => { const option = [...els.departmentsInput.options].find((opt) => opt.value === input.value); if (option) option.selected = input.checked; });
+    syncCsvDisplay();
+    if (els.checklistMetaModal) els.checklistMetaModal.style.display = 'none';
+  };
 
   render();
 })();

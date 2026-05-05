@@ -460,6 +460,9 @@ def _checklist_builder_context(request, item=None):
         ],
         'builder_mode': 'edit' if item else 'create',
         'builder_item': item,
+        'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'departments': Department.objects.filter(is_active=True).order_by('name'),
         'initial_builder_state': {'sections': sections},
     }
 

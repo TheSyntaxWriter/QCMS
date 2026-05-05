@@ -19,7 +19,7 @@
   <div class="card-lite control-panel section-one-control-panel">
     <div class="control-panel-header">
       <h3>Checklist Details Control Panel</h3>
-      <p>Manage high-level checklist details before building sections and questions.</p>
+      <p>Manage checklist metadata and visibility.</p>
     </div>
     <div class="table-container role-permissions-table-wrap">
       <table class="role-permissions-table">
@@ -28,12 +28,40 @@
         </thead>
         <tbody>
           <tr>
-            <td><span class="checklist-id-display">{% if builder_item %}{{ builder_item.id }}{% else %}New{% endif %}</span></td>
+            <td><span id="checklistIdDisplay" class="checklist-id-display">{% if builder_item %}CL{{ builder_item.id|stringformat:'02d' }}{% else %}Auto{% endif %}</span></td>
             <td><input id="checklistNameInput" name="name" type="text" placeholder="Untitled checklist" value="{{ builder_item.name|default:'' }}" required /></td>
+            <td><span id="selectedTypesCsv">-</span></td>
+            <td><span id="selectedProjectsCsv">-</span></td>
+            <td><span id="selectedDepartmentsCsv">-</span></td>
+            <td><button type="button" class="btn btn-edit" id="openChecklistMetaEditor">Edit</button></td>
           </tr>
         </tbody>
       </table>
     </div>
+  </div>
+
+  <input type="hidden" name="checklist_type" id="checklistTypeInput" value="" />
+  <select id="checklistTypesSource" hidden>
+    {% for t in checklist_types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+  </select>
+  <select multiple name="projects" id="projectsInput" hidden>
+    {% for p in projects %}<option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>{% endfor %}
+  </select>
+  <select multiple name="departments" id="departmentsInput" hidden>
+    {% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+  </select>
+
+  <div id="checklistMetaModal" class="popup">
+    <div class="popup-content checklist-meta-popup-content">
+      <div class="popup-header"><h3>Edit Metadata</h3><span class="close-btn" id="closeChecklistMetaModal">✖</span></div>
+      <div class="popup-body checklist-meta-popup-body checklist-meta-row">
+        <div class="permission-popup-section checklist-meta-col"><h4>Checklist Types</h4><div id="metaTypeList" class="selection-list"></div></div>
+        <div class="permission-popup-section checklist-meta-col"><h4>Projects</h4><div id="metaProjectList" class="selection-list"></div></div>
+        <div class="permission-popup-section checklist-meta-col"><h4>Departments</h4><div id="metaDepartmentList" class="selection-list"></div></div>
+      </div>
+    </div>
+    <div id="builderRoot" class="builder-root"></div>
+    <div class="builder-footer"><button class="btn btn-add" type="submit">Save Checklist</button></div>
   </div>
 
   <h4>Section 2: Checklist Builder</h4>

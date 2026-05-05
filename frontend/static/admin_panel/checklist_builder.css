@@ -14,3 +14,7 @@
 @media(max-width:768px){.builder-topbar,.section-header,.question-meta{flex-direction:column;align-items:stretch}}
 .section-one-control-panel{margin-bottom:16px}
 .checklist-id-display{font-weight:600;color:#2f3f68}
+.checklist-meta-popup-content{max-width:1000px;width:90%}
+.checklist-meta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.selection-list{max-height:300px;overflow:auto;display:grid;gap:6px}
+.selection-item{display:flex;gap:8px;align-items:center}
