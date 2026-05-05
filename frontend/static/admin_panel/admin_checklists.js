@@ -114,6 +114,15 @@
     const next = (ids.length ? Math.max(...ids) : 0) + 1;
     return `CL${String(next).padStart(2, '0')}`;
   };
+  const ensureChecklistId = () => {
+    if (!checklistIdInput) return;
+    if (!checklistIdInput.value) {
+      checklistIdInput.value = nextChecklistId();
+    }
+    if (checklistIdDisplay) {
+      checklistIdDisplay.textContent = checklistIdInput.value || '-';
+    }
+  };
 
   const renderCheckboxes = (target, sourceSelect) => {
     if (!target || !sourceSelect) return;
@@ -135,6 +144,7 @@
   };
 
   const openMetaModal = () => {
+    ensureChecklistId();
     const selectedTypeIds = checklistTypeInput?.value ? checklistTypeInput.value.split(',').filter(Boolean) : [];
     [...metaTypeList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
       input.checked = selectedTypeIds.includes(input.value);
@@ -157,8 +167,7 @@
   addSectionBtn.onclick = () => { sectionName = `Section ${container.querySelectorAll('.question-item').length + 1}`; container.appendChild(questionNode(sectionName)); };
 
   openBtn.onclick = () => {
-    checklistIdInput.value = nextChecklistId();
-    if (checklistIdDisplay) checklistIdDisplay.textContent = checklistIdInput.value;
+    ensureChecklistId();
     syncCsvDisplay();
     modal.classList.add('is-open');
   };
@@ -169,6 +178,13 @@
   renderCheckboxes(metaDepartmentList, departmentsInput);
 
   if (openChecklistMetaEditor) openChecklistMetaEditor.onclick = openMetaModal;
+  document.addEventListener('click', (event) => {
+    const editBtn = event.target.closest('#openChecklistMetaEditor');
+    if (editBtn) {
+      event.preventDefault();
+      openMetaModal();
+    }
+  });
   if (closeChecklistMetaModal) closeChecklistMetaModal.onclick = closeMetaModal;
   if (cancelChecklistMetaModal) cancelChecklistMetaModal.onclick = closeMetaModal;
 
@@ -213,6 +229,8 @@
       closeMetaModal();
     }
   });
+  ensureChecklistId();
+  syncCsvDisplay();
 
   form.onsubmit = async (event) => {
     event.preventDefault();
