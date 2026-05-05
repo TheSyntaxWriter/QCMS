@@ -200,7 +200,10 @@
   if (saveChecklistMetaModal) {
     saveChecklistMetaModal.onclick = () => {
       const selectedTypeIds = [...metaTypeList.querySelectorAll('input:checked')].map((input) => input.value);
-      checklistTypeInput.value = selectedTypeIds.join(',');
+      checklistTypeInput.value = selectedTypeIds[0] || '';
+      [...metaTypeList.querySelectorAll('input[type="checkbox"]')].forEach((input, idx) => {
+        input.checked = selectedTypeIds.length ? input.value === selectedTypeIds[0] : false;
+      });
       [...metaProjectList.querySelectorAll('input')].forEach((input) => {
         const option = [...projectsInput.options].find((opt) => opt.value === input.value);
         if (option) option.selected = input.checked;
@@ -309,7 +312,12 @@
     const formData = new FormData(form);
     formData.append('csrfmiddlewaretoken', cfg.csrfToken);
     const res = await fetch(cfg.actionUrl, { method: 'POST', body: formData });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const errorText = await res.text();
+      alert('Unable to save checklist. Please verify required fields and metadata selections.');
+      console.error('Checklist save failed:', errorText);
+      return;
+    }
     if (window.location.pathname.includes('/admin-panel/checklists/create/')) {
       window.location.href = '/admin-panel/checklists/';
       return;
