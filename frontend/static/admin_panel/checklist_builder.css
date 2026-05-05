@@ -1,0 +1,14 @@
+.builder-shell{padding:16px;max-width:1000px}
+.builder-topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+#checklistNameInput{flex:1;font-size:1.2rem;padding:10px;border:1px solid #ccd5ea;border-radius:10px}
+.builder-root{display:grid;gap:14px}
+.section-card{background:#fff;border:1px solid #d5dcef;border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(16,24,40,.06)}
+.section-header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+.section-title{font-size:1rem;font-weight:600;border:0;border-bottom:1px dashed #b8c0d8;flex:1;padding:6px}
+.question-card{border:1px solid #e6eaf5;border-radius:10px;padding:10px;background:#fafcff;margin-bottom:8px}
+.question-top-row{display:flex;justify-content:space-between;margin-bottom:8px}
+.question-meta{display:flex;gap:12px;align-items:center;margin-top:8px}
+.option-row{display:flex;gap:8px;margin:6px 0}
+.option-row input{flex:1}
+.hidden{display:none}
+@media(max-width:768px){.builder-topbar,.section-header,.question-meta{flex-direction:column;align-items:stretch}}
