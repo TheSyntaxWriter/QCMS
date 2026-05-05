@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.shortcuts import redirect, render
 
 from ..models import ChecklistDefinition, ChecklistResponse, RolePermission
-from .common import ensure_legacy_checklists_synced, get_user_profile, redirect_for_profile
+from .common import get_user_profile, redirect_for_profile
 
 DEFAULT_VISIBLE_COLUMNS = [
     'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by',
@@ -25,7 +25,6 @@ def _sidebar_menu_for_role(role):
 
 
 def _checklists_for_profile(profile):
-    ensure_legacy_checklists_synced()
     qs = ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments')
     if profile.role == 'Management':
         return qs

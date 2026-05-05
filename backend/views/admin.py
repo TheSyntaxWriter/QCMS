@@ -12,12 +12,10 @@ from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 
 from ..models import (
-    Checklist,
     ChecklistAnswer,
     ChecklistDefinition,
     ChecklistQuestion,
     ChecklistResponse,
-    ChecklistTransaction,
     ChecklistType,
     Department,
     Project,
@@ -53,13 +51,13 @@ def admin_dashboard(request):
         return redirect('home')
 
     # Keep a base queryset so summary cards and table stay consistent.
-    txns = ChecklistTransaction.objects.select_related('checklist', 'user').order_by('-submitted_date')
+    txns = ChecklistResponse.objects.select_related('checklist', 'submitted_by').order_by('-submitted_at')
 
     # ---------------------------
     # Card totals + pie datasets
     # ---------------------------
     total_users = UserProfile.objects.count()
-    total_checklists = Checklist.objects.count()
+    total_checklists = ChecklistDefinition.objects.count()
     total_departments = Department.objects.count()
     total_projects = Project.objects.count()
     total_submitted = txns.count()
@@ -67,12 +65,12 @@ def admin_dashboard(request):
     users_active = UserProfile.objects.filter(is_active=True).count()
     users_inactive = UserProfile.objects.filter(is_active=False).count()
 
-    checklists_active = Checklist.objects.filter(is_active=True).count()
-    checklists_inactive = Checklist.objects.filter(is_active=False).count()
+    checklists_active = ChecklistDefinition.objects.filter(is_active=True).count()
+    checklists_inactive = ChecklistDefinition.objects.filter(is_active=False).count()
 
-    approved = txns.filter(status="Approved").count()
-    pending = txns.filter(status="Pending").count()
-    rejected = txns.filter(status="Rejected").count()
+    approved = txns.filter(status='Approved').count()
+    pending = txns.filter(status='Pending').count()
+    rejected = txns.filter(status='Rejected').count()
 
     # ---------------------------------------------
     # Column chart datasets (users by master entity)
