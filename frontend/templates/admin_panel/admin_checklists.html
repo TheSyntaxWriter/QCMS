@@ -97,7 +97,7 @@
         </select>
 
         <div id="checklistMetaModal" class="popup">
-          <div class="popup-content" style="max-width:640px;">
+          <div class="popup-content checklist-meta-popup-content">
             <div class="popup-header">
               <h3>Edit Permissions</h3>
               <span class="close-btn" id="closeChecklistMetaModal">✖</span>
@@ -182,9 +182,10 @@
   .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
   .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
   .checklist-meta-popup-body{max-height:60vh;overflow:auto;}
-  .checklist-meta-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start;}
-  .checklist-meta-col{min-width:0;}
-  .checklist-meta-col .selection-list{max-height:42vh;overflow:auto;}
+  .checklist-meta-popup-content{max-width:1000px;width:90%;}
+  .checklist-meta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start;}
+  .checklist-meta-col{min-width:0;padding:4px;}
+  .checklist-meta-col .selection-list{max-height:300px;overflow-y:auto;}
   @media (max-width: 900px){
     .checklist-meta-row{grid-template-columns:1fr;}
     .checklist-meta-col .selection-list{max-height:28vh;}
