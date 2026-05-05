@@ -43,25 +43,79 @@
         <input type="hidden" name="questions_json" id="questionsJson" />
 
         <h4>Section 1: Checklist Details</h4>
-        <div class="builder-grid">
-          <input type="text" name="checklist_id" id="checklistIdInput" placeholder="Checklist ID (CL01)" required />
-          <input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" required />
-          <select name="checklist_type" id="checklistTypeInput" required>
-            <option value="">Select Checklist Type</option>
-            {% for t in checklist_types %}
-            <option value="{{ t.id }}">{{ t.name }}</option>
-            {% endfor %}
-          </select>
-          <select multiple name="projects" id="projectsInput">
-            {% for p in projects %}
-            <option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>
-            {% endfor %}
-          </select>
-          <select multiple name="departments" id="departmentsInput">
-            {% for d in departments %}
-            <option value="{{ d.id }}">{{ d.name }}</option>
-            {% endfor %}
-          </select>
+        <div class="section-one-control-panel">
+          <table>
+            <thead>
+              <tr>
+                <th>Checklist ID</th>
+                <th>Checklist Name</th>
+                <th>Checklist Type</th>
+                <th>Project</th>
+                <th>Department</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <input type="text" name="checklist_id" id="checklistIdInput" readonly required />
+                </td>
+                <td>
+                  <input type="text" name="name" id="checklistNameInput" placeholder="Checklist Name" required />
+                </td>
+                <td><span id="selectedTypesCsv">-</span></td>
+                <td><span id="selectedProjectsCsv">-</span></td>
+                <td><span id="selectedDepartmentsCsv">-</span></td>
+                <td>
+                  <button type="button" class="btn btn-edit" id="openChecklistMetaEditor">Edit</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <input type="hidden" name="checklist_type" id="checklistTypeInput" required />
+        <select id="checklistTypesSource" hidden>
+          {% for t in checklist_types %}
+          <option value="{{ t.id }}">{{ t.name }}</option>
+          {% endfor %}
+        </select>
+        <select multiple name="projects" id="projectsInput" hidden>
+          {% for p in projects %}
+          <option value="{{ p.id }}">{{ p.name }} ({{ p.domain }})</option>
+          {% endfor %}
+        </select>
+        <select multiple name="departments" id="departmentsInput" hidden>
+          {% for d in departments %}
+          <option value="{{ d.id }}">{{ d.name }}</option>
+          {% endfor %}
+        </select>
+
+        <div id="checklistMetaModal" class="popup">
+          <div class="popup-content" style="max-width:640px;">
+            <div class="popup-header">
+              <h3>Edit Permissions</h3>
+              <span class="close-btn" id="closeChecklistMetaModal">✖</span>
+            </div>
+            <div class="popup-body" style="display:grid;gap:14px;max-height:60vh;overflow:auto;">
+              <div>
+                <strong>Checklist Types</strong>
+                <div id="metaTypeList" class="meta-checkbox-grid"></div>
+              </div>
+              <div>
+                <strong>Projects</strong>
+                <div id="metaProjectList" class="meta-checkbox-grid"></div>
+              </div>
+              <div>
+                <strong>Departments</strong>
+                <div id="metaDepartmentList" class="meta-checkbox-grid"></div>
+              </div>
+            </div>
+            <div class="popup-footer">
+              <button type="button" class="btn btn-view" id="cancelChecklistMetaModal">Cancel</button>
+              <button type="button" class="btn btn-add" id="saveChecklistMetaModal">Save</button>
+            </div>
+          </div>
         </div>
 
         <h4>Section 2: Checklist Builder</h4>
@@ -117,6 +171,11 @@
   .option-row{display:flex;gap:8px;margin-bottom:6px;}
   .option-row input{flex:1;}
   .checkpoint-preview{display:grid;gap:8px;opacity:.75;}
+  .section-one-control-panel table{width:100%;border-collapse:separate;border-spacing:0 8px;}
+  .section-one-control-panel th,.section-one-control-panel td{background:#fff;padding:10px 12px;border:1px solid #d5dcef;}
+  .section-one-control-panel th{font-size:13px;color:#2f3f68;}
+  .section-one-control-panel input[readonly]{background:#eef2fb;color:#3d4d77;font-weight:600;cursor:not-allowed;}
+  .meta-checkbox-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:8px;}
 </style>
 
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>

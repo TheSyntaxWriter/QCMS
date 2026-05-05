@@ -1,6 +1,7 @@
 (() => {
   const cfg = window.checklistPageConfig;
   if (!cfg) return;
+
   const modal = document.getElementById('checklistBuilderModal');
   const openBtn = document.getElementById('openChecklistBuilder');
   const closeBtn = document.getElementById('closeChecklistBuilder');
@@ -11,6 +12,26 @@
   const questionsJson = document.getElementById('questionsJson');
   const deletePopup = document.getElementById('deletePopup');
   const deleteChecklistIdInput = document.getElementById('deleteChecklistId');
+
+  const checklistIdInput = document.getElementById('checklistIdInput');
+  const checklistTypeInput = document.getElementById('checklistTypeInput');
+  const checklistTypesSource = document.getElementById('checklistTypesSource');
+  const projectsInput = document.getElementById('projectsInput');
+  const departmentsInput = document.getElementById('departmentsInput');
+
+  const selectedTypesCsv = document.getElementById('selectedTypesCsv');
+  const selectedProjectsCsv = document.getElementById('selectedProjectsCsv');
+  const selectedDepartmentsCsv = document.getElementById('selectedDepartmentsCsv');
+
+  const checklistMetaModal = document.getElementById('checklistMetaModal');
+  const openChecklistMetaEditor = document.getElementById('openChecklistMetaEditor');
+  const closeChecklistMetaModal = document.getElementById('closeChecklistMetaModal');
+  const cancelChecklistMetaModal = document.getElementById('cancelChecklistMetaModal');
+  const saveChecklistMetaModal = document.getElementById('saveChecklistMetaModal');
+  const metaTypeList = document.getElementById('metaTypeList');
+  const metaProjectList = document.getElementById('metaProjectList');
+  const metaDepartmentList = document.getElementById('metaDepartmentList');
+
   let sectionName = 'Section 1';
 
   const qTypes = JSON.parse(document.getElementById('checklist-question-types').textContent).types;
@@ -84,42 +105,97 @@
     return wrap;
   };
 
+  const nextChecklistId = () => {
+    const ids = [...document.querySelectorAll('#checklistBody tr td:first-child')]
+      .map((cell) => (cell.textContent || '').trim())
+      .filter((value) => /^CL\d+$/i.test(value))
+      .map((value) => parseInt(value.replace(/\D/g, ''), 10));
+    const next = (ids.length ? Math.max(...ids) : 0) + 1;
+    return `CL${String(next).padStart(2, '0')}`;
+  };
+
+  const renderCheckboxes = (target, sourceSelect) => {
+    if (!target || !sourceSelect) return;
+    target.innerHTML = [...sourceSelect.options].map((opt) =>
+      `<label><input type="checkbox" value="${opt.value}"> ${opt.textContent}</label>`).join('');
+  };
+
+  const syncCsvDisplay = () => {
+    const typeLabel = checklistTypesSource && checklistTypeInput && checklistTypeInput.value
+      ? ([...checklistTypesSource.options].find((option) => option.value === checklistTypeInput.value)?.textContent || '-')
+      : '-';
+    const projectLabels = projectsInput ? [...projectsInput.selectedOptions].map((o) => o.textContent) : [];
+    const departmentLabels = departmentsInput ? [...departmentsInput.selectedOptions].map((o) => o.textContent) : [];
+
+    selectedTypesCsv.textContent = typeLabel;
+    selectedProjectsCsv.textContent = projectLabels.length ? projectLabels.join(', ') : '-';
+    selectedDepartmentsCsv.textContent = departmentLabels.length ? departmentLabels.join(', ') : '-';
+  };
+
+  const openMetaModal = () => {
+    if (checklistMetaModal) checklistMetaModal.style.display = 'flex';
+  };
+  const closeMetaModal = () => {
+    if (checklistMetaModal) checklistMetaModal.style.display = 'none';
+  };
+
   addQuestionBtn.onclick = () => container.appendChild(questionNode());
   addSectionBtn.onclick = () => { sectionName = `Section ${container.querySelectorAll('.question-item').length + 1}`; container.appendChild(questionNode(sectionName)); };
 
-  openBtn.onclick = () => modal.classList.add('is-open');
+  openBtn.onclick = () => {
+    checklistIdInput.value = nextChecklistId();
+    syncCsvDisplay();
+    modal.classList.add('is-open');
+  };
   closeBtn.onclick = () => modal.classList.remove('is-open');
 
+  renderCheckboxes(metaTypeList, checklistTypesSource);
+  renderCheckboxes(metaProjectList, projectsInput);
+  renderCheckboxes(metaDepartmentList, departmentsInput);
+
+  if (openChecklistMetaEditor) openChecklistMetaEditor.onclick = openMetaModal;
+  if (closeChecklistMetaModal) closeChecklistMetaModal.onclick = closeMetaModal;
+  if (cancelChecklistMetaModal) cancelChecklistMetaModal.onclick = closeMetaModal;
+
+  if (saveChecklistMetaModal) {
+    saveChecklistMetaModal.onclick = () => {
+      const selectedTypeIds = [...metaTypeList.querySelectorAll('input:checked')].map((input) => input.value);
+      checklistTypeInput.value = selectedTypeIds[0] || '';
+      [...metaProjectList.querySelectorAll('input')].forEach((input) => {
+        const option = [...projectsInput.options].find((opt) => opt.value === input.value);
+        if (option) option.selected = input.checked;
+      });
+      [...metaDepartmentList.querySelectorAll('input')].forEach((input) => {
+        const option = [...departmentsInput.options].find((opt) => opt.value === input.value);
+        if (option) option.selected = input.checked;
+      });
+      syncCsvDisplay();
+      closeMetaModal();
+    };
+  }
+
   function closeDeletePopup() {
-    if (deletePopup) {
-      deletePopup.style.display = 'none';
-    }
-    if (deleteChecklistIdInput) {
-      deleteChecklistIdInput.value = '';
-    }
+    if (deletePopup) deletePopup.style.display = 'none';
+    if (deleteChecklistIdInput) deleteChecklistIdInput.value = '';
   }
   window.closeDeletePopup = closeDeletePopup;
 
   document.querySelectorAll('.delete-btn').forEach((btn) => {
     btn.onclick = () => {
-      if (deleteChecklistIdInput) {
-        deleteChecklistIdInput.value = btn.dataset.checklistId;
-      }
-      if (deletePopup) {
-        deletePopup.style.display = 'flex';
-      }
+      if (deleteChecklistIdInput) deleteChecklistIdInput.value = btn.dataset.checklistId;
+      if (deletePopup) deletePopup.style.display = 'flex';
     };
   });
 
   window.onclick = function (event) {
-    if (event.target === deletePopup) {
-      closeDeletePopup();
-    }
+    if (event.target === deletePopup) closeDeletePopup();
+    if (event.target === checklistMetaModal) closeMetaModal();
   };
 
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') {
       closeDeletePopup();
+      closeMetaModal();
     }
   });
 
