@@ -14,6 +14,7 @@
   const deleteChecklistIdInput = document.getElementById('deleteChecklistId');
 
   const checklistIdInput = document.getElementById('checklistIdInput');
+  const checklistIdDisplay = document.getElementById('checklistIdDisplay');
   const checklistTypeInput = document.getElementById('checklistTypeInput');
   const checklistTypesSource = document.getElementById('checklistTypesSource');
   const projectsInput = document.getElementById('projectsInput');
@@ -117,22 +118,35 @@
   const renderCheckboxes = (target, sourceSelect) => {
     if (!target || !sourceSelect) return;
     target.innerHTML = [...sourceSelect.options].map((opt) =>
-      `<label><input type="checkbox" value="${opt.value}"> ${opt.textContent}</label>`).join('');
+      `<label class="selection-item"><input type="checkbox" value="${opt.value}"> <span>${opt.textContent}</span></label>`).join('');
   };
 
   const syncCsvDisplay = () => {
-    const typeLabel = checklistTypesSource && checklistTypeInput && checklistTypeInput.value
-      ? ([...checklistTypesSource.options].find((option) => option.value === checklistTypeInput.value)?.textContent || '-')
-      : '-';
+    const selectedTypeIds = checklistTypeInput?.value ? checklistTypeInput.value.split(',').filter(Boolean) : [];
+    const typeLabels = checklistTypesSource
+      ? [...checklistTypesSource.options].filter((option) => selectedTypeIds.includes(option.value)).map((option) => option.textContent)
+      : [];
     const projectLabels = projectsInput ? [...projectsInput.selectedOptions].map((o) => o.textContent) : [];
     const departmentLabels = departmentsInput ? [...departmentsInput.selectedOptions].map((o) => o.textContent) : [];
 
-    selectedTypesCsv.textContent = typeLabel;
+    selectedTypesCsv.textContent = typeLabels.length ? typeLabels.join(', ') : '-';
     selectedProjectsCsv.textContent = projectLabels.length ? projectLabels.join(', ') : '-';
     selectedDepartmentsCsv.textContent = departmentLabels.length ? departmentLabels.join(', ') : '-';
   };
 
   const openMetaModal = () => {
+    const selectedTypeIds = checklistTypeInput?.value ? checklistTypeInput.value.split(',').filter(Boolean) : [];
+    [...metaTypeList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      input.checked = selectedTypeIds.includes(input.value);
+    });
+    [...metaProjectList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      const option = [...projectsInput.options].find((opt) => opt.value === input.value);
+      input.checked = Boolean(option?.selected);
+    });
+    [...metaDepartmentList.querySelectorAll('input[type="checkbox"]')].forEach((input) => {
+      const option = [...departmentsInput.options].find((opt) => opt.value === input.value);
+      input.checked = Boolean(option?.selected);
+    });
     if (checklistMetaModal) checklistMetaModal.style.display = 'flex';
   };
   const closeMetaModal = () => {
@@ -144,6 +158,7 @@
 
   openBtn.onclick = () => {
     checklistIdInput.value = nextChecklistId();
+    if (checklistIdDisplay) checklistIdDisplay.textContent = checklistIdInput.value;
     syncCsvDisplay();
     modal.classList.add('is-open');
   };
@@ -160,7 +175,7 @@
   if (saveChecklistMetaModal) {
     saveChecklistMetaModal.onclick = () => {
       const selectedTypeIds = [...metaTypeList.querySelectorAll('input:checked')].map((input) => input.value);
-      checklistTypeInput.value = selectedTypeIds[0] || '';
+      checklistTypeInput.value = selectedTypeIds.join(',');
       [...metaProjectList.querySelectorAll('input')].forEach((input) => {
         const option = [...projectsInput.options].find((opt) => opt.value === input.value);
         if (option) option.selected = input.checked;
