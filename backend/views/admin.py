@@ -16,9 +16,6 @@ from ..models import (
     ChecklistAnswer,
     ChecklistDefinition,
     ChecklistQuestion,
-    Checklist,
-    Section,
-    Question,
     ChecklistResponse,
     ChecklistType,
     Department,
@@ -418,17 +415,16 @@ def admin_checklists(request):
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
         'questions_json_help': {
-            'types': [
-                {'value': 'text', 'label': 'Text'},
-                {'value': 'checkbox', 'label': 'Checkbox (Multiple)'},
-                {'value': 'dropdown', 'label': 'Dropdown (Single)'},
-                {'value': 'file_upload', 'label': 'File Upload'},
-                {'value': 'date', 'label': 'Date'},
-                {'value': 'rating', 'label': 'Rating (5 Star)'},
-                {'value': 'checkpoint', 'label': 'Checkpoint'},
-            ],
+            'types': _question_type_options(),
         },
     })
+
+
+def _question_type_options():
+    return [
+        {'value': value, 'label': label}
+        for value, label in ChecklistQuestion.QUESTION_TYPES
+    ]
 
 
 def _checklist_builder_context(request, item=None):
@@ -440,18 +436,28 @@ def _checklist_builder_context(request, item=None):
             max_num = max(max_num, int(digits))
     next_checklist_id = f"CL{str(max_num + 1).zfill(2)}"
 
-    questions = []
+    sections_by_title = {}
     if item:
-        questions = [
-            {
-                'question_text': q.question_text,
+        for q in item.questions.all().order_by('order', 'id'):
+            section_title = (q.section or '').strip() or 'Section 1'
+            section = sections_by_title.setdefault(section_title, {
+                'id': f'section_{len(sections_by_title) + 1}',
+                'title': section_title,
+                'order': len(sections_by_title) + 1,
+                'collapsed': False,
+                'questions': [],
+            })
+            section['questions'].append({
+                'id': q.id,
+                'text': q.question_text,
                 'type': q.type,
                 'options': q.options or [],
                 'required': q.required,
-                'section': q.section,
-                'order': q.order,
-            } for q in item.questions.all().order_by('order', 'id')
-        ]
+                'order': len(section['questions']) + 1,
+            })
+
+    initial_sections = list(sections_by_title.values())
+
     return {
         'sidebar_menu': [
             {'url': '/admin-panel/', 'label': 'Dashboard'},
@@ -463,22 +469,14 @@ def _checklist_builder_context(request, item=None):
         ],
         'builder_mode': 'edit' if item else 'create',
         'builder_item': item,
-        'next_checklist_id': next_checklist_id,
+        'next_checklist_id': item.checklist_id if item else next_checklist_id,
         'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
         'questions_json_help': {
-            'types': [
-                {'value': 'text', 'label': 'Text'},
-                {'value': 'checkbox', 'label': 'Checkbox (Multiple)'},
-                {'value': 'dropdown', 'label': 'Dropdown (Single)'},
-                {'value': 'file_upload', 'label': 'File Upload'},
-                {'value': 'date', 'label': 'Date'},
-                {'value': 'rating', 'label': 'Rating (5 Star)'},
-                {'value': 'checkpoint', 'label': 'Checkpoint'},
-            ],
+            'types': _question_type_options(),
         },
-        'initial_builder_data': {'questions': questions},
+        'initial_builder_data': {'sections': initial_sections},
     }
 
 
@@ -632,16 +630,71 @@ def admin_checklist_action(request):
     if action in {'create', 'edit'}:
         import json
 
-        payload = json.loads(request.POST.get('builder_state_json') or '{"sections": []}')
+        raw_payload = request.POST.get('builder_state_json') or '{"sections": []}'
+        try:
+            payload = json.loads(raw_payload)
+        except json.JSONDecodeError:
+            return JsonResponse({'ok': False, 'errors': ['Builder data is invalid. Please refresh and try again.']}, status=400)
+
         sections_payload = payload.get('sections') or []
-        allowed_types = {'short_text', 'long_text', 'multiple_choice', 'checkbox', 'dropdown', 'file_upload', 'yes_no', 'date'}
-        option_types = {'multiple_choice', 'checkbox', 'dropdown'}
+        allowed_types = {value for value, _label in ChecklistQuestion.QUESTION_TYPES}
+        option_types = {
+            ChecklistQuestion.TYPE_MULTIPLE_CHOICE,
+            ChecklistQuestion.TYPE_CHECKBOX,
+            ChecklistQuestion.TYPE_DROPDOWN,
+        }
         errors = []
 
+        checklist_code = (request.POST.get('checklist_id') or '').strip().upper()
+        name = (request.POST.get('name') or '').strip()
+        checklist_type_id = (request.POST.get('checklist_type') or '').strip()
+        project_ids = [value for value in request.POST.getlist('projects') if str(value).isdigit()]
+        department_ids = [value for value in request.POST.getlist('departments') if str(value).isdigit()]
+
+        item = None
+        if action == 'edit':
+            item = ChecklistDefinition.objects.filter(id=checklist_id).first()
+            if not item:
+                errors.append('Checklist was not found or has already been deleted.')
+
+        if not checklist_code:
+            errors.append('Checklist ID is required.')
+        elif ChecklistDefinition.objects.filter(checklist_id__iexact=checklist_code).exclude(id=item.id if item else None).exists():
+            errors.append('Checklist ID already exists.')
+
+        if not name:
+            errors.append('Checklist name is required.')
+
+        checklist_type = None
+        if not checklist_type_id:
+            errors.append('Checklist type is required.')
+        else:
+            checklist_type = ChecklistType.objects.filter(id=checklist_type_id, is_active=True).first()
+            if not checklist_type:
+                errors.append('Selected checklist type is invalid or inactive.')
+
+        if project_ids:
+            found_project_count = Project.objects.filter(id__in=project_ids, is_active=True).count()
+            if found_project_count != len(set(project_ids)):
+                errors.append('One or more selected projects are invalid or inactive.')
+        if department_ids:
+            found_department_count = Department.objects.filter(id__in=department_ids, is_active=True).count()
+            if found_department_count != len(set(department_ids)):
+                errors.append('One or more selected departments are invalid or inactive.')
+
+        if not sections_payload:
+            errors.append('At least one section is required.')
+
+        total_questions = 0
         for si, section in enumerate(sections_payload, start=1):
-            if not (section.get('title') or '').strip():
+            section_title = (section.get('title') or '').strip()
+            if not section_title:
                 errors.append(f'Section {si} title is required.')
-            for qi, question in enumerate(section.get('questions') or [], start=1):
+            questions = section.get('questions') or []
+            if not questions:
+                errors.append(f'Section {si} must contain at least one question.')
+            for qi, question in enumerate(questions, start=1):
+                total_questions += 1
                 q_text = (question.get('text') or '').strip()
                 q_type = question.get('type')
                 options = [str(o).strip() for o in (question.get('options') or []) if str(o).strip()]
@@ -650,68 +703,61 @@ def admin_checklist_action(request):
                 if q_type not in allowed_types:
                     errors.append(f'Section {si} Question {qi} has invalid type.')
                 if q_type in option_types and not options:
-                    errors.append(f'Section {si} Question {qi} requires options.')
+                    errors.append(f'Section {si} Question {qi} requires at least one option.')
+
+        if total_questions == 0:
+            errors.append('At least one question is required.')
 
         if errors:
             return JsonResponse({'ok': False, 'errors': errors}, status=400)
 
-        created_ids = {'sections': [], 'questions': []}
-        updated_ids = {'sections': [], 'questions': []}
         with transaction.atomic():
-            item = Checklist.objects.filter(id=checklist_id).first() if checklist_id else None
             if action == 'create':
-                item = Checklist.objects.create(name=request.POST.get('name'))
+                item = ChecklistDefinition.objects.create(
+                    checklist_id=checklist_code,
+                    name=name,
+                    checklist_type=checklist_type,
+                )
             else:
-                item.name = request.POST.get('name')
-                item.save(update_fields=['name'])
+                item.checklist_id = checklist_code
+                item.name = name
+                item.checklist_type = checklist_type
+                item.save(update_fields=['checklist_id', 'name', 'checklist_type', 'updated_at'])
 
-            existing_sections = {str(s.id): s for s in item.sections.all()}
-            incoming_section_ids = set()
+            item.projects.set(Project.objects.filter(id__in=project_ids, is_active=True))
+            item.departments.set(Department.objects.filter(id__in=department_ids, is_active=True))
 
-            for s_order, section_data in enumerate(sections_payload, start=1):
-                sid = str(section_data.get('id') or '')
-                if sid.isdigit() and sid in existing_sections:
-                    section_obj = existing_sections[sid]
-                    section_obj.title = (section_data.get('title') or '').strip()
-                    section_obj.order = s_order
-                    section_obj.save(update_fields=['title', 'order'])
-                    updated_ids['sections'].append(section_obj.id)
-                else:
-                    section_obj = Section.objects.create(checklist=item, title=(section_data.get('title') or '').strip(), order=s_order)
-                    created_ids['sections'].append(section_obj.id)
-                incoming_section_ids.add(section_obj.id)
+            existing_questions = {str(q.id): q for q in item.questions.all()}
+            incoming_question_ids = set()
+            global_order = 1
 
-                existing_questions = {str(q.id): q for q in section_obj.questions.all()}
-                incoming_question_ids = set()
-                for q_order, question_data in enumerate(section_data.get('questions') or [], start=1):
+            for section_data in sections_payload:
+                section_title = (section_data.get('title') or '').strip()
+                for question_data in section_data.get('questions') or []:
                     qid = str(question_data.get('id') or '')
                     q_options = [str(o).strip() for o in (question_data.get('options') or []) if str(o).strip()]
+                    defaults = {
+                        'question_text': (question_data.get('text') or '').strip(),
+                        'type': question_data.get('type'),
+                        'options': q_options,
+                        'required': bool(question_data.get('required')),
+                        'section': section_title,
+                        'order': global_order,
+                    }
                     if qid.isdigit() and qid in existing_questions:
                         question_obj = existing_questions[qid]
-                        question_obj.text = (question_data.get('text') or '').strip()
-                        question_obj.type = question_data.get('type')
-                        question_obj.options = q_options
-                        question_obj.required = bool(question_data.get('required'))
-                        question_obj.order = q_order
-                        question_obj.save(update_fields=['text', 'type', 'options', 'required', 'order'])
-                        updated_ids['questions'].append(question_obj.id)
+                        for field, value in defaults.items():
+                            setattr(question_obj, field, value)
+                        question_obj.save(update_fields=[*defaults.keys(), 'updated_at'])
                     else:
-                        question_obj = Question.objects.create(
-                            section=section_obj,
-                            text=(question_data.get('text') or '').strip(),
-                            type=question_data.get('type'),
-                            options=q_options,
-                            required=bool(question_data.get('required')),
-                            order=q_order,
-                        )
-                        created_ids['questions'].append(question_obj.id)
+                        question_obj = ChecklistQuestion.objects.create(checklist=item, **defaults)
                     incoming_question_ids.add(question_obj.id)
+                    global_order += 1
 
-                section_obj.questions.exclude(id__in=incoming_question_ids).delete()
+            item.questions.exclude(id__in=incoming_question_ids).delete()
 
-            item.sections.exclude(id__in=incoming_section_ids).delete()
+        return JsonResponse({'ok': True, 'checklist_id': item.id})
 
-        return JsonResponse({'ok': True, 'checklist_id': item.id, 'created_ids': created_ids, 'updated_ids': updated_ids})
 
     return JsonResponse({'ok': False}, status=400)
 
