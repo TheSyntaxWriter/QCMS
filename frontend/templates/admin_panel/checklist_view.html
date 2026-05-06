@@ -19,8 +19,7 @@
       <a class="btn btn-view" href="{% url 'admin_checklists' %}">← Back</a>
       <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
       <button class="btn btn-add" type="button" onclick="window.print()">Print</button>
-      <a class="btn btn-view" href="{% url 'admin_checklist_pdf' checklist.id %}" target="_blank">Open PDF View</a>
-      <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}?download=1" target="_blank">Download PDF</a>
+      <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}?download=1" download>Download PDF</a>
     </div>
   </div>
 
@@ -29,7 +28,7 @@
       <div class="brand-block">
         <img src="{% static 'images/logo.png' %}" alt="WMS Logo" />
         <div>
-          <span class="eyebrow">Warehouse Management System</span>
+          <span class="eyebrow">Work Management System</span>
           <h1>Checklist Document</h1>
         </div>
       </div>
@@ -122,17 +121,19 @@
 <style>
   .pdf-mode .content{margin-left:0;padding:0;background:#eef2f8;}
   .checklist-view-shell{max-width:1120px;margin:0 auto;}
+  .pdf-mode .checklist-view-shell{max-width:none;}
   .preview-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px;background:#fff;border:1px solid #dbe3f6;border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(8,8,112,.08);}
   .preview-toolbar h2{margin:0;color:#080870;}
   .preview-toolbar p{margin:4px 0 0;color:#59657d;font-size:13px;}
   .preview-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
   .preview-actions a{text-decoration:none;}
-  .pdf-page{background:#fff;color:#172033;border-radius:18px;padding:32px;box-shadow:0 12px 32px rgba(8,8,112,.12);}
+  .pdf-page{background:#fff;color:#172033;border-radius:18px;padding:18mm;box-shadow:0 12px 32px rgba(8,8,112,.12);box-sizing:border-box;}
+  .pdf-mode .pdf-page{width:210mm;min-height:297mm;margin:0 auto;border-radius:0;box-shadow:none;}
   .pdf-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #080870;padding-bottom:18px;margin-bottom:22px;}
   .brand-block{display:flex;gap:14px;align-items:center;}
   .brand-block img{width:58px;height:58px;object-fit:contain;}
   .eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#68748c;font-size:11px;font-weight:700;}
-  .pdf-header h1{margin:4px 0 0;color:#080870;font-size:30px;}
+  .pdf-header h1{margin:4px 0 0;color:#080870;font-size:28px;}
   .status-pill{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;text-transform:uppercase;}
   .status-pill.active{background:#e6f7ed;color:#087333;}
   .status-pill.inactive{background:#fdecec;color:#9c1717;}
@@ -144,9 +145,9 @@
   .required-star{color:#b31313;font-weight:800;}
   .sections-list{display:grid;gap:18px;}
   .pdf-section{break-inside:avoid;border:1px solid #e0e6f5;border-radius:14px;overflow:hidden;}
-  .pdf-section h2{margin:0;background:#080870;color:#fff;padding:12px 16px;font-size:18px;display:flex;gap:10px;align-items:center;}
+  .pdf-section h2{margin:0;background:#080870;color:#fff;padding:10px 14px;font-size:16px;display:flex;gap:10px;align-items:center;}
   .pdf-section h2 span{background:rgba(255,255,255,.16);border-radius:999px;padding:4px 10px;font-size:12px;text-transform:uppercase;}
-  .pdf-question{padding:14px 16px;border-bottom:1px solid #edf1f8;}
+  .pdf-question{padding:11px 14px;border-bottom:1px solid #edf1f8;}
   .pdf-question:last-child{border-bottom:none;}
   .question-title{display:flex;gap:6px;align-items:flex-start;color:#172033;font-size:14px;}
   .question-meta{margin-top:4px;color:#68748c;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
@@ -162,13 +163,13 @@
   .empty-state{padding-bottom:16px;}
   .empty-state p{padding:0 16px;}
   @media (max-width:900px){.preview-toolbar,.pdf-header,.pdf-footer{flex-direction:column;align-items:flex-start}.summary-card{grid-template-columns:1fr}.pdf-page{padding:20px}.answer-line{min-width:180px}}
-  @page{size:A4;margin:12mm;}
+  @page{size:A4;margin:10mm;}
   @media print{
     body{background:#fff!important;}
     .sidebar,.topbar,.no-print{display:none!important;}
     .content{margin-left:0!important;padding:0!important;}
     .checklist-view-shell{max-width:none;margin:0;}
-    .pdf-page{box-shadow:none;border-radius:0;padding:0;}
+    .pdf-page{box-shadow:none;border-radius:0;padding:0;width:190mm;min-height:auto;margin:0 auto;}
     .pdf-section{break-inside:avoid;page-break-inside:avoid;}
     .pdf-question{break-inside:avoid;page-break-inside:avoid;}
   }

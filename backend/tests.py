@@ -201,5 +201,7 @@ class ChecklistBuilderTests(TestCase):
         self.assertEqual(view_response.status_code, 200)
         self.assertContains(view_response, "Printable Checklist")
         self.assertContains(view_response, "Download PDF")
+        self.assertContains(view_response, "Work Management System")
+        self.assertNotContains(view_response, "Open PDF View")
         self.assertEqual(pdf_response.status_code, 200)
         self.assertContains(pdf_response, "Checklist Document")

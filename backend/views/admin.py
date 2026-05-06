@@ -1,3 +1,4 @@
+import importlib.util
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -8,9 +9,10 @@ from django.db.models.functions import TruncDate
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 
 from ..models import (
     ChecklistAnswer,
@@ -563,7 +565,24 @@ def admin_checklist_pdf(request, checklist_id):
         ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments', 'questions'),
         id=checklist_id,
     )
-    return render(request, 'admin_panel/checklist_view.html', _checklist_preview_context(request, item, pdf_mode=True))
+
+    context = _checklist_preview_context(request, item, pdf_mode=True)
+    wants_download = request.GET.get('download') == '1'
+    filename = f"{item.checklist_id}-{item.name}".replace(' ', '_')
+
+    if wants_download and importlib.util.find_spec('weasyprint'):
+        from weasyprint import HTML
+
+        html = render_to_string('admin_panel/checklist_view.html', context, request=request)
+        pdf_bytes = HTML(
+            string=html,
+            base_url=request.build_absolute_uri('/'),
+        ).write_pdf()
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
+        return response
+
+    return render(request, 'admin_panel/checklist_view.html', context)
 
 
 def admin_responses(request):
