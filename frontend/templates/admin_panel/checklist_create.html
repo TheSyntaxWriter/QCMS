@@ -14,7 +14,7 @@
   {% csrf_token %}
   <input type="hidden" name="action" value="{% if builder_mode == 'edit' %}edit{% else %}create{% endif %}" id="checklistAction" />
   <input type="hidden" name="checklist_pk" id="checklistPk" value="{% if builder_item %}{{ builder_item.id }}{% endif %}" />
-  <input type="hidden" name="questions_json" id="questionsJson" />
+  <input type="hidden" name="builder_state_json" id="builderStateJson" />
 
   <div class="card-lite control-panel section-one-control-panel">
     <div class="control-panel-header">
@@ -83,8 +83,9 @@
   <div class="builder-actions">
     <button type="button" class="btn btn-add" id="addSectionBtn">+ Add Section</button>
     <button type="button" class="btn btn-add" id="addQuestionBtn">+ Add Question</button>
+    <button type="button" class="btn btn-view" id="togglePreviewBtn">Preview Mode</button>
   </div>
-  <div id="questionBuilderContainer"></div>
+  <div id="questionBuilderContainer" class="checklist-builder-root"></div>
   <div class="builder-footer"><button class="btn btn-add" type="submit">Save Checklist</button></div>
 </form>
 
@@ -101,6 +102,19 @@ window.checklistPageConfig = { actionUrl: "{% url 'admin_checklist_action' %}", 
   .option-row{display:flex;gap:8px;margin-bottom:6px;}
   .option-row input{flex:1;}
   .checkpoint-preview{display:grid;gap:8px;opacity:.75;}
+  .checklist-builder-root{display:grid;gap:14px;}
+  .section-card{border-left:4px solid #1e4fd7;}
+  .section-header{align-items:flex-start;}
+  .section-title-wrap{display:grid;gap:8px;flex:1;}
+  .section-title-wrap h4{margin:0;color:#2f3f68;}
+  .question-tools{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .hidden-section{display:none;}
+  .preview-card{background:#f8fbff;}
+  .preview-card strong{display:inline-block;margin-bottom:8px;}
+  .preview-control{display:grid;gap:8px;margin-top:8px;}
+  .preview-option{display:block;margin:4px 0;}
+  .required-mark{color:#c62828;font-weight:700;}
+  .required-toggle{display:flex;align-items:center;gap:6px;}
   .section-one-control-panel{margin-bottom:16px;}
   .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
   .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
