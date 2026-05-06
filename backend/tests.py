@@ -180,3 +180,26 @@ class ChecklistBuilderTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("requires at least one option", response.json()["errors"][0])
         self.assertFalse(ChecklistDefinition.objects.filter(checklist_id="CL99").exists())
+
+    def test_admin_checklist_view_and_pdf_pages_render(self):
+        checklist = ChecklistDefinition.objects.create(
+            checklist_id="CL20",
+            name="Printable Checklist",
+            checklist_type=self.checklist_type,
+        )
+        ChecklistQuestion.objects.create(
+            checklist=checklist,
+            question_text="Print me",
+            type=ChecklistQuestion.TYPE_SHORT_TEXT,
+            section="Printable Section",
+            order=1,
+        )
+
+        view_response = self.client.get(reverse("admin_checklist_view", args=[checklist.id]))
+        pdf_response = self.client.get(reverse("admin_checklist_pdf", args=[checklist.id]))
+
+        self.assertEqual(view_response.status_code, 200)
+        self.assertContains(view_response, "Printable Checklist")
+        self.assertContains(view_response, "Download PDF")
+        self.assertEqual(pdf_response.status_code, 200)
+        self.assertContains(pdf_response, "Checklist Document")

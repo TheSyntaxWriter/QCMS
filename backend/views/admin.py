@@ -427,6 +427,44 @@ def _question_type_options():
     ]
 
 
+def _question_type_label_map():
+    return dict(ChecklistQuestion.QUESTION_TYPES)
+
+
+def _checklist_preview_context(request, item, pdf_mode=False):
+    type_labels = _question_type_label_map()
+    sections_by_title = {}
+    for question in item.questions.all().order_by('order', 'id'):
+        section_title = (question.section or '').strip() or 'Section 1'
+        section = sections_by_title.setdefault(section_title, {
+            'title': section_title,
+            'questions': [],
+        })
+        section['questions'].append({
+            'text': question.question_text,
+            'type': question.type,
+            'type_label': type_labels.get(question.type, question.type),
+            'options': question.options or [],
+            'required': question.required,
+            'order': question.order,
+        })
+
+    return {
+        'sidebar_menu': [] if pdf_mode else [
+            {'url': '/admin-panel/', 'label': 'Dashboard'},
+            {'url': '/admin-panel/users/', 'label': 'Users'},
+            {'url': '/admin-panel/departments/', 'label': 'Departments'},
+            {'url': '/admin-panel/projects/', 'label': 'Projects'},
+            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
+            {'url': '/admin-panel/responses/', 'label': 'Responses'},
+        ],
+        'checklist': item,
+        'sections': list(sections_by_title.values()),
+        'pdf_mode': pdf_mode,
+        'auto_print': request.GET.get('print') == '1' or request.GET.get('download') == '1',
+    }
+
+
 def _checklist_builder_context(request, item=None):
     latest = ChecklistDefinition.objects.filter(checklist_id__iregex=r'^CL[0-9]+$').order_by('-id')
     max_num = 0
@@ -500,6 +538,32 @@ def admin_checklist_edit(request, checklist_id):
         id=checklist_id,
     )
     return render(request, 'admin_panel/checklist_create.html', _checklist_builder_context(request, item=item))
+
+
+def admin_checklist_view(request, checklist_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+    item = get_object_or_404(
+        ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments', 'questions'),
+        id=checklist_id,
+    )
+    return render(request, 'admin_panel/checklist_view.html', _checklist_preview_context(request, item))
+
+
+def admin_checklist_pdf(request, checklist_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+    item = get_object_or_404(
+        ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments', 'questions'),
+        id=checklist_id,
+    )
+    return render(request, 'admin_panel/checklist_view.html', _checklist_preview_context(request, item, pdf_mode=True))
 
 
 def admin_responses(request):
