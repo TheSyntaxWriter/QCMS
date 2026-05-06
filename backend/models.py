@@ -127,12 +127,24 @@ class ChecklistDefinition(models.Model):
 
 
 class ChecklistQuestion(models.Model):
+    TYPE_SHORT_TEXT = 'short_text'
+    TYPE_LONG_TEXT = 'long_text'
+    TYPE_MULTIPLE_CHOICE = 'multiple_choice'
+    TYPE_CHECKBOX = 'checkbox'
+    TYPE_DROPDOWN = 'dropdown'
+    TYPE_FILE_UPLOAD = 'file_upload'
+    TYPE_YES_NO = 'yes_no'
+    TYPE_DATE = 'date'
+
     QUESTION_TYPES = (
-        ('short_text', 'Short Text'),
-        ('long_text', 'Long Text'),
-        ('dropdown', 'Dropdown'),
-        ('multiple_choice', 'Multiple Choice'),
-        ('file_upload', 'File Upload'),
+        (TYPE_SHORT_TEXT, 'Short Text'),
+        (TYPE_LONG_TEXT, 'Long Text'),
+        (TYPE_MULTIPLE_CHOICE, 'Multiple Choice'),
+        (TYPE_CHECKBOX, 'Checkbox'),
+        (TYPE_DROPDOWN, 'Dropdown'),
+        (TYPE_FILE_UPLOAD, 'File Upload'),
+        (TYPE_YES_NO, 'Yes / No'),
+        (TYPE_DATE, 'Date'),
     )
 
     checklist = models.ForeignKey(ChecklistDefinition, on_delete=models.CASCADE, related_name='questions')

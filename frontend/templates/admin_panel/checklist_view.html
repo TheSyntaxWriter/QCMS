@@ -1,0 +1,182 @@
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
+
+{% block sidebar %}{% if not pdf_mode %}{{ block.super }}{% endif %}{% endblock %}
+{% block topbar_title %}{% if pdf_mode %}Checklist PDF{% else %}Checklist Preview{% endif %}{% endblock %}
+{% block topbar_welcome %}{{ checklist.checklist_id }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
+<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
+
+<div class="checklist-view-shell {% if pdf_mode %}pdf-mode{% endif %}">
+  <div class="preview-toolbar no-print">
+    <div>
+      <h2>Checklist Preview</h2>
+      <p>Review, print, or save this checklist as a PDF.</p>
+    </div>
+    <div class="preview-actions">
+      <a class="btn btn-view" href="{% url 'admin_checklists' %}">← Back</a>
+      <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
+      <button class="btn btn-add" type="button" onclick="window.print()">Print</button>
+      <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}?download=1" download>Download PDF</a>
+    </div>
+  </div>
+
+  <article class="pdf-page">
+    <header class="pdf-header">
+      <div class="brand-block">
+        <img src="{% static 'images/logo.png' %}" alt="WMS Logo" />
+        <div>
+          <span class="eyebrow">Work Management System</span>
+          <h1>Checklist Document</h1>
+        </div>
+      </div>
+      <div class="status-pill {% if checklist.is_active %}active{% else %}inactive{% endif %}">
+        {% if checklist.is_active %}Active{% else %}Inactive{% endif %}
+      </div>
+    </header>
+
+    <section class="summary-card">
+      <div>
+        <span>Checklist ID</span>
+        <strong>{{ checklist.checklist_id }}</strong>
+      </div>
+      <div>
+        <span>Checklist Name</span>
+        <strong>{{ checklist.name }}</strong>
+      </div>
+      <div>
+        <span>Checklist Type</span>
+        <strong>{{ checklist.checklist_type.name }}</strong>
+      </div>
+      <div>
+        <span>Last Updated</span>
+        <strong>{{ checklist.updated_at|date:'d-m-Y H:i' }}</strong>
+      </div>
+      <div>
+        <span>Projects</span>
+        <strong>{% for project in checklist.projects.all %}{{ project.name }}{% if not forloop.last %}, {% endif %}{% empty %}All / Not restricted{% endfor %}</strong>
+      </div>
+      <div>
+        <span>Departments</span>
+        <strong>{% for department in checklist.departments.all %}{{ department.name }}{% if not forloop.last %}, {% endif %}{% empty %}All / Not restricted{% endfor %}</strong>
+      </div>
+    </section>
+
+    <section class="document-note">
+      <strong>Instructions:</strong> Complete every required question marked with <span class="required-star">*</span>. Attach supporting evidence wherever the checklist asks for file upload.
+    </section>
+
+    <div class="sections-list">
+      {% for section in sections %}
+      <section class="pdf-section">
+        <h2><span>Section {{ forloop.counter }}</span>{{ section.title }}</h2>
+        {% for question in section.questions %}
+        <div class="pdf-question">
+          <div class="question-title">
+            <strong>{{ forloop.counter }}. {{ question.text }}</strong>
+            {% if question.required %}<span class="required-star">*</span>{% endif %}
+          </div>
+          <div class="question-meta">Type: {{ question.type_label }}</div>
+          <div class="answer-control type-{{ question.type }}">
+            {% if question.type == 'long_text' %}
+              <div class="answer-box large"></div>
+            {% elif question.type == 'short_text' %}
+              <div class="answer-line"></div>
+            {% elif question.type == 'multiple_choice' %}
+              {% for option in question.options %}<label><span class="radio-dot"></span>{{ option }}</label>{% endfor %}
+            {% elif question.type == 'checkbox' %}
+              {% for option in question.options %}<label><span class="check-box"></span>{{ option }}</label>{% endfor %}
+            {% elif question.type == 'dropdown' %}
+              <div class="dropdown-box">Select: {% for option in question.options %}{{ option }}{% if not forloop.last %} / {% endif %}{% endfor %}</div>
+            {% elif question.type == 'file_upload' %}
+              <div class="attachment-box">Attach file / evidence</div>
+            {% elif question.type == 'yes_no' %}
+              <label><span class="radio-dot"></span>Yes</label><label><span class="radio-dot"></span>No</label>
+            {% elif question.type == 'date' %}
+              <div class="date-box">DD / MM / YYYY</div>
+            {% else %}
+              <div class="answer-line"></div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </section>
+      {% empty %}
+      <section class="pdf-section empty-state">
+        <h2>No questions configured</h2>
+        <p>This checklist does not have any sections or questions yet.</p>
+      </section>
+      {% endfor %}
+    </div>
+
+    <footer class="pdf-footer">
+      <div>Generated by WMS{% if request.user.is_authenticated %} for {{ request.user.get_full_name|default:request.user.username }}{% endif %}</div>
+      <div>Printed on {% now "d-m-Y H:i" %}</div>
+    </footer>
+  </article>
+</div>
+
+<style>
+  .pdf-mode .content{margin-left:0;padding:0;background:#eef2f8;}
+  .checklist-view-shell{max-width:1120px;margin:0 auto;}
+  .pdf-mode .checklist-view-shell{max-width:none;}
+  .preview-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px;background:#fff;border:1px solid #dbe3f6;border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(8,8,112,.08);}
+  .preview-toolbar h2{margin:0;color:#080870;}
+  .preview-toolbar p{margin:4px 0 0;color:#59657d;font-size:13px;}
+  .preview-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
+  .preview-actions a{text-decoration:none;}
+  .pdf-page{background:#fff;color:#172033;border-radius:18px;padding:18mm;box-shadow:0 12px 32px rgba(8,8,112,.12);box-sizing:border-box;}
+  .pdf-mode .pdf-page{width:210mm;min-height:297mm;margin:0 auto;border-radius:0;box-shadow:none;}
+  .pdf-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #080870;padding-bottom:18px;margin-bottom:22px;}
+  .brand-block{display:flex;gap:14px;align-items:center;}
+  .brand-block img{width:58px;height:58px;object-fit:contain;}
+  .eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#68748c;font-size:11px;font-weight:700;}
+  .pdf-header h1{margin:4px 0 0;color:#080870;font-size:28px;}
+  .status-pill{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;text-transform:uppercase;}
+  .status-pill.active{background:#e6f7ed;color:#087333;}
+  .status-pill.inactive{background:#fdecec;color:#9c1717;}
+  .summary-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:#f7f9ff;border:1px solid #dce5fb;border-radius:14px;padding:16px;margin-bottom:18px;}
+  .summary-card div{display:grid;gap:4px;}
+  .summary-card span{font-size:11px;color:#63708a;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+  .summary-card strong{font-size:14px;color:#18223b;}
+  .document-note{background:#fff7e6;border:1px solid #ffd58a;border-radius:12px;padding:12px 14px;margin-bottom:20px;color:#5c4210;font-size:13px;}
+  .required-star{color:#b31313;font-weight:800;}
+  .sections-list{display:grid;gap:18px;}
+  .pdf-section{break-inside:avoid;border:1px solid #e0e6f5;border-radius:14px;overflow:hidden;}
+  .pdf-section h2{margin:0;background:#080870;color:#fff;padding:10px 14px;font-size:16px;display:flex;gap:10px;align-items:center;}
+  .pdf-section h2 span{background:rgba(255,255,255,.16);border-radius:999px;padding:4px 10px;font-size:12px;text-transform:uppercase;}
+  .pdf-question{padding:11px 14px;border-bottom:1px solid #edf1f8;}
+  .pdf-question:last-child{border-bottom:none;}
+  .question-title{display:flex;gap:6px;align-items:flex-start;color:#172033;font-size:14px;}
+  .question-meta{margin-top:4px;color:#68748c;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+  .answer-control{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;align-items:center;}
+  .answer-control label{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:#27324a;}
+  .answer-line{height:28px;min-width:280px;border-bottom:1.5px solid #99a6bf;}
+  .answer-box{border:1.5px solid #b9c3d8;border-radius:8px;width:100%;height:58px;background:#fbfcff;}
+  .answer-box.large{height:92px;}
+  .radio-dot{width:13px;height:13px;border:1.5px solid #344466;border-radius:50%;display:inline-block;}
+  .check-box{width:13px;height:13px;border:1.5px solid #344466;border-radius:3px;display:inline-block;}
+  .dropdown-box,.attachment-box,.date-box{border:1.5px solid #b9c3d8;border-radius:8px;padding:9px 12px;min-width:240px;background:#fbfcff;color:#4f5d75;}
+  .pdf-footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #dfe5f2;margin-top:24px;padding-top:12px;color:#68748c;font-size:11px;}
+  .empty-state{padding-bottom:16px;}
+  .empty-state p{padding:0 16px;}
+  @media (max-width:900px){.preview-toolbar,.pdf-header,.pdf-footer{flex-direction:column;align-items:flex-start}.summary-card{grid-template-columns:1fr}.pdf-page{padding:20px}.answer-line{min-width:180px}}
+  @page{size:A4;margin:10mm;}
+  @media print{
+    body{background:#fff!important;}
+    .sidebar,.topbar,.no-print{display:none!important;}
+    .content{margin-left:0!important;padding:0!important;}
+    .checklist-view-shell{max-width:none;margin:0;}
+    .pdf-page{box-shadow:none;border-radius:0;padding:0;width:190mm;min-height:auto;margin:0 auto;}
+    .pdf-section{break-inside:avoid;page-break-inside:avoid;}
+    .pdf-question{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+{% if auto_print %}
+<script>
+  window.addEventListener('load', () => window.print());
+</script>
+{% endif %}
+{% endblock %}
