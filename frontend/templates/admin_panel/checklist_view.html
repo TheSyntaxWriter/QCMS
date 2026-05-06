@@ -26,7 +26,7 @@
   <article class="pdf-page">
     <header class="pdf-header">
       <div class="brand-block">
-        <img src="{% if logo_url %}{{ logo_url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="WMS Logo" />
+        <img class="brand-logo" src="{% if logo_url %}{{ logo_url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="WMS Logo" />
         <div>
           <span class="eyebrow">Work Management System</span>
           <h1>Checklist Document</h1>
@@ -127,11 +127,11 @@
   .preview-toolbar p{margin:4px 0 0;color:#59657d;font-size:13px;}
   .preview-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
   .preview-actions a{text-decoration:none;}
-  .pdf-page{background:#fff;color:#172033;border-radius:18px;padding:18mm;box-shadow:0 12px 32px rgba(8,8,112,.12);box-sizing:border-box;}
-  .pdf-mode .pdf-page{width:210mm;min-height:297mm;margin:0 auto;border-radius:0;box-shadow:none;}
+  .pdf-page{background:#fff;color:#172033;border-radius:18px;padding:18mm;box-shadow:0 12px 32px rgba(8,8,112,.12);box-sizing:border-box;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;}
+  .pdf-mode .pdf-page{border-radius:0;box-shadow:none;}
   .pdf-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #080870;padding-bottom:18px;margin-bottom:22px;}
   .brand-block{display:flex;gap:14px;align-items:center;}
-  .brand-block img{width:58px;height:58px;object-fit:contain;}
+  .brand-logo{display:block;width:58px;height:58px;object-fit:contain;flex:0 0 58px;}
   .eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#68748c;font-size:11px;font-weight:700;}
   .pdf-header h1{margin:4px 0 0;color:#080870;font-size:28px;}
   .status-pill{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;text-transform:uppercase;}
@@ -169,7 +169,7 @@
     .sidebar,.topbar,.no-print{display:none!important;}
     .content{margin-left:0!important;padding:0!important;}
     .checklist-view-shell{max-width:none;margin:0;}
-    .pdf-page{box-shadow:none;border-radius:0;padding:0;width:190mm;min-height:auto;margin:0 auto;}
+    .pdf-page{box-shadow:none!important;border-radius:0!important;padding:0!important;width:190mm!important;max-width:190mm!important;min-height:auto!important;margin:0 auto!important;}
     .pdf-section{break-inside:avoid;page-break-inside:avoid;}
     .pdf-question{break-inside:avoid;page-break-inside:avoid;}
   }

@@ -710,7 +710,7 @@ def _checklist_preview_context(request, item, pdf_mode=False):
         'sections': list(sections_by_title.values()),
         'pdf_mode': pdf_mode,
         'auto_print': request.GET.get('print') == '1',
-        'logo_url': _static_file_uri('images/logo.png'),
+        'logo_url': _static_file_uri('images/logo.png') if pdf_mode else '',
     }
 
 
