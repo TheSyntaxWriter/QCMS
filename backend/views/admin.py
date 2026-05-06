@@ -1,4 +1,6 @@
 import importlib.util
+import re
+from pathlib import Path
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -9,6 +11,7 @@ from django.db.models.functions import TruncDate
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.core.validators import validate_email
+from django.contrib.staticfiles import finders
 from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
@@ -433,6 +436,249 @@ def _question_type_label_map():
     return dict(ChecklistQuestion.QUESTION_TYPES)
 
 
+def _pdf_safe_text(value):
+    """Return plain text that works with the fallback PDF's built-in font."""
+    return str(value or '').replace('\r', ' ').replace('\n', ' ').encode('latin-1', 'replace').decode('latin-1')
+
+
+def _pdf_escape(value):
+    text = _pdf_safe_text(value)
+    return text.replace('\\', r'\\').replace('(', r'\(').replace(')', r'\)')
+
+
+def _wrap_pdf_text(value, max_chars=78):
+    words = _pdf_safe_text(value).split()
+    if not words:
+        return ['']
+    lines = []
+    current = ''
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        if len(candidate) <= max_chars:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word[:max_chars]
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _pdf_text(x, y, text, size=10, font='F1'):
+    return f"BT /{font} {size} Tf {x:.2f} {y:.2f} Td ({_pdf_escape(text)}) Tj ET"
+
+
+def _pdf_rect(x, y, width, height, stroke=True, fill=False):
+    op = 'B' if stroke and fill else 'S' if stroke else 'f'
+    return f"{x:.2f} {y:.2f} {width:.2f} {height:.2f} re {op}"
+
+
+def _pdf_line(x1, y1, x2, y2):
+    return f"{x1:.2f} {y1:.2f} m {x2:.2f} {y2:.2f} l S"
+
+
+def _checklist_pdf_filename(item):
+    base = re.sub(r'[^A-Za-z0-9_-]+', '_', item.name or 'Checklist').strip('_') or 'Checklist'
+    return f'{base}.pdf'
+
+
+def _static_file_uri(static_path):
+    resolved = finders.find(static_path)
+    if not resolved:
+        return ''
+    return Path(resolved).resolve().as_uri()
+
+
+def _answer_placeholder_ops(question, x, y, width):
+    qtype = question['type']
+    options = question.get('options') or []
+    ops = []
+    used = 20
+    if qtype == ChecklistQuestion.TYPE_LONG_TEXT:
+        ops.append(_pdf_rect(x, y - 50, width, 48))
+        used = 62
+    elif qtype == ChecklistQuestion.TYPE_SHORT_TEXT:
+        ops.append(_pdf_line(x, y - 12, x + width, y - 12))
+        used = 26
+    elif qtype == ChecklistQuestion.TYPE_MULTIPLE_CHOICE:
+        cursor_x = x
+        cursor_y = y - 14
+        for option in options:
+            if cursor_x + 130 > x + width:
+                cursor_x = x
+                cursor_y -= 18
+                used += 18
+            ops.append(_pdf_text(cursor_x, cursor_y, f'( ) {option}', 9))
+            cursor_x += min(150, max(80, len(str(option)) * 5 + 28))
+        used += 12
+    elif qtype == ChecklistQuestion.TYPE_CHECKBOX:
+        cursor_y = y - 14
+        for option in options:
+            ops.append(_pdf_text(x, cursor_y, f'[ ] {option}', 9))
+            cursor_y -= 16
+            used += 16
+    elif qtype == ChecklistQuestion.TYPE_DROPDOWN:
+        ops.append(_pdf_rect(x, y - 24, width, 22))
+        ops.append(_pdf_text(x + 8, y - 17, f"Select: {' / '.join(options)}", 9))
+        used = 38
+    elif qtype == ChecklistQuestion.TYPE_FILE_UPLOAD:
+        ops.append(_pdf_rect(x, y - 24, width, 22))
+        ops.append(_pdf_text(x + 8, y - 17, 'Attach file / evidence', 9))
+        used = 38
+    elif qtype == ChecklistQuestion.TYPE_YES_NO:
+        ops.append(_pdf_text(x, y - 14, '( ) Yes     ( ) No', 9))
+        used = 30
+    elif qtype == ChecklistQuestion.TYPE_DATE:
+        ops.append(_pdf_rect(x, y - 24, 180, 22))
+        ops.append(_pdf_text(x + 8, y - 17, 'DD / MM / YYYY', 9))
+        used = 38
+    else:
+        ops.append(_pdf_line(x, y - 12, x + width, y - 12))
+        used = 26
+    return ops, used
+
+
+def _build_fallback_checklist_pdf(item, sections, generated_for=''):
+    """Build a small, dependency-free A4 PDF for direct checklist downloads."""
+    page_width, page_height = 595.28, 841.89
+    margin = 42
+    content_width = page_width - (margin * 2)
+    y_start = page_height - margin
+    pages = []
+    ops = []
+    y = y_start
+
+    def new_page():
+        nonlocal ops, y
+        if ops:
+            pages.append(ops)
+        ops = []
+        y = y_start
+
+    def ensure_space(required):
+        if y - required < margin + 34:
+            new_page()
+
+    def add_wrapped(text, x, size=10, max_chars=80, leading=14, font='F1'):
+        nonlocal y
+        for line in _wrap_pdf_text(text, max_chars=max_chars):
+            ensure_space(leading + 4)
+            ops.append(_pdf_text(x, y, line, size=size, font=font))
+            y -= leading
+
+    status = 'Active' if item.is_active else 'Inactive'
+    projects = ', '.join(project.name for project in item.projects.all()) or 'All / Not restricted'
+    departments = ', '.join(department.name for department in item.departments.all()) or 'All / Not restricted'
+
+    # Header and brand mark.
+    ops.append('0.031 0.031 0.439 rg')
+    ops.append(_pdf_rect(margin, y - 40, 58, 40, stroke=False, fill=True))
+    ops.append('1 1 1 rg')
+    ops.append(_pdf_text(margin + 12, y - 25, 'WMS', 16, 'F2'))
+    ops.append('0 0 0 rg')
+    ops.append(_pdf_text(margin + 72, y - 12, 'Work Management System', 10, 'F2'))
+    ops.append(_pdf_text(margin + 72, y - 34, 'Checklist Document', 22, 'F2'))
+    ops.append(_pdf_rect(page_width - margin - 82, y - 25, 82, 20))
+    ops.append(_pdf_text(page_width - margin - 68, y - 19, status, 10, 'F2'))
+    y -= 58
+    ops.append(_pdf_line(margin, y, page_width - margin, y))
+    y -= 24
+
+    metadata = [
+        ('Checklist ID', item.checklist_id),
+        ('Checklist Name', item.name),
+        ('Checklist Type', item.checklist_type.name),
+        ('Last Updated', item.updated_at.strftime('%d-%m-%Y %H:%M')),
+        ('Projects', projects),
+        ('Departments', departments),
+    ]
+    for label, value in metadata:
+        ensure_space(20)
+        ops.append(_pdf_text(margin, y, f'{label}:', 9, 'F2'))
+        add_wrapped(value, margin + 112, size=9, max_chars=68, leading=12)
+        y -= 2
+
+    y -= 6
+    ensure_space(38)
+    ops.append(_pdf_rect(margin, y - 34, content_width, 34))
+    add_wrapped('Instructions: Complete every required question marked with *. Attach supporting evidence wherever the checklist asks for file upload.', margin + 10, size=9, max_chars=94, leading=12)
+    y -= 16
+
+    if not sections:
+        ensure_space(40)
+        ops.append(_pdf_text(margin, y, 'No questions configured', 12, 'F2'))
+        y -= 18
+    for section_index, section in enumerate(sections, start=1):
+        ensure_space(42)
+        ops.append('0.031 0.031 0.439 rg')
+        ops.append(_pdf_rect(margin, y - 22, content_width, 22, stroke=False, fill=True))
+        ops.append('1 1 1 rg')
+        ops.append(_pdf_text(margin + 10, y - 15, f'Section {section_index}: {section["title"]}', 11, 'F2'))
+        ops.append('0 0 0 rg')
+        y -= 34
+        for question_index, question in enumerate(section['questions'], start=1):
+            title = f'{question_index}. {question["text"]}{" *" if question.get("required") else ""}'
+            title_lines = _wrap_pdf_text(title, max_chars=86)
+            required_height = 24 + (len(title_lines) * 12)
+            placeholder_ops, placeholder_height = _answer_placeholder_ops(question, margin + 12, y - (len(title_lines) * 12) - 10, content_width - 24)
+            ensure_space(required_height + placeholder_height)
+            box_top = y + 8
+            for line in title_lines:
+                ops.append(_pdf_text(margin + 12, y, line, 10, 'F2'))
+                y -= 12
+            ops.append(_pdf_text(margin + 12, y, f'Type: {question["type_label"]}', 8))
+            y -= 10
+            placeholder_ops, placeholder_height = _answer_placeholder_ops(question, margin + 12, y, content_width - 24)
+            ops.extend(placeholder_ops)
+            y -= placeholder_height
+            ops.append(_pdf_rect(margin, y + 6, content_width, box_top - y + 2))
+            y -= 8
+
+    if ops:
+        pages.append(ops)
+
+    total_pages = len(pages)
+    objects = []
+    for index, page_ops in enumerate(pages, start=1):
+        footer_ops = [
+            _pdf_line(margin, 30, page_width - margin, 30),
+            _pdf_text(margin, 18, f'Generated by Work Management System{f" for {generated_for}" if generated_for else ""}', 8),
+            _pdf_text(page_width - margin - 70, 18, f'Page {index} of {total_pages}', 8),
+        ]
+        stream = '\n'.join(page_ops + footer_ops).encode('latin-1', 'replace')
+        objects.append(stream)
+
+    pdf_objects = [
+        b'<< /Type /Catalog /Pages 2 0 R >>',
+        f'<< /Type /Pages /Kids [{" ".join(f"{5 + i * 2} 0 R" for i in range(total_pages))}] /Count {total_pages} >>'.encode(),
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    ]
+    for index, stream in enumerate(objects):
+        page_obj_num = 5 + index * 2
+        content_obj_num = page_obj_num + 1
+        pdf_objects.append(
+            f'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width:.2f} {page_height:.2f}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {content_obj_num} 0 R >>'.encode()
+        )
+        pdf_objects.append(b'<< /Length ' + str(len(stream)).encode() + b' >>\nstream\n' + stream + b'\nendstream')
+
+    pdf = bytearray(b'%PDF-1.4\n')
+    offsets = [0]
+    for obj_number, obj in enumerate(pdf_objects, start=1):
+        offsets.append(len(pdf))
+        pdf.extend(f'{obj_number} 0 obj\n'.encode())
+        pdf.extend(obj)
+        pdf.extend(b'\nendobj\n')
+    xref_offset = len(pdf)
+    pdf.extend(f'xref\n0 {len(pdf_objects) + 1}\n'.encode())
+    pdf.extend(b'0000000000 65535 f \n')
+    for offset in offsets[1:]:
+        pdf.extend(f'{offset:010d} 00000 n \n'.encode())
+    pdf.extend(f'trailer\n<< /Size {len(pdf_objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n'.encode())
+    return bytes(pdf)
+
+
 def _checklist_preview_context(request, item, pdf_mode=False):
     type_labels = _question_type_label_map()
     sections_by_title = {}
@@ -463,7 +709,8 @@ def _checklist_preview_context(request, item, pdf_mode=False):
         'checklist': item,
         'sections': list(sections_by_title.values()),
         'pdf_mode': pdf_mode,
-        'auto_print': request.GET.get('print') == '1' or request.GET.get('download') == '1',
+        'auto_print': request.GET.get('print') == '1',
+        'logo_url': _static_file_uri('images/logo.png'),
     }
 
 
@@ -567,10 +814,9 @@ def admin_checklist_pdf(request, checklist_id):
     )
 
     context = _checklist_preview_context(request, item, pdf_mode=True)
-    wants_download = request.GET.get('download') == '1'
-    filename = f"{item.checklist_id}-{item.name}".replace(' ', '_')
+    filename = _checklist_pdf_filename(item)
 
-    if wants_download and importlib.util.find_spec('weasyprint'):
+    if importlib.util.find_spec('weasyprint'):
         from weasyprint import HTML
 
         html = render_to_string('admin_panel/checklist_view.html', context, request=request)
@@ -578,11 +824,13 @@ def admin_checklist_pdf(request, checklist_id):
             string=html,
             base_url=request.build_absolute_uri('/'),
         ).write_pdf()
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}.pdf"'
-        return response
+    else:
+        generated_for = request.user.get_full_name() or request.user.username
+        pdf_bytes = _build_fallback_checklist_pdf(item, context['sections'], generated_for=generated_for)
 
-    return render(request, 'admin_panel/checklist_view.html', context)
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 def admin_responses(request):

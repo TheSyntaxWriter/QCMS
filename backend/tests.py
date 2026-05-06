@@ -4,7 +4,17 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import ChecklistDefinition, ChecklistQuestion, ChecklistType, Department, Project, UserProfile
+from .models import (
+    Checklist,
+    ChecklistDefinition,
+    ChecklistQuestion,
+    ChecklistType,
+    Department,
+    Project,
+    Question,
+    Section,
+    UserProfile,
+)
 
 
 class AccessControlTests(TestCase):
@@ -137,6 +147,9 @@ class ChecklistBuilderTests(TestCase):
         self.assertEqual(question.type, ChecklistQuestion.TYPE_YES_NO)
         self.assertEqual(question.section, "General")
         self.assertTrue(question.required)
+        self.assertFalse(Checklist.objects.exists())
+        self.assertFalse(Section.objects.exists())
+        self.assertFalse(Question.objects.exists())
 
     def test_edit_checklist_builder_updates_and_removes_questions(self):
         checklist = ChecklistDefinition.objects.create(
@@ -204,4 +217,10 @@ class ChecklistBuilderTests(TestCase):
         self.assertContains(view_response, "Work Management System")
         self.assertNotContains(view_response, "Open PDF View")
         self.assertEqual(pdf_response.status_code, 200)
-        self.assertContains(pdf_response, "Checklist Document")
+        self.assertEqual(pdf_response["Content-Type"], "application/pdf")
+        self.assertEqual(
+            pdf_response["Content-Disposition"],
+            'attachment; filename="Printable_Checklist.pdf"',
+        )
+        self.assertTrue(pdf_response.content.startswith(b"%PDF-"))
+        self.assertGreater(len(pdf_response.content), 500)
