@@ -775,7 +775,9 @@ def admin_checklist_pdf(request, checklist_id):
         id=checklist_id,
     )
 
-    context = _checklist_preview_context(request, item, pdf_mode=True)
+    # IMPORTANT: render the same DOM/CSS state as checklist preview so browser print preview
+    # and downloaded PDF stay visually consistent.
+    context = _checklist_preview_context(request, item, pdf_mode=False)
     filename = _checklist_pdf_filename(item)
 
     if importlib.util.find_spec('weasyprint'):
