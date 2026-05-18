@@ -558,8 +558,13 @@ def admin_checklist_pdf(request, checklist_id):
         base_url=request.build_absolute_uri('/'),
     ).write_pdf(media_type='print', presentational_hints=True, optimize_size=('fonts', 'images'))
 
-    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    if not isinstance(pdf_bytes, (bytes, bytearray)) or not bytes(pdf_bytes).startswith(b'%PDF-'):
+        return HttpResponse('PDF generation failed.', status=500, content_type='text/plain; charset=utf-8')
+
+    response = HttpResponse(bytes(pdf_bytes), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Length'] = str(len(pdf_bytes))
+    response['X-Content-Type-Options'] = 'nosniff'
     return response
 
 

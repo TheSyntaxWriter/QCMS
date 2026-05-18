@@ -20,7 +20,7 @@
       <a class="btn btn-view" href="{% url 'admin_checklists' %}">← Back</a>
       <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
       <button class="btn btn-add" type="button" onclick="window.print()">Print</button>
-      <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}" download>Download PDF</a>
+      <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}">Download PDF</a>
     </div>
   </div>
 
