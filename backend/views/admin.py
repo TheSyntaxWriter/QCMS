@@ -550,7 +550,14 @@ def admin_checklist_pdf(request, checklist_id):
     context = _checklist_preview_context(request, item, pdf_mode=False)
     filename = _checklist_pdf_filename(item)
 
-    from weasyprint import HTML
+    try:
+        from weasyprint import HTML
+    except ModuleNotFoundError:
+        return HttpResponse(
+            "PDF export dependency is missing: install WeasyPrint (pip install weasyprint) and restart the server.",
+            status=503,
+            content_type='text/plain; charset=utf-8',
+        )
 
     html = render_to_string('admin_panel/checklist_view.html', context, request=request)
     pdf_bytes = HTML(
