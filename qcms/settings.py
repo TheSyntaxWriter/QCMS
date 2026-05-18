@@ -31,7 +31,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'wms.urls'
+ROOT_URLCONF = 'qcms.urls'
 
 # ✅ Templates + Frontend connect
 TEMPLATES = [
@@ -49,7 +49,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'wms.wsgi.application'
+WSGI_APPLICATION = 'qcms.wsgi.application'
 
 # ✅ Database
 DATABASES = {
