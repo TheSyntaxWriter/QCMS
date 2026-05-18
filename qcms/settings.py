@@ -44,6 +44,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'qcms.context_processors.branding',
             ],
         },
     },
@@ -89,3 +90,7 @@ STATICFILES_DIRS = [BASE_DIR / 'frontend/static']  # ✅ added
 
 # ✅ Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Branding
+PROJECT_DISPLAY_NAME = 'QCMS - Quality Control Management System'
+PROJECT_SHORT_NAME = 'QCMS'
