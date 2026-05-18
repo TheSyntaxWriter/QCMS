@@ -10,7 +10,7 @@
   <a class="btn btn-view" href="{% url 'admin_checklists' %}">← Back to Checklists</a>
 </div>
 
-<form id="checklistForm">
+<form id="checklistForm" class="checklist-edit-form">
   {% csrf_token %}
   <input type="hidden" name="action" value="{% if builder_mode == 'edit' %}edit{% else %}create{% endif %}" id="checklistAction" />
   <input type="hidden" name="checklist_pk" id="checklistPk" value="{% if builder_item %}{{ builder_item.id }}{% endif %}" />
@@ -76,8 +76,8 @@
     </div>
   </div>
 
-  <h4>Checklist Builder</h4>
-  <div style="margin-bottom:10px;">
+  <h4 class="builder-title">Checklist Builder</h4>
+  <div class="builder-title-row">
     <input type="text" name="name" id="checklistBuilderTitleInput" class="form-control" placeholder="Checklist Title" value="{{ builder_item.name|default:'' }}" required />
   </div>
   <div class="builder-actions">
@@ -129,6 +129,22 @@ window.checklistPageConfig = { actionUrl: "{% url 'admin_checklist_action' %}", 
   .mini-btn{padding:6px 8px;font-size:12px;}
   .role-permissions-table tbody tr:hover td{background:#f7f9ff;transition:background .2s ease;}
   .popup{transition:opacity .2s ease;}
+
+  .checklist-edit-form{display:grid;gap:14px;}
+  .builder-title{margin:4px 0 0;color:#22325a;letter-spacing:.2px;}
+  .builder-title-row{margin-bottom:2px;}
+  .card-lite.control-panel{border-radius:14px;box-shadow:0 4px 12px rgba(8,8,112,.08);}
+  .question-card{transition:box-shadow .2s ease, transform .2s ease;border-color:#dbe3f4;}
+  .question-card:hover{box-shadow:0 8px 20px rgba(8,8,112,.10);transform:translateY(-1px);}
+  .form-control{min-height:38px;}
+  .builder-actions{display:flex;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid #dbe3f4;background:#f8faff;border-radius:10px;}
+  .builder-footer{display:flex;justify-content:flex-end;padding-top:4px;}
+  .popup-content{border-radius:14px;box-shadow:0 18px 44px rgba(15,30,80,.24);}
+  .selection-list{border:1px solid #dde4f4;border-radius:10px;background:#fff;}
+  .selection-list label{padding:7px 8px;border-bottom:1px solid #eef2fb;}
+  .selection-list label:last-child{border-bottom:none;}
+  @media (max-width: 900px){.checklist-meta-row{grid-template-columns:1fr}.builder-footer{justify-content:stretch}.builder-footer .btn{width:100%;}}
+
 </style>
 <script src="{% static 'admin_panel/admin_checklists.js' %}"></script>
 {% endblock %}
