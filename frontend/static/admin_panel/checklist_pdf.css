@@ -76,7 +76,7 @@
   size:A4;
   margin:9mm;
   @bottom-right{content:"Page " counter(page) " of " counter(pages);font-size:8.5px;color:#68748c;}
-  @bottom-left{content:"QCMS · Work Management System";font-size:8.5px;color:#68748c;}
+  @bottom-left{content:"QCMS · Quality Control Management System";font-size:8.5px;color:#68748c;}
 }
 
 @media print{
