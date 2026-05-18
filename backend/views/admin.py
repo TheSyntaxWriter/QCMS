@@ -33,6 +33,17 @@ from .common import get_user_profile
 
 
 
+
+
+def _admin_sidebar_menu():
+    return [
+        {'url': '/admin-panel/', 'label': 'Dashboard'},
+        {'url': '/admin-panel/users/', 'label': 'Users'},
+        {'url': '/admin-panel/departments/', 'label': 'Departments'},
+        {'url': '/admin-panel/projects/', 'label': 'Projects'},
+        {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
+        {'url': '/admin-panel/responses/', 'label': 'Responses'},
+    ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()
     if not email:
@@ -140,14 +151,7 @@ def admin_dashboard(request):
     }
 
     return render(request, 'admin_panel/admin_dashboard.html', {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'transactions': txns[:8],
         'total_users': total_users,
         'total_checklists': total_checklists,
@@ -253,14 +257,7 @@ def admin_users(request):
     users_page = paginator.get_page(page_number)
 
     context = {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'users': users_page,
         'departments': Department.objects.all(),
         'projects': Project.objects.all(),
@@ -315,14 +312,7 @@ def admin_departments(request):
 
     departments = Department.objects.all().order_by('id')
     return render(request, 'admin_panel/admin_departments.html', {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'departments': departments,
         'admin_departments_config': {
             'createUrl': '/admin-create/',
@@ -342,14 +332,7 @@ def admin_projects(request):
 
     projects = Project.objects.all().order_by('id')
     return render(request, 'admin_panel/admin_projects.html', {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'projects': projects,
         'admin_projects_config': {
             'createUrl': '/admin-create/',
@@ -407,14 +390,7 @@ def admin_checklists(request):
         })
 
     return render(request, 'admin_panel/admin_checklists.html', {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'checklists': page_obj,
         'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
         'projects': Project.objects.filter(is_active=True).order_by('name'),
@@ -698,14 +674,7 @@ def _checklist_preview_context(request, item, pdf_mode=False):
         })
 
     return {
-        'sidebar_menu': [] if pdf_mode else [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': [] if pdf_mode else _admin_sidebar_menu(),
         'checklist': item,
         'sections': list(sections_by_title.values()),
         'pdf_mode': pdf_mode,
@@ -746,14 +715,7 @@ def _checklist_builder_context(request, item=None):
     initial_sections = list(sections_by_title.values())
 
     return {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'builder_mode': 'edit' if item else 'create',
         'builder_item': item,
         'next_checklist_id': item.checklist_id if item else next_checklist_id,
@@ -823,7 +785,7 @@ def admin_checklist_pdf(request, checklist_id):
         pdf_bytes = HTML(
             string=html,
             base_url=request.build_absolute_uri('/'),
-        ).write_pdf()
+        ).write_pdf(media_type='print', presentational_hints=True, optimize_size=('fonts', 'images'))
     else:
         generated_for = request.user.get_full_name() or request.user.username
         pdf_bytes = _build_fallback_checklist_pdf(item, context['sections'], generated_for=generated_for)
@@ -905,14 +867,7 @@ def admin_responses(request):
     }
 
     return render(request, 'admin_panel/admin_responses.html', {
-        'sidebar_menu': [
-            {'url': '/admin-panel/', 'label': 'Dashboard'},
-            {'url': '/admin-panel/users/', 'label': 'Users'},
-            {'url': '/admin-panel/departments/', 'label': 'Departments'},
-            {'url': '/admin-panel/projects/', 'label': 'Projects'},
-            {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-            {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        ],
+        'sidebar_menu': _admin_sidebar_menu(),
         'visible_columns': ['checklist_id','checklist_name','checklist_type','submitted_by','project','department','hod_name','submission_datetime','status','last_updated_by','last_updated','actions'],
         'allowed_actions': ['view','edit','approve','reject','delete','toggle'],
         'responses': page_obj,
