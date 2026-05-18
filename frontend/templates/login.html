@@ -5,36 +5,114 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WMS Login</title>
-    <link rel="icon" href="{% static 'images/favicon.ico' %}" />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="icon" href="{% static 'images/favicon.png' %}" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: "Poppins", sans-serif; background: linear-gradient(135deg, #0f1f8e, #4f69ff); }
-      .login-card { width: 360px; background: #fff; border-radius: 16px; box-shadow: 0 20px 45px rgba(0,0,0,.2); padding: 30px; }
-      .brand { text-align: center; margin-bottom: 20px; }
-      .brand-mark { width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 8px; object-fit: cover; display: block; }
-      .brand h2 { margin: 0; color: #080870; }
-      label { font-size: 13px; color: #2f2f55; display: block; margin-bottom: 6px; }
-      input { width: 100%; padding: 11px 12px; border: 1px solid #ccd3ff; border-radius: 10px; margin-bottom: 14px; box-sizing: border-box; }
-      input:focus { outline: none; border-color: #4f69ff; box-shadow: 0 0 0 3px rgba(79,105,255,.15); }
-      button { width: 100%; border: none; border-radius: 10px; background: #080870; color: #fff; padding: 11px; font-weight: 600; cursor: pointer; }
-      .error { margin-top: 12px; color: #b60000; text-align: center; font-size: 13px; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(135deg, #0f1f8e, #4f69ff);
+      }
+      .login-card {
+        width: 360px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+        padding: 30px;
+      }
+      .brand {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .brand-mark {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        margin: 0 auto 8px;
+        object-fit: cover;
+        display: block;
+      }
+      .brand h2 {
+        margin: 0;
+        color: #080870;
+      }
+      label {
+        font-size: 13px;
+        color: #2f2f55;
+        display: block;
+        margin-bottom: 6px;
+      }
+      input {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #ccd3ff;
+        border-radius: 10px;
+        margin-bottom: 14px;
+        box-sizing: border-box;
+      }
+      input:focus {
+        outline: none;
+        border-color: #4f69ff;
+        box-shadow: 0 0 0 3px rgba(79, 105, 255, 0.15);
+      }
+      button {
+        width: 100%;
+        border: none;
+        border-radius: 10px;
+        background: #080870;
+        color: #fff;
+        padding: 11px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .error {
+        margin-top: 12px;
+        color: #b60000;
+        text-align: center;
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
     <div class="login-card">
       <div class="brand">
-        <img class="brand-mark" src="{% static 'images/logo.png' %}" alt="WMS Logo" />
+        <img
+          class="brand-mark"
+          src="{% static 'images/logo.png' %}"
+          alt="WMS Logo"
+        />
         <h2>Welcome Back</h2>
       </div>
       <form method="POST">
         {% csrf_token %}
         <label for="id_username">Username</label>
-        <input id="id_username" type="text" name="username" required placeholder="Enter username" />
+        <input
+          id="id_username"
+          type="text"
+          name="username"
+          required
+          placeholder="Enter username"
+        />
         <label for="id_password">Password</label>
-        <input id="id_password" type="password" name="password" required placeholder="Enter password" />
+        <input
+          id="id_password"
+          type="password"
+          name="password"
+          required
+          placeholder="Enter password"
+        />
         <button type="submit">Sign In</button>
       </form>
-      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
     </div>
   </body>
 </html>
