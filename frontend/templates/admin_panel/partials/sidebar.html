@@ -6,9 +6,11 @@
   </h2>
   <div class="sidebar-menu">
     <div class="sidebar-menu-main">
+      {% if menu_items %}
       {% for item in menu_items %}
       <a href="{{ item.url }}" class="{% if request.path == item.url %}active{% endif %}">{{ item.label }}</a>
       {% endfor %}
+      {% endif %}
     </div>
 
     <div class="sidebar-menu-footer">

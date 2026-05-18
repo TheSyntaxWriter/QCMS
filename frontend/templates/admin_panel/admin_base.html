@@ -130,8 +130,9 @@
   </head>
 
   <body>
-    {% block sidebar %} {% include 'admin_panel/partials/sidebar.html' with
-    panel_title=PROJECT_SHORT_NAME menu_items=sidebar_menu %} {% endblock %}
+    {% block sidebar %}
+      {% include 'admin_panel/partials/sidebar.html' with panel_title=PROJECT_SHORT_NAME menu_items=sidebar_menu %}
+    {% endblock %}
 
     <div class="content">
       <div class="topbar">
