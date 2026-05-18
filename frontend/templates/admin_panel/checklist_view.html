@@ -8,6 +8,7 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
 <link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_pdf.css' %}" />
 
 <div class="checklist-view-shell {% if pdf_mode %}pdf-mode{% endif %}">
   <div class="preview-toolbar no-print">
@@ -118,62 +119,7 @@
   </article>
 </div>
 
-<style>
-  .pdf-mode .content{margin-left:0;padding:0;background:#eef2f8;}
-  .checklist-view-shell{max-width:1120px;margin:0 auto;}
-  .pdf-mode .checklist-view-shell{max-width:none;}
-  .preview-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px;background:#fff;border:1px solid #dbe3f6;border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(8,8,112,.08);}
-  .preview-toolbar h2{margin:0;color:#080870;}
-  .preview-toolbar p{margin:4px 0 0;color:#59657d;font-size:13px;}
-  .preview-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
-  .preview-actions a{text-decoration:none;}
-  .pdf-page{background:#fff;color:#172033;border-radius:18px;padding:18mm;box-shadow:0 12px 32px rgba(8,8,112,.12);box-sizing:border-box;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;}
-  .pdf-mode .pdf-page{border-radius:0;box-shadow:none;}
-  .pdf-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #080870;padding-bottom:18px;margin-bottom:22px;}
-  .brand-block{display:flex;gap:14px;align-items:center;}
-  .brand-logo{display:block;width:58px;height:58px;object-fit:contain;flex:0 0 58px;}
-  .eyebrow{text-transform:uppercase;letter-spacing:.12em;color:#68748c;font-size:11px;font-weight:700;}
-  .pdf-header h1{margin:4px 0 0;color:#080870;font-size:28px;}
-  .status-pill{padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;text-transform:uppercase;}
-  .status-pill.active{background:#e6f7ed;color:#087333;}
-  .status-pill.inactive{background:#fdecec;color:#9c1717;}
-  .summary-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;background:#f7f9ff;border:1px solid #dce5fb;border-radius:14px;padding:16px;margin-bottom:18px;}
-  .summary-card div{display:grid;gap:4px;}
-  .summary-card span{font-size:11px;color:#63708a;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
-  .summary-card strong{font-size:14px;color:#18223b;}
-  .document-note{background:#fff7e6;border:1px solid #ffd58a;border-radius:12px;padding:12px 14px;margin-bottom:20px;color:#5c4210;font-size:13px;}
-  .required-star{color:#b31313;font-weight:800;}
-  .sections-list{display:grid;gap:18px;}
-  .pdf-section{break-inside:avoid;border:1px solid #e0e6f5;border-radius:14px;overflow:hidden;}
-  .pdf-section h2{margin:0;background:#080870;color:#fff;padding:10px 14px;font-size:16px;display:flex;gap:10px;align-items:center;}
-  .pdf-section h2 span{background:rgba(255,255,255,.16);border-radius:999px;padding:4px 10px;font-size:12px;text-transform:uppercase;}
-  .pdf-question{padding:11px 14px;border-bottom:1px solid #edf1f8;}
-  .pdf-question:last-child{border-bottom:none;}
-  .question-title{display:flex;gap:6px;align-items:flex-start;color:#172033;font-size:14px;}
-  .question-meta{margin-top:4px;color:#68748c;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
-  .answer-control{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;align-items:center;}
-  .answer-control label{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:#27324a;}
-  .answer-line{height:28px;min-width:280px;border-bottom:1.5px solid #99a6bf;}
-  .answer-box{border:1.5px solid #b9c3d8;border-radius:8px;width:100%;height:58px;background:#fbfcff;}
-  .answer-box.large{height:92px;}
-  .radio-dot{width:13px;height:13px;border:1.5px solid #344466;border-radius:50%;display:inline-block;}
-  .check-box{width:13px;height:13px;border:1.5px solid #344466;border-radius:3px;display:inline-block;}
-  .dropdown-box,.attachment-box,.date-box{border:1.5px solid #b9c3d8;border-radius:8px;padding:9px 12px;min-width:240px;background:#fbfcff;color:#4f5d75;}
-  .pdf-footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #dfe5f2;margin-top:24px;padding-top:12px;color:#68748c;font-size:11px;}
-  .empty-state{padding-bottom:16px;}
-  .empty-state p{padding:0 16px;}
-  @media (max-width:900px){.preview-toolbar,.pdf-header,.pdf-footer{flex-direction:column;align-items:flex-start}.summary-card{grid-template-columns:1fr}.pdf-page{padding:20px}.answer-line{min-width:180px}}
-  @page{size:A4;margin:10mm;@bottom-right{content:"Page " counter(page) " of " counter(pages);font-size:9px;color:#68748c;}@bottom-left{content:"Work Management System";font-size:9px;color:#68748c;}}
-  @media print{
-    body{background:#fff!important;}
-    .sidebar,.topbar,.no-print{display:none!important;}
-    .content{margin-left:0!important;padding:0!important;}
-    .checklist-view-shell{max-width:none;margin:0;}
-    .pdf-page{box-shadow:none!important;border-radius:0!important;padding:0!important;width:190mm!important;max-width:190mm!important;min-height:auto!important;margin:0 auto!important;}
-    .pdf-section{break-inside:avoid;page-break-inside:avoid;}
-    .pdf-question{break-inside:avoid;page-break-inside:avoid;}
-  }
-</style>
+
 {% if auto_print %}
 <script>
   window.addEventListener('load', () => window.print());
