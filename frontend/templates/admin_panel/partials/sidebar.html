@@ -1,8 +1,8 @@
 {% load static %}
 <div class="sidebar">
   <h2>
-    <img src="{% static 'images/logo.png' %}" alt="WMS Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">
-    {{ panel_title|default:'WMS' }}
+    <img src="{% static 'images/logo.png' %}" alt="{{ PROJECT_SHORT_NAME }} Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">
+    {{ panel_title|default:PROJECT_SHORT_NAME }}
   </h2>
   <div class="sidebar-menu">
     <div class="sidebar-menu-main">
