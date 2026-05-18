@@ -1,0 +1,89 @@
+:root{
+  --qc-primary:#0b1f63;
+  --qc-primary-soft:#eef2ff;
+  --qc-text:#1f2a44;
+  --qc-muted:#63708a;
+  --qc-line:#d8deec;
+  --qc-surface:#ffffff;
+  --qc-field:#f7f9ff;
+  --qc-success:#0f6d3d;
+  --qc-success-bg:#e8f7ef;
+  --qc-danger:#9b1f1f;
+  --qc-danger-bg:#fdeeed;
+}
+
+.pdf-mode .content{margin-left:0;padding:0;background:#eef2f8;}
+.checklist-view-shell{max-width:1140px;margin:0 auto;}
+.pdf-mode .checklist-view-shell{max-width:none;}
+.preview-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:20px;background:#fff;border:1px solid var(--qc-line);border-radius:14px;padding:16px 18px;box-shadow:0 8px 24px rgba(8,8,112,.08);}
+.preview-toolbar h2{margin:0;color:var(--qc-primary);} 
+.preview-toolbar p{margin:4px 0 0;color:#59657d;font-size:13px;}
+.preview-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;}
+.preview-actions a{text-decoration:none;}
+
+.pdf-page{position:relative;background:var(--qc-surface);color:var(--qc-text);border-radius:14px;padding:14mm 13mm 12mm;box-shadow:0 10px 30px rgba(10,22,70,.10);box-sizing:border-box;width:210mm;max-width:100%;min-height:297mm;margin:0 auto;}
+.pdf-mode .pdf-page{border-radius:0;box-shadow:none;}
+
+.pdf-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;border-bottom:2px solid var(--qc-primary);padding-bottom:10px;margin-bottom:12px;}
+.brand-block{display:flex;gap:12px;align-items:center;min-width:0;}
+.brand-logo{display:block;width:50px;height:50px;object-fit:contain;flex:0 0 50px;}
+.eyebrow{text-transform:uppercase;letter-spacing:.10em;color:var(--qc-muted);font-size:10px;font-weight:700;display:block;}
+.pdf-header h1{margin:2px 0 0;color:var(--qc-primary);font-size:23px;line-height:1.18;}
+.status-pill{padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;text-transform:uppercase;white-space:nowrap;}
+.status-pill.active{background:var(--qc-success-bg);color:var(--qc-success);} 
+.status-pill.inactive{background:var(--qc-danger-bg);color:var(--qc-danger);} 
+
+.summary-card{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--qc-line);border-radius:12px;overflow:hidden;margin-bottom:12px;}
+.summary-card div{display:grid;gap:3px;padding:9px 10px;border-bottom:1px solid #e8ecf6;}
+.summary-card div:nth-last-child(-n+2){border-bottom:none;}
+.summary-card div:nth-child(odd){border-right:1px solid #e8ecf6;}
+.summary-card span{font-size:10px;color:var(--qc-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+.summary-card strong{font-size:12px;color:#172238;line-height:1.35;}
+
+.document-note{background:#fff8e8;border:1px solid #ffdf9f;border-left:4px solid #f4b63f;border-radius:10px;padding:9px 11px;margin-bottom:12px;color:#5c4210;font-size:11px;line-height:1.45;}
+.required-star{color:#b31313;font-weight:800;}
+.sections-list{display:grid;gap:10px;}
+.pdf-section{break-inside:avoid-page;border:1px solid var(--qc-line);border-radius:10px;overflow:hidden;background:#fff;}
+.pdf-section h2{margin:0;background:linear-gradient(90deg,#0b1f63,#18368e);color:#fff;padding:7px 10px;font-size:13px;display:flex;gap:8px;align-items:center;}
+.pdf-section h2 span{background:rgba(255,255,255,.18);border-radius:999px;padding:2px 8px;font-size:10px;text-transform:uppercase;}
+
+.pdf-question{padding:9px 10px;border-bottom:1px solid #eef2fa;break-inside:avoid-page;}
+.pdf-question:last-child{border-bottom:none;}
+.question-title{display:flex;gap:6px;align-items:flex-start;color:#172033;font-size:12px;line-height:1.4;}
+.question-meta{margin-top:2px;color:#6b7791;font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.answer-control{display:flex;gap:10px;flex-wrap:wrap;margin-top:7px;align-items:center;}
+.answer-control label{display:inline-flex;gap:6px;align-items:center;font-size:11px;color:#27324a;line-height:1.35;}
+.answer-line{height:22px;min-width:320px;border-bottom:1px solid #8696b5;}
+.answer-box{border:1px solid #aebad1;border-radius:7px;width:100%;height:50px;background:var(--qc-field);} 
+.answer-box.large{height:72px;}
+.radio-dot{width:11px;height:11px;border:1px solid #344466;border-radius:50%;display:inline-block;}
+.check-box{width:11px;height:11px;border:1px solid #344466;border-radius:2px;display:inline-block;}
+.dropdown-box,.attachment-box,.date-box{border:1px solid #aebad1;border-radius:7px;padding:7px 10px;min-width:250px;background:var(--qc-field);color:#46546d;font-size:10.5px;}
+
+.pdf-footer{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--qc-line);margin-top:14px;padding-top:8px;color:#68748c;font-size:9.5px;}
+.empty-state{padding-bottom:12px;}
+.empty-state p{padding:0 12px;font-size:12px;color:#51607b;}
+
+@media (max-width: 900px){
+  .preview-toolbar,.pdf-header,.pdf-footer{flex-direction:column;align-items:flex-start}
+  .summary-card{grid-template-columns:1fr}
+  .summary-card div{border-right:none!important}
+  .pdf-page{padding:20px}
+  .answer-line{min-width:180px}
+}
+
+@page{
+  size:A4;
+  margin:9mm;
+  @bottom-right{content:"Page " counter(page) " of " counter(pages);font-size:8.5px;color:#68748c;}
+  @bottom-left{content:"QCMS · Work Management System";font-size:8.5px;color:#68748c;}
+}
+
+@media print{
+  html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sidebar,.topbar,.no-print{display:none!important;}
+  .content{margin-left:0!important;padding:0!important;}
+  .checklist-view-shell{max-width:none;margin:0;}
+  .pdf-page{box-shadow:none!important;border-radius:0!important;padding:0!important;width:192mm!important;max-width:192mm!important;min-height:auto!important;margin:0 auto!important;}
+  .pdf-section,.pdf-question{break-inside:avoid-page;page-break-inside:avoid;}
+}
