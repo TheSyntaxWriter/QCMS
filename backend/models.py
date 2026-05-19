@@ -40,8 +40,24 @@ class Department(models.Model):
 
     is_active = models.BooleanField(default=True)
     employee_id = models.CharField(max_length=64, blank=True, default='')
-    phone_number = models.CharField(max_length=20, blank=True, default='', validators=[RegexValidator(regex=r'^\+?[0-9\-\s]{7,20}$', message='Enter a valid phone number.')])
-    profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        validators=[
+            RegexValidator(
+                regex=r'^\+?[0-9\-\s]{7,20}$',
+                message='Enter a valid phone number.'
+            )
+        ]
+    )
+
+    profile_image = models.ImageField(
+        upload_to='profile_images/',
+        blank=True,
+        null=True
+    )
 
     # 🔥 Soft migration safe
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
