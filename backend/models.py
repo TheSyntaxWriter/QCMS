@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.validators import RegexValidator
 
 
 # =========================================================
@@ -38,6 +39,25 @@ class Department(models.Model):
     name = models.CharField(max_length=200)
 
     is_active = models.BooleanField(default=True)
+    employee_id = models.CharField(max_length=64, blank=True, default='')
+
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        validators=[
+            RegexValidator(
+                regex=r'^\+?[0-9\-\s]{7,20}$',
+                message='Enter a valid phone number.'
+            )
+        ]
+    )
+
+    profile_image = models.ImageField(
+        upload_to='profile_images/',
+        blank=True,
+        null=True
+    )
 
     # 🔥 Soft migration safe
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)

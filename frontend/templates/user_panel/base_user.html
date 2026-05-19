@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    {% load static %}
+    <title>User Panel</title>
+    <link rel="icon" href="{% static 'images/favicon.png' %}" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <style>
+      :root { --brand:#0b1b68; --bg:#f4f6fb; --card:#fff; --muted:#667085; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:#111827; }
+      .sidebar { width:240px; background:var(--brand); height:100vh; position:fixed; top:0; left:0; padding:18px 16px; color:#fff; }
+      .sidebar h2 { margin:0 0 18px; text-align:center; font-size:1.1rem; }
+      .sidebar a { display:block; padding:11px 12px; margin-bottom:8px; border-radius:10px; color:#fff; text-decoration:none; border:1px solid rgba(255,255,255,.2); }
+      .sidebar a:hover, .sidebar a.active { background:#fff; color:var(--brand); }
+      .content { margin-left:260px; padding:24px; }
+      .topbar { background:var(--brand); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
+      @media (max-width: 920px){ .sidebar{position:static;width:100%;height:auto;} .content{margin-left:0;} }
+    </style>
+  </head>
+  <body>
+    {% include 'admin_panel/partials/sidebar.html' with panel_title=PROJECT_SHORT_NAME menu_items=sidebar_menu %}
+    <div class="content">
+      <div class="topbar">
+        <div>{% block topbar_title %}User Panel{% endblock %}</div>
+        <div>{% block topbar_welcome %}Welcome{% endblock %}</div>
+      </div>
+      {% if messages %}
+        {% for message in messages %}<div style="background:#fff;border-left:4px solid #2563eb;padding:10px 12px;border-radius:8px;margin:8px 0;">{{ message }}</div>{% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+      {% block extra_js %}{% endblock %}
+    </div>
+  </body>
+</html>
