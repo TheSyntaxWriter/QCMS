@@ -10,7 +10,8 @@ urlpatterns = [
     path('my-checklists/<int:checklist_id>/view/', views.user_checklist_preview, name='user_checklist_preview'),
     path('my-submissions/', views.my_submissions, name='my_submissions'),
     path('dashboard/', views.dashboard, name='dashboard'),
-    path('profile/', views.profile, name='profile'),
+    path('user/profile/', views.user_profile, name='user_profile'),
+    path('admin-panel/profile/', views.admin_profile, name='admin_profile'),
 
     path('management-dashboard/', views.management_dashboard, name='management_dashboard'),
 

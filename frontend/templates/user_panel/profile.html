@@ -3,32 +3,52 @@
 {% block topbar_title %}My Profile{% endblock %}
 {% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
 {% block content %}
-<style>.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:20px}.card{background:#fff;border-radius:14px;padding:20px}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.fld{padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa}.avatar{width:110px;height:110px;border-radius:50%;object-fit:cover}.small{color:#6b7280;font-size:.84rem}#cropModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:1000}.modal{background:#fff;padding:16px;border-radius:14px;max-width:520px;width:95%}@media(max-width:900px){.grid{grid-template-columns:1fr}.row{grid-template-columns:1fr}}</style>
-<div class="grid">
-  <div class="card">
-    <h3>Personal Information</h3>
-    <div class="row">
-      <div class="fld"><div class="small">Full Name</div>{{ request.user.get_full_name|default:'N/A' }}</div>
-      <div class="fld"><div class="small">Username</div>{{ request.user.username }}</div>
-      <div class="fld"><div class="small">Employee ID</div>{{ profile_obj.employee_id|default:'N/A' }}</div>
-      <div class="fld"><div class="small">Department</div>{{ profile_obj.department.name|default:'N/A' }}</div>
-      <div class="fld"><div class="small">Project</div>{{ profile_obj.project.name|default:'N/A' }}</div>
-      <div class="fld"><div class="small">Role</div>{{ profile_obj.role }}</div>
-      <div class="fld"><div class="small">Official Email</div>{{ request.user.email|default:'N/A' }}</div>
-      <div class="fld"><div class="small">Phone Number</div>{{ profile_obj.phone_number|default:'N/A' }}</div>
-      <div class="fld"><div class="small">Account Status</div>{% if profile_obj.is_active %}Active{% else %}Inactive{% endif %}</div>
-      <div class="fld"><div class="small">Joined Date</div>{{ request.user.date_joined|date:'d M Y' }}</div>
+<style>
+.profile-shell{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr;gap:20px}
+.panel-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(16,24,40,.06)}
+.panel-title{margin:0 0 14px;font-size:1.05rem;font-weight:600;color:#111827}
+.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.info-item{padding:12px;border:1px solid #eef2f7;border-radius:12px;background:linear-gradient(180deg,#fbfdff,#f8fafc)}
+.label{font-size:.77rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+.value{margin-top:4px;font-size:.93rem;color:#111827;font-weight:500}
+.side-stack{display:flex;flex-direction:column;gap:20px}
+.avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0}
+.form-row{display:grid;gap:10px;margin-top:12px}
+input[type='password'],input[type='file']{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;transition:.2s transform,.2s opacity}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:#0b1b68;color:#fff}.btn-muted{background:#e5e7eb;color:#111827}
+.small{color:#6b7280;font-size:.84rem;line-height:1.45}
+#cropModal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal{background:#fff;padding:18px;border-radius:14px;max-width:540px;width:95%}
+@media(max-width:980px){.profile-shell{grid-template-columns:1fr}.info-grid{grid-template-columns:1fr}}
+</style>
+<div class="profile-shell">
+  <div class="panel-card">
+    <h3 class="panel-title">Personal Information</h3>
+    <div class="info-grid">
+      <div class="info-item"><div class="label">Full Name</div><div class="value">{{ request.user.get_full_name|default:'N/A' }}</div></div>
+      <div class="info-item"><div class="label">Username</div><div class="value">{{ request.user.username }}</div></div>
+      <div class="info-item"><div class="label">Employee ID</div><div class="value">{{ profile_obj.employee_id|default:'N/A' }}</div></div>
+      <div class="info-item"><div class="label">Department</div><div class="value">{{ profile_obj.department.name|default:'N/A' }}</div></div>
+      <div class="info-item"><div class="label">Project</div><div class="value">{{ profile_obj.project.name|default:'N/A' }}</div></div>
+      <div class="info-item"><div class="label">Role</div><div class="value">{{ profile_obj.role }}</div></div>
+      <div class="info-item"><div class="label">Official Email</div><div class="value">{{ request.user.email|default:'N/A' }}</div></div>
+      <div class="info-item"><div class="label">Phone Number</div><div class="value">{{ profile_obj.phone_number|default:'N/A' }}</div></div>
+      <div class="info-item"><div class="label">Account Status</div><div class="value">{% if profile_obj.is_active %}Active{% else %}Inactive{% endif %}</div></div>
+      <div class="info-item"><div class="label">Joined Date</div><div class="value">{{ request.user.date_joined|date:'d M Y' }}</div></div>
     </div>
   </div>
-  <div style="display:flex;flex-direction:column;gap:20px">
-    <div class="card"><h3>Profile Image</h3>
+  <div class="side-stack">
+    <div class="panel-card"><h3>Profile Image</h3>
       <img class="avatar" id="avatarPreview" src="{% if profile_obj.profile_image %}{{ profile_obj.profile_image.url }}{% else %}{% static 'images/logo.png' %}{% endif %}">
-      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="update_image"><input type="hidden" name="cropped_image" id="croppedImage"><input type="file" id="imageInput" accept="image/*"><button type="button" onclick="openCropper()">Crop & Save</button><button type="submit">Update</button></form>
+      <form method="post" class="form-row">{% csrf_token %}<input type="hidden" name="action" value="update_image"><input type="hidden" name="cropped_image" id="croppedImage"><input type="file" id="imageInput" accept="image/*"><div class="btn-row"><button class="btn btn-muted" type="button" onclick="openCropper()">Crop & Preview</button><button class="btn btn-primary" type="submit">Save Image</button></div></form>
     </div>
-    <div class="card"><h3>Change Password</h3><form method="post">{% csrf_token %}<input type="hidden" name="action" value="change_password"><input required name="current_password" type="password" placeholder="Current Password"><input required name="new_password" type="password" placeholder="New Password"><input required name="confirm_password" type="password" placeholder="Confirm Password"><p class="small">Use at least 8 chars, avoid common words and personal information.</p><button type="submit">Update Password</button></form></div>
+    <div class="panel-card"><h3>Change Password</h3><form method="post">{% csrf_token %}<input type="hidden" name="action" value="change_password"><input required name="current_password" type="password" placeholder="Current Password"><input required name="new_password" type="password" placeholder="New Password"><input required name="confirm_password" type="password" placeholder="Confirm Password"><p class="small">Use at least 8 chars, avoid common words and personal information.</p><button class="btn btn-primary" type="submit">Update Password</button></form></div>
   </div>
 </div>
-<div id="cropModal"><div class="modal"><h4>Crop Profile Image</h4><canvas id="cropCanvas" width="420" height="320" style="width:100%"></canvas><input type="range" id="zoom" min="1" max="3" step="0.05" value="1"><button onclick="saveCrop()">Apply</button><button onclick="closeCropper()">Cancel</button></div></div>
+<div id="cropModal"><div class="modal"><h4>Crop Profile Image</h4><canvas id="cropCanvas" width="420" height="320" style="width:100%"></canvas><input type="range" id="zoom" min="1" max="3" step="0.05" value="1"><div class="btn-row"><button class="btn btn-primary" onclick="saveCrop()">Apply</button><button class="btn btn-muted" onclick="closeCropper()">Cancel</button></div></div></div>
 <script>
 let img=new Image(),scale=1,offsetX=0,offsetY=0,drag=false,sx=0,sy=0,loaded=false;const canvas=document.getElementById('cropCanvas'),ctx=canvas.getContext('2d');
 document.getElementById('imageInput').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{img.onload=()=>{loaded=true;scale=1;offsetX=0;offsetY=0;draw()};img.src=ev.target.result};r.readAsDataURL(f);});
