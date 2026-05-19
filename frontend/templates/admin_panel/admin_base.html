@@ -23,28 +23,61 @@
         position: fixed;
         top: 0;
         left: 0;
-        padding: 20px;
+        padding: 16px;
         color: white;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
       }
       .sidebar h2 {
         text-align: center;
-        margin-bottom: 30px;
+        margin: 0 0 16px 0;
+        position: sticky;
+        top: 0;
+        background: #080870;
+        z-index: 2;
+        padding: 4px 0 10px 0;
       }
       .sidebar-menu {
         display: flex;
         flex-direction: column;
-        min-height: calc(100vh - 90px);
+        min-height: 0;
+        flex: 1;
       }
       .sidebar-menu-main {
         display: flex;
         flex-direction: column;
+        gap: 2px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        scroll-behavior: smooth;
       }
       .sidebar-menu-footer {
+        margin-top: 12px;
+        position: sticky;
+        bottom: 0;
+        background: #080870;
+        padding-top: 10px;
+      }
+      .sidebar-menu-main::-webkit-scrollbar {
+        width: 7px;
+      }
+      .sidebar-menu-main::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+      }
+      .sidebar-menu-main::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.35);
+        border-radius: 999px;
+      }
+      .sidebar-menu-main::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.55);
       }
       .sidebar a {
         display: block;
         padding: 12px;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         color: white;
         text-decoration: none;
         border-radius: 10px;
@@ -125,6 +158,15 @@
       }
       .inactive-text {
         color: red;
+      }
+      @media (max-width: 1024px) {
+        .sidebar {
+          width: 190px;
+          padding: 12px;
+        }
+        .content {
+          margin-left: 214px;
+        }
       }
     </style>
   </head>

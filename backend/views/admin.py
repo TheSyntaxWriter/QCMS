@@ -39,12 +39,13 @@ from ..logging_service import write_activity_log
 def _admin_sidebar_menu():
     return [
         {'url': '/admin-panel/', 'label': 'Dashboard'},
+        {'url': '/admin-panel/checklists/', 'label': 'Checklist'},
+        {'url': '/admin-panel/responses/', 'label': 'Responses'},
         {'url': '/admin-panel/users/', 'label': 'Users'},
         {'url': '/admin-panel/departments/', 'label': 'Departments'},
         {'url': '/admin-panel/projects/', 'label': 'Projects'},
-        {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-        {'url': '/admin-panel/responses/', 'label': 'Responses'},
         {'url': '/admin-panel/logs/', 'label': 'Logs'},
+        {'url': '/profile/', 'label': 'Profile'},
     ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()
