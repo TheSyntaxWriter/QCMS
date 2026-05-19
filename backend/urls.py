@@ -7,6 +7,7 @@ urlpatterns = [
     path('logout/', views.user_logout, name='logout'),
 
     path('my-checklists/', views.my_checklists, name='my_checklists'),
+    path('my-checklists/<int:checklist_id>/view/', views.user_checklist_preview, name='user_checklist_preview'),
     path('my-submissions/', views.my_submissions, name='my_submissions'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('profile/', views.profile, name='profile'),
@@ -23,6 +24,7 @@ urlpatterns = [
     path('admin-panel/checklists/<int:checklist_id>/view/', views.admin_checklist_view, name='admin_checklist_view'),
     path('admin-panel/checklists/<int:checklist_id>/pdf/', views.admin_checklist_pdf, name='admin_checklist_pdf'),
     path('admin-panel/responses/', views.admin_responses, name='admin_responses'),
+    path('admin-panel/logs/', views.admin_logs, name='admin_logs'),
 
     path('admin-create/', views.admin_master_create, name='admin_master_create'),
     path('admin-master-create/', views.admin_master_create_legacy, name='admin_create'),

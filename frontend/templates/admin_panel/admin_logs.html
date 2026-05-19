@@ -1,0 +1,42 @@
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
+<link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
+
+<h2>System Activity Logs</h2>
+<form method="GET" class="users-toolbar">
+  <input type="text" name="search" placeholder="Global Search" value="{{ request.GET.search }}" class="form-control toolbar-search" />
+  <input type="date" name="date_from" value="{{ request.GET.date_from }}" class="form-control" />
+  <input type="date" name="date_to" value="{{ request.GET.date_to }}" class="form-control" />
+  <select name="department" class="form-control"><option value="">All Departments</option>{% for d in departments %}<option value="{{ d.id }}" {% if request.GET.department == d.id|stringformat:'s' %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
+  <select name="user" class="form-control"><option value="">All Users</option>{% for u in users %}<option value="{{ u.id }}" {% if request.GET.user == u.id|stringformat:'s' %}selected{% endif %}>{{ u.username }}</option>{% endfor %}</select>
+  <select name="project" class="form-control"><option value="">All Projects</option>{% for p in projects %}<option value="{{ p.id }}" {% if request.GET.project == p.id|stringformat:'s' %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select>
+  <select name="action_type" class="form-control"><option value="">All Actions</option>{% for a in action_types %}<option value="{{ a }}" {% if request.GET.action_type == a %}selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+  <select name="status" class="form-control"><option value="">All Status</option>{% for s in status_choices %}<option value="{{ s }}" {% if request.GET.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+  <button type="submit" class="btn btn-add">Search</button>
+</form>
+
+<div class="card"><div class="table-container"><table>
+  <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Department</th><th>Project</th><th>Module</th><th>Action</th><th>Status</th><th>IP</th><th>Description</th></tr></thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.timestamp|date:'d-m-Y H:i:s' }}</td>
+      <td>{{ log.user.username|default:'System' }}</td>
+      <td>{{ log.role|default:'-' }}</td>
+      <td>{{ log.department.name|default:'-' }}</td>
+      <td>{{ log.project.name|default:'-' }}</td>
+      <td>{{ log.module_name }}</td>
+      <td>{{ log.action_type }}</td>
+      <td>{{ log.status }}</td>
+      <td>{{ log.ip_address|default:'-' }}</td>
+      <td>{{ log.description }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="10">No logs found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

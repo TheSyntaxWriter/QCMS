@@ -26,8 +26,10 @@ from ..models import (
     Project,
     RolePermission,
     UserProfile,
+    ActivityLog,
 )
 from .common import get_user_profile
+from ..logging_service import write_activity_log
 
 
 
@@ -37,11 +39,13 @@ from .common import get_user_profile
 def _admin_sidebar_menu():
     return [
         {'url': '/admin-panel/', 'label': 'Dashboard'},
+        {'url': '/admin-panel/checklists/', 'label': 'Checklist'},
+        {'url': '/admin-panel/responses/', 'label': 'Responses'},
         {'url': '/admin-panel/users/', 'label': 'Users'},
         {'url': '/admin-panel/departments/', 'label': 'Departments'},
         {'url': '/admin-panel/projects/', 'label': 'Projects'},
-        {'url': '/admin-panel/checklists/', 'label': 'Checklists'},
-        {'url': '/admin-panel/responses/', 'label': 'Responses'},
+        {'url': '/admin-panel/logs/', 'label': 'Logs'},
+        {'url': '/profile/', 'label': 'Profile'},
     ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()
@@ -531,6 +535,9 @@ def admin_checklist_view(request, checklist_id):
         ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments', 'questions'),
         id=checklist_id,
     )
+    write_activity_log(action_type='Checklist Viewed', module_name='Checklist', description=f'Checklist preview viewed: {item.checklist_id}', status=ActivityLog.STATUS_INFO, user=request.user)
+    if request.GET.get('print') == '1':
+        write_activity_log(action_type='Checklist Printed', module_name='Checklist', description=f'Checklist print preview opened: {item.checklist_id}', status=ActivityLog.STATUS_INFO, user=request.user)
     return render(request, 'admin_panel/checklist_view.html', _checklist_preview_context(request, item))
 
 
@@ -544,6 +551,7 @@ def admin_checklist_pdf(request, checklist_id):
         ChecklistDefinition.objects.select_related('checklist_type').prefetch_related('projects', 'departments', 'questions'),
         id=checklist_id,
     )
+    write_activity_log(action_type='Checklist PDF Downloaded', module_name='Checklist', description=f'Checklist PDF downloaded: {item.checklist_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
 
     # IMPORTANT: render the same DOM/CSS state as checklist preview so browser print preview
     # and downloaded PDF stay visually consistent.
@@ -666,6 +674,64 @@ def admin_responses(request):
     })
 
 
+def admin_logs(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
+    logs = ActivityLog.objects.select_related('user', 'department', 'project')
+
+    search = (request.GET.get('search') or '').strip()
+    date_from = (request.GET.get('date_from') or '').strip()
+    date_to = (request.GET.get('date_to') or '').strip()
+    department = (request.GET.get('department') or '').strip()
+    user_id = (request.GET.get('user') or '').strip()
+    project = (request.GET.get('project') or '').strip()
+    action_type = (request.GET.get('action_type') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+
+    if search:
+        logs = logs.filter(
+            Q(description__icontains=search)
+            | Q(user__username__icontains=search)
+            | Q(department__name__icontains=search)
+            | Q(project__name__icontains=search)
+            | Q(action_type__icontains=search)
+            | Q(status__icontains=search)
+            | Q(ip_address__icontains=search)
+        )
+    if date_from:
+        logs = logs.filter(timestamp__date__gte=date_from)
+    if date_to:
+        logs = logs.filter(timestamp__date__lte=date_to)
+    if department:
+        logs = logs.filter(department_id=department)
+    if user_id:
+        logs = logs.filter(user_id=user_id)
+    if project:
+        logs = logs.filter(project_id=project)
+    if action_type:
+        logs = logs.filter(action_type=action_type)
+    if status:
+        logs = logs.filter(status=status)
+
+    page_obj = Paginator(logs.order_by('-timestamp'), 20).get_page(request.GET.get('page'))
+
+    return render(request, 'admin_panel/admin_logs.html', {
+        'sidebar_menu': _admin_sidebar_menu(),
+        'logs': page_obj,
+        'departments': Department.objects.filter(is_active=True).order_by('name'),
+        'users': User.objects.order_by('username'),
+        'projects': Project.objects.filter(is_active=True).order_by('name'),
+        'action_types': ActivityLog.objects.values_list('action_type', flat=True).distinct().order_by('action_type'),
+        'status_choices': [choice[0] for choice in ActivityLog.STATUS_CHOICES],
+    })
+
+
+
 def admin_checklist_action(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -680,7 +746,9 @@ def admin_checklist_action(request):
     is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
 
     if action == 'delete' and checklist_id:
+        item = ChecklistDefinition.objects.filter(id=checklist_id).first()
         ChecklistDefinition.objects.filter(id=checklist_id).delete()
+        write_activity_log(action_type='Checklist Deleted', module_name='Checklist', description=f'Checklist deleted: {item.checklist_id if item else checklist_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
         if is_ajax:
             return JsonResponse({'ok': True})
         return redirect('admin_checklists')
@@ -689,6 +757,7 @@ def admin_checklist_action(request):
         if item:
             item.is_active = not item.is_active
             item.save(update_fields=['is_active', 'updated_at'])
+            write_activity_log(action_type='Checklist Updated', module_name='Checklist', description=f'Checklist status toggled: {item.checklist_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
         if is_ajax:
             return JsonResponse({'ok': True, 'is_active': item.is_active if item else None})
         return redirect('admin_checklists')
@@ -822,6 +891,7 @@ def admin_checklist_action(request):
 
             item.questions.exclude(id__in=incoming_question_ids).delete()
 
+        write_activity_log(action_type='Checklist Created' if action == 'create' else 'Checklist Updated', module_name='Checklist', description=f'Checklist {action}: {item.checklist_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
         return JsonResponse({'ok': True, 'checklist_id': item.id})
 
 
@@ -846,6 +916,7 @@ def admin_response_action(request):
             permission.selected_projects = json.loads(request.POST.get('selected_projects') or '[]')
             permission.allowed_actions = json.loads(request.POST.get('allowed_actions') or '[]')
             permission.save()
+            write_activity_log(action_type='Permission Changes', module_name='Permissions', description=f'Permissions updated for role: {role}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return JsonResponse({'ok': True})
 
         response_id = request.POST.get('response_id')
@@ -853,6 +924,7 @@ def admin_response_action(request):
         if not response:
             return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
         if action == 'delete':
+            write_activity_log(action_type='Response Deleted', module_name='Response', description=f'Response deleted: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             response.delete()
             if is_ajax:
                 return JsonResponse({'ok': True})
@@ -861,6 +933,7 @@ def admin_response_action(request):
             response.status = 'Pending' if response.status == 'Rejected' else 'Rejected'
             response.updated_by = request.user
             response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            write_activity_log(action_type='Response Reopened' if response.status == 'Pending' else 'Response Rejected', module_name='Response', description=f'Response status toggled: {response.id} -> {response.status}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             if is_ajax:
                 return JsonResponse({'ok': True, 'status': response.status})
             return redirect('admin_responses')
@@ -868,6 +941,7 @@ def admin_response_action(request):
             response.status = 'Approved' if action == 'approve' else 'Rejected'
         response.updated_by = request.user
         response.save(update_fields=['status', 'updated_by', 'updated_at'])
+        write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
         return JsonResponse({'ok': True})
 
     if request.GET.get('action') == 'view':
@@ -927,6 +1001,7 @@ def admin_master_create(request):
                 project_id=request.POST.get('project') or None,
                 is_active=True,
             )
+            write_activity_log(action_type='User Created', module_name='User', description=f'User created: {username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
         elif request.POST.get("form_type") == "department":
             code = (request.POST.get('code') or '').strip()
             name = (request.POST.get('name') or '').strip()
@@ -941,6 +1016,7 @@ def admin_master_create(request):
                 return redirect('admin_departments')
 
             Department.objects.create(code=code, name=name, is_active=is_active)
+            write_activity_log(action_type='Department Changes', module_name='Department', description=f'Department created: {code} - {name}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
         elif request.POST.get("form_type") == "project":
             code = (request.POST.get('code') or '').strip()
             name = (request.POST.get('name') or '').strip()
@@ -960,6 +1036,7 @@ def admin_master_create(request):
                 return redirect('admin_projects')
 
             Project.objects.create(code=code, name=name, domain=domain, is_active=is_active)
+            write_activity_log(action_type='Project Changes', module_name='Project', description=f'Project created: {code} - {name}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
 
         return redirect(request.META.get('HTTP_REFERER'))
 
@@ -986,12 +1063,15 @@ def admin_user_action(request):
 
         if action in {'delete', 'toggle'} and user_id:
             if action == 'delete':
+                user_obj = User.objects.filter(id=user_id).first()
                 User.objects.filter(id=user_id).delete()
+                write_activity_log(action_type='User Deleted', module_name='User', description=f'User deleted: {user_obj.username if user_obj else user_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             else:
                 try:
                     profile_obj = UserProfile.objects.get(user_id=user_id)
                     profile_obj.is_active = not profile_obj.is_active
                     profile_obj.save()
+                    write_activity_log(action_type='User Updated', module_name='User', description=f'User activation toggled: {profile_obj.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
                 except UserProfile.DoesNotExist:
                     messages.error(request, "User profile not found.")
             return redirect('admin_users')
@@ -1048,6 +1128,7 @@ def admin_user_action(request):
             profile_obj.department_id = request.POST.get('department') or None
             profile_obj.project_id = request.POST.get('project') or None
             profile_obj.save()
+            write_activity_log(action_type='User Updated', module_name='User', description=f'User updated: {user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
 
             return redirect('admin_users')
 
@@ -1067,7 +1148,9 @@ def admin_department_action(request):
         department_id = request.POST.get('department_id')
 
         if action == 'delete' and department_id:
+            dept = Department.objects.filter(id=department_id).first()
             Department.objects.filter(id=department_id).delete()
+            write_activity_log(action_type='Department Changes', module_name='Department', description=f'Department deleted: {dept.name if dept else department_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return redirect('admin_departments')
 
         if action == 'edit' and department_id:
@@ -1092,6 +1175,7 @@ def admin_department_action(request):
             department.name = name
             department.is_active = is_active
             department.save()
+            write_activity_log(action_type='Department Changes', module_name='Department', description=f'Department updated: {department.code} - {department.name}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return redirect('admin_departments')
 
     return redirect('admin_departments')
@@ -1110,7 +1194,9 @@ def admin_project_action(request):
         project_id = request.POST.get('project_id')
 
         if action == 'delete' and project_id:
+            proj = Project.objects.filter(id=project_id).first()
             Project.objects.filter(id=project_id).delete()
+            write_activity_log(action_type='Project Changes', module_name='Project', description=f'Project deleted: {proj.name if proj else project_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return redirect('admin_projects')
 
         if action == 'edit' and project_id:
@@ -1141,6 +1227,7 @@ def admin_project_action(request):
             project.domain = domain
             project.is_active = is_active
             project.save()
+            write_activity_log(action_type='Project Changes', module_name='Project', description=f'Project updated: {project.code} - {project.name}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return redirect('admin_projects')
 
     return redirect('admin_projects')

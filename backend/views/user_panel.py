@@ -1,9 +1,12 @@
 from django.core.paginator import Paginator
 from django.db.models import Q
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 
 from ..models import ChecklistDefinition, ChecklistResponse, RolePermission
 from .common import get_user_profile, redirect_for_profile
+from .admin import _checklist_preview_context
+from ..logging_service import write_activity_log
+from ..models import ActivityLog
 
 DEFAULT_VISIBLE_COLUMNS = [
     'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by',
@@ -117,3 +120,23 @@ def profile(request):
         'profile_obj': profile_obj,
         'sidebar_menu': _sidebar_menu_for_role(profile_obj.role),
     })
+
+
+def user_checklist_preview(request, checklist_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role not in {'User', 'HOD', 'Management'}:
+        return redirect_for_profile(profile)
+
+    item = get_object_or_404(
+        _checklists_for_profile(profile).prefetch_related('questions', 'projects', 'departments'),
+        id=checklist_id,
+    )
+    write_activity_log(action_type='Checklist Viewed', module_name='Checklist', description=f'Checklist preview viewed: {item.checklist_id}', status=ActivityLog.STATUS_INFO, user=request.user)
+    if request.GET.get('print') == '1':
+        write_activity_log(action_type='Checklist Printed', module_name='Checklist', description=f'Checklist print preview opened: {item.checklist_id}', status=ActivityLog.STATUS_INFO, user=request.user)
+    ctx = _checklist_preview_context(request, item)
+    ctx['preview_mode'] = 'user'
+    return render(request, 'admin_panel/checklist_view.html', ctx)

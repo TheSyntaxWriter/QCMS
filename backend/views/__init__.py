@@ -14,12 +14,13 @@ from .admin import (
     admin_projects,
     admin_response_action,
     admin_responses,
+    admin_logs,
     admin_user_action,
     admin_users,
 )
 from .auth import home, user_login, user_logout
 from .management import management_dashboard
-from .user_panel import dashboard, my_checklists, my_submissions, profile
+from .user_panel import dashboard, my_checklists, my_submissions, profile, user_checklist_preview
 
 __all__ = [
     'home',
@@ -35,6 +36,7 @@ __all__ = [
     'admin_checklist_view',
     'admin_checklist_pdf',
     'admin_responses',
+    'admin_logs',
     'admin_master_create',
     'admin_master_create_legacy',
     'admin_department_action',
@@ -46,5 +48,6 @@ __all__ = [
     'my_submissions',
     'dashboard',
     'profile',
+    'user_checklist_preview',
     'management_dashboard',
 ]
