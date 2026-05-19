@@ -98,3 +98,8 @@ PROJECT_SHORT_NAME = 'QCMS'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Authentication routing defaults used by Django auth helpers/decorators.
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
