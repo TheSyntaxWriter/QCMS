@@ -95,3 +95,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Branding
 PROJECT_DISPLAY_NAME = 'QCMS - Quality Control Management System'
 PROJECT_SHORT_NAME = 'QCMS'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
