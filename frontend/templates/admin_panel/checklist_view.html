@@ -17,8 +17,10 @@
       <p>Review, print, or save this checklist as a PDF.</p>
     </div>
     <div class="preview-actions">
-      <a class="btn btn-view" href="{% url 'admin_checklists' %}">← Back</a>
+      <a class="btn btn-view" href="{% if preview_mode == 'user' %}{% url 'my_checklists' %}{% else %}{% url 'admin_checklists' %}{% endif %}">← Back</a>
+      {% if preview_mode != 'user' %}
       <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
+      {% endif %}
       <button class="btn btn-add" type="button" onclick="window.print()">Print</button>
       <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}">Download PDF</a>
     </div>
