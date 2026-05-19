@@ -9,13 +9,18 @@
       :root { --brand:#0b1b68; --bg:#f4f6fb; --card:#fff; --muted:#667085; }
       * { box-sizing: border-box; }
       body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:#111827; }
-      .sidebar { width:240px; background:var(--brand); height:100vh; position:fixed; top:0; left:0; padding:18px 16px; color:#fff; }
-      .sidebar h2 { margin:0 0 18px; text-align:center; font-size:1.1rem; }
+      .sidebar { width:240px; background:var(--brand); height:100vh; position:fixed; top:0; left:0; padding:18px 16px; color:#fff; display:flex; flex-direction:column; overflow:hidden; }
+      .sidebar h2 { margin:0 0 18px; text-align:center; font-size:1.1rem; position:sticky; top:0; background:var(--brand); z-index:2; padding-bottom:8px; }
+      .sidebar-menu { display:flex; flex-direction:column; min-height:0; flex:1; }
+      .sidebar-menu-main { display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; padding-right:4px; scrollbar-gutter:stable; overscroll-behavior:contain; }
+      .sidebar-menu-footer { margin-top:10px; position:sticky; bottom:0; background:var(--brand); padding-top:10px; }
+      .sidebar-menu-main::-webkit-scrollbar { width:7px; }
+      .sidebar-menu-main::-webkit-scrollbar-thumb { background:rgba(255,255,255,.35); border-radius:999px; }
       .sidebar a { display:block; padding:11px 12px; margin-bottom:8px; border-radius:10px; color:#fff; text-decoration:none; border:1px solid rgba(255,255,255,.2); }
       .sidebar a:hover, .sidebar a.active { background:#fff; color:var(--brand); }
       .content { margin-left:260px; padding:24px; }
       .topbar { background:var(--brand); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
-      @media (max-width: 920px){ .sidebar{position:static;width:100%;height:auto;} .content{margin-left:0;} }
+      @media (max-width: 920px){ .sidebar{position:static;width:100%;height:auto;overflow:visible;} .sidebar-menu-main{overflow:visible;} .content{margin-left:0;} }
     </style>
   </head>
   <body>

@@ -45,7 +45,7 @@ def _admin_sidebar_menu():
         {'url': '/admin-panel/departments/', 'label': 'Departments'},
         {'url': '/admin-panel/projects/', 'label': 'Projects'},
         {'url': '/admin-panel/logs/', 'label': 'Logs'},
-        {'url': '/profile/', 'label': 'Profile'},
+        {'url': '/admin-panel/profile/', 'label': 'Profile'},
     ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()

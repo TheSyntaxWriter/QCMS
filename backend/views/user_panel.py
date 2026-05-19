@@ -29,7 +29,7 @@ def _sidebar_menu_for_role(role):
     items = [
         {'url': '/my-checklists/', 'label': 'My Checklists'},
         {'url': '/my-submissions/', 'label': 'My Submissions'},
-        {'url': '/profile/', 'label': 'Profile'},
+        {'url': '/user/profile/', 'label': 'Profile'},
     ]
     if role == 'Management':
         items.insert(0, {'url': '/dashboard/', 'label': 'Dashboard'})
@@ -128,7 +128,7 @@ def _save_profile_image_from_data_url(profile_obj, data_url):
     profile_obj.profile_image.save(f'avatar_{profile_obj.user_id}.{ext}', ContentFile(output.getvalue()), save=True)
 
 
-def profile(request):
+def _profile_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
 
@@ -168,15 +168,30 @@ def profile(request):
                     messages.error(request, ' '.join(exc.messages))
                     write_activity_log(action_type='Password Change Attempt', module_name='Profile', description='Failed password change attempt due to password policy validation.', status=ActivityLog.STATUS_FAILED, user=request.user)
 
-        return redirect('profile')
+        target = 'admin_profile' if profile_obj.role == 'Admin' else 'user_profile'
+        return redirect(target)
 
     template_name = 'admin_panel/admin_profile.html' if profile_obj.role == 'Admin' else 'user_panel/profile.html'
-    sidebar_menu = [{'url': '/profile/', 'label': 'Profile'}] if profile_obj.role == 'Admin' else _sidebar_menu_for_role(profile_obj.role)
+    sidebar_menu = [{'url': '/admin-panel/profile/', 'label': 'Profile'}] if profile_obj.role == 'Admin' else _sidebar_menu_for_role(profile_obj.role)
 
     return render(request, template_name, {
         'profile_obj': profile_obj,
         'sidebar_menu': sidebar_menu,
     })
+
+
+def user_profile(request):
+    profile_obj = get_user_profile(request.user)
+    if not profile_obj or profile_obj.role not in {'User', 'HOD', 'Management'}:
+        return redirect_for_profile(profile_obj)
+    return _profile_view(request)
+
+
+def admin_profile(request):
+    profile_obj = get_user_profile(request.user)
+    if not profile_obj or profile_obj.role != 'Admin':
+        return redirect_for_profile(profile_obj)
+    return _profile_view(request)
 
 
 def user_checklist_preview(request, checklist_id):

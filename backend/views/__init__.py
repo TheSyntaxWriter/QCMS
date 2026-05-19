@@ -20,7 +20,7 @@ from .admin import (
 )
 from .auth import home, user_login, user_logout
 from .management import management_dashboard
-from .user_panel import dashboard, my_checklists, my_submissions, profile, user_checklist_preview
+from .user_panel import dashboard, my_checklists, my_submissions, user_profile, admin_profile, user_checklist_preview
 
 __all__ = [
     'home',
@@ -47,7 +47,8 @@ __all__ = [
     'my_checklists',
     'my_submissions',
     'dashboard',
-    'profile',
+    'user_profile',
+    'admin_profile',
     'user_checklist_preview',
     'management_dashboard',
 ]
