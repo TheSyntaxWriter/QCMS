@@ -91,6 +91,7 @@
         <h2>Welcome Back</h2>
       </div>
       <form method="POST">
+        {% if request.GET.next %}<input type="hidden" name="next" value="{{ request.GET.next }}" />{% endif %}
         {% csrf_token %}
         <label for="id_username">Username</label>
         <input
