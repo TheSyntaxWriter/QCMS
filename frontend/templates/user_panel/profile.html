@@ -13,8 +13,8 @@
 .value{margin-top:4px;font-size:.93rem;color:#111827;font-weight:500}
 .side-stack{display:flex;flex-direction:column;gap:20px}
 .avatar{width:112px;height:112px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0}
-.form-row{display:grid;gap:10px;margin-top:12px}
-input[type='password'],input[type='file']{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff}
+.form-row{display:grid;gap:12px;margin-top:12px}
+input[type='password'],input[type='file']{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:.92rem}
 .btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .btn{border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;transition:.2s transform,.2s opacity}
 .btn:hover{transform:translateY(-1px)}
@@ -45,21 +45,97 @@ input[type='password'],input[type='file']{width:100%;padding:10px 12px;border:1p
       <img class="avatar" id="avatarPreview" src="{% if profile_obj.profile_image %}{{ profile_obj.profile_image.url }}{% else %}{% static 'images/logo.png' %}{% endif %}">
       <form method="post" class="form-row">{% csrf_token %}<input type="hidden" name="action" value="update_image"><input type="hidden" name="cropped_image" id="croppedImage"><input type="file" id="imageInput" accept="image/*"><div class="btn-row"><button class="btn btn-muted" type="button" onclick="openCropper()">Crop & Preview</button><button class="btn btn-primary" type="submit">Save Image</button></div></form>
     </div>
-    <div class="panel-card"><h3>Change Password</h3><form method="post">{% csrf_token %}<input type="hidden" name="action" value="change_password"><input required name="current_password" type="password" placeholder="Current Password"><input required name="new_password" type="password" placeholder="New Password"><input required name="confirm_password" type="password" placeholder="Confirm Password"><p class="small">Use at least 8 chars, avoid common words and personal information.</p><button class="btn btn-primary" type="submit">Update Password</button></form></div>
+    <div class="panel-card"><h3>Change Password</h3><form method="post" class="form-row">{% csrf_token %}<input type="hidden" name="action" value="change_password"><input required name="current_password" type="password" placeholder="Current Password"><input required name="new_password" type="password" placeholder="New Password"><input required name="confirm_password" type="password" placeholder="Confirm Password"><p class="small">Use at least 8 chars, avoid common words and personal information.</p><button class="btn btn-primary" type="submit">Update Password</button></form></div>
   </div>
 </div>
-<div id="cropModal"><div class="modal"><h4>Crop Profile Image</h4><canvas id="cropCanvas" width="420" height="320" style="width:100%"></canvas><input type="range" id="zoom" min="1" max="3" step="0.05" value="1"><div class="btn-row"><button class="btn btn-primary" onclick="saveCrop()">Apply</button><button class="btn btn-muted" onclick="closeCropper()">Cancel</button></div></div></div>
+<div id="cropModal"><div class="modal"><h4>Crop Profile Image</h4><canvas id="cropCanvas" width="420" height="320" style="width:100%"></canvas><input type="range" id="zoom" min="1" max="3" step="0.01" value="1"><div class="btn-row"><button class="btn btn-primary" onclick="saveCrop()">Apply</button><button class="btn btn-muted" onclick="closeCropper()">Cancel</button></div></div></div>
 <script>
-let img=new Image(),scale=1,offsetX=0,offsetY=0,drag=false,sx=0,sy=0,loaded=false;const canvas=document.getElementById('cropCanvas'),ctx=canvas.getContext('2d');
-document.getElementById('imageInput').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{img.onload=()=>{loaded=true;scale=1;offsetX=0;offsetY=0;draw()};img.src=ev.target.result};r.readAsDataURL(f);});
-document.getElementById('zoom').addEventListener('input',e=>{scale=parseFloat(e.target.value);draw();});
-function openCropper(){if(!loaded)return;document.body.style.overflow='hidden';document.getElementById('cropModal').style.display='flex';draw();}
-function closeCropper(){document.body.style.overflow='';document.getElementById('cropModal').style.display='none';drag=false;}
-canvas.onmousedown=e=>{drag=true;sx=e.offsetX;sy=e.offsetY};
-window.addEventListener('mouseup',()=>{drag=false;});
-canvas.onmouseleave=()=>{drag=false;};
-canvas.onmousemove=e=>{if(!drag)return;offsetX+=e.offsetX-sx;offsetY+=e.offsetY-sy;sx=e.offsetX;sy=e.offsetY;draw();};
-function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);if(!loaded)return;const w=img.width*scale,h=img.height*scale;ctx.drawImage(img,(canvas.width-w)/2+offsetX,(canvas.height-h)/2+offsetY,w,h);ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.arc(canvas.width/2,canvas.height/2,90,0,Math.PI*2);ctx.fill();ctx.globalCompositeOperation='source-over';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(canvas.width/2,canvas.height/2,90,0,Math.PI*2);ctx.stroke();}
-function saveCrop(){const out=document.createElement('canvas');out.width=256;out.height=256;const octx=out.getContext('2d');octx.beginPath();octx.arc(128,128,128,0,Math.PI*2);octx.clip();octx.drawImage(canvas,canvas.width/2-90,canvas.height/2-90,180,180,0,0,256,256);const data=out.toDataURL('image/jpeg',0.85);document.getElementById('croppedImage').value=data;document.getElementById('avatarPreview').src=data;closeCropper();}
+let img = new Image(), loaded = false, drag = false;
+let offsetX = 0, offsetY = 0, startX = 0, startY = 0;
+let baseScale = 1, zoom = 1;
+const canvas = document.getElementById('cropCanvas');
+const ctx = canvas.getContext('2d');
+const zoomInput = document.getElementById('zoom');
+const cropRadius = 90;
+
+function currentScale(){ return baseScale * zoom; }
+
+function clampOffsets(){
+  const scaledW = img.width * currentScale();
+  const scaledH = img.height * currentScale();
+  const minX = cropRadius - scaledW / 2;
+  const maxX = scaledW / 2 - cropRadius;
+  const minY = cropRadius - scaledH / 2;
+  const maxY = scaledH / 2 - cropRadius;
+  offsetX = Math.min(maxX, Math.max(minX, offsetX));
+  offsetY = Math.min(maxY, Math.max(minY, offsetY));
+}
+
+function draw(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if(!loaded) return;
+  clampOffsets();
+  const w = img.width * currentScale();
+  const h = img.height * currentScale();
+  const x = (canvas.width - w) / 2 + offsetX;
+  const y = (canvas.height - h) / 2 + offsetY;
+  ctx.drawImage(img, x, y, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(canvas.width/2, canvas.height/2, cropRadius, 0, Math.PI*2);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(canvas.width/2, canvas.height/2, cropRadius, 0, Math.PI*2);
+  ctx.stroke();
+}
+
+document.getElementById('imageInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    img.onload = () => {
+      loaded = true;
+      const fitScale = (cropRadius * 2) / Math.min(img.width, img.height);
+      baseScale = fitScale;
+      zoom = 1;
+      zoomInput.value = '1';
+      offsetX = 0;
+      offsetY = 0;
+      draw();
+    };
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(f);
+});
+
+zoomInput.addEventListener('input', e => { zoom = parseFloat(e.target.value); draw(); });
+function openCropper(){ if(!loaded) return; document.body.style.overflow='hidden'; document.getElementById('cropModal').style.display='flex'; draw(); }
+function closeCropper(){ document.body.style.overflow=''; document.getElementById('cropModal').style.display='none'; drag=false; }
+canvas.onmousedown = e => { drag=true; startX=e.offsetX; startY=e.offsetY; };
+window.addEventListener('mouseup', () => { drag=false; });
+canvas.onmouseleave = () => { drag=false; };
+canvas.onmousemove = e => { if(!drag) return; offsetX += e.offsetX - startX; offsetY += e.offsetY - startY; startX=e.offsetX; startY=e.offsetY; draw(); };
+
+function saveCrop(){
+  if(!loaded) return;
+  const out = document.createElement('canvas');
+  out.width = 512; out.height = 512;
+  const octx = out.getContext('2d');
+  octx.beginPath(); octx.arc(256,256,256,0,Math.PI*2); octx.clip();
+  const scaleOut = currentScale() * (512 / (cropRadius*2));
+  const dx = 256 - (img.width * scaleOut) / 2 + offsetX * (512 / (cropRadius*2));
+  const dy = 256 - (img.height * scaleOut) / 2 + offsetY * (512 / (cropRadius*2));
+  octx.drawImage(img, dx, dy, img.width * scaleOut, img.height * scaleOut);
+  const data = out.toDataURL('image/jpeg', 0.92);
+  document.getElementById('croppedImage').value = data;
+  document.getElementById('avatarPreview').src = data;
+  closeCropper();
+}
 </script>
 {% endblock %}
