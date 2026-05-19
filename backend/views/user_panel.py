@@ -1,6 +1,15 @@
+from io import BytesIO
+import base64
+
+from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
+from PIL import Image
 
 from ..models import ChecklistDefinition, ChecklistResponse, RolePermission
 from .common import get_user_profile, redirect_for_profile
@@ -108,6 +117,17 @@ def dashboard(request):
     })
 
 
+def _save_profile_image_from_data_url(profile_obj, data_url):
+    header, encoded = data_url.split(';base64,', 1)
+    ext = 'png' if 'png' in header else 'jpg'
+    image_bytes = base64.b64decode(encoded)
+    image = Image.open(BytesIO(image_bytes)).convert('RGB')
+    image.thumbnail((512, 512))
+    output = BytesIO()
+    image.save(output, format='JPEG', quality=85, optimize=True)
+    profile_obj.profile_image.save(f'avatar_{profile_obj.user_id}.{ext}', ContentFile(output.getvalue()), save=True)
+
+
 def profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -116,9 +136,46 @@ def profile(request):
     if not profile_obj:
         return redirect('login')
 
-    return render(request, 'user_panel/profile.html', {
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'update_image':
+            cropped = request.POST.get('cropped_image')
+            if not cropped or ';base64,' not in cropped:
+                messages.error(request, 'Unable to process image upload.')
+                write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to invalid image payload.', status=ActivityLog.STATUS_FAILED, user=request.user)
+            else:
+                _save_profile_image_from_data_url(profile_obj, cropped)
+                messages.success(request, 'Profile image updated successfully.')
+                write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image updated successfully.', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+        elif action == 'change_password':
+            current_password = request.POST.get('current_password', '')
+            new_password = request.POST.get('new_password', '')
+            confirm_password = request.POST.get('confirm_password', '')
+            if not request.user.check_password(current_password):
+                messages.error(request, 'Current password is incorrect.')
+                write_activity_log(action_type='Password Change Attempt', module_name='Profile', description='Failed password change attempt: incorrect current password.', status=ActivityLog.STATUS_FAILED, user=request.user)
+            elif new_password != confirm_password:
+                messages.error(request, 'New password and confirm password do not match.')
+            else:
+                try:
+                    validate_password(new_password, request.user)
+                    request.user.set_password(new_password)
+                    request.user.save(update_fields=['password'])
+                    update_session_auth_hash(request, request.user)
+                    messages.success(request, 'Password changed successfully.')
+                    write_activity_log(action_type='Password Changed', module_name='Profile', description='Password changed successfully.', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                except ValidationError as exc:
+                    messages.error(request, ' '.join(exc.messages))
+                    write_activity_log(action_type='Password Change Attempt', module_name='Profile', description='Failed password change attempt due to password policy validation.', status=ActivityLog.STATUS_FAILED, user=request.user)
+
+        return redirect('profile')
+
+    template_name = 'admin_panel/admin_profile.html' if profile_obj.role == 'Admin' else 'user_panel/profile.html'
+    sidebar_menu = [{'url': '/profile/', 'label': 'Profile'}] if profile_obj.role == 'Admin' else _sidebar_menu_for_role(profile_obj.role)
+
+    return render(request, template_name, {
         'profile_obj': profile_obj,
-        'sidebar_menu': _sidebar_menu_for_role(profile_obj.role),
+        'sidebar_menu': sidebar_menu,
     })
 
 
