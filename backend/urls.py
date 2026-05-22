@@ -8,7 +8,9 @@ urlpatterns = [
 
     path('my-checklists/', views.my_checklists, name='my_checklists'),
     path('my-checklists/<int:checklist_id>/view/', views.user_checklist_preview, name='user_checklist_preview'),
+    path('my-checklists/<int:checklist_id>/fill/', views.user_checklist_fill, name='user_checklist_fill'),
     path('my-submissions/', views.my_submissions, name='my_submissions'),
+    path('my-submissions/action/', views.user_submission_action, name='user_submission_action'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('user/profile/', views.user_profile, name='user_profile'),
     path('admin-panel/profile/', views.admin_profile, name='admin_profile'),

@@ -34,7 +34,9 @@
           {% if 'actions' in visible_columns %}
           <td>
             {% if response_view_mode %}
-              <span>-</span>
+              {% if 'view' in allowed_actions %}<button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
+              {% if 'edit' in allowed_actions and response.status == 'Pending' %}<a class="btn btn-edit" href="{% url 'user_checklist_fill' response.checklist.id %}">Refill</a>{% endif %}
+              {% if allowed_actions|length == 0 %}<span>-</span>{% endif %}
             {% else %}
               {% if 'view' in allowed_actions %}<button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
               {% if 'edit' in allowed_actions %}<button class="btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}">Edit</button>{% endif %}
