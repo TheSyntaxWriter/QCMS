@@ -12,12 +12,12 @@
 .table-container tbody tr:hover,.standard-table tbody tr:hover{background:var(--tbl-row-hover);} 
 .actions-column{white-space:nowrap;}
 .action-buttons,.response-action-group{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap;}
-.btn{height:32px;padding:0 12px;font-size:12px;line-height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;}
+.btn{height:32px;padding: 0px 10px;font-size:12px;line-height:32px;border-radius: 20px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;}
 @media (max-width:768px){
  .table-container table,.table-responsive .standard-table,table.standard-table{min-width:900px;}
  .btn{height:30px;line-height:30px;padding:0 10px;}
 }
 
-.table-action-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;min-width:90px;padding:0 14px;border-radius:8px;font-size:14px;font-weight:500;white-space:nowrap;}
+.table-action-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;min-width:90px;padding: 0px 10px;border-radius: 20px;font-size:14px;font-weight:500;white-space:nowrap;}
 .action-buttons,.response-action-group{align-items:center;}
 .btn{display:inline-flex;align-items:center;justify-content:center;}
