@@ -7,11 +7,12 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
 from PIL import Image
 
-from ..models import ChecklistDefinition, ChecklistResponse, RolePermission
+from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, RolePermission
 from .common import get_user_profile, redirect_for_profile
 from .admin import _checklist_preview_context
 from ..logging_service import write_activity_log
@@ -193,6 +194,88 @@ def admin_profile(request):
         return redirect_for_profile(profile_obj)
     return _profile_view(request)
 
+
+
+
+def _extract_answer(request, question):
+    key = f'q_{question.id}'
+    if question.type == ChecklistQuestion.TYPE_CHECKBOX:
+        values = request.POST.getlist(key)
+        return ' | '.join(v for v in values if v.strip())
+    if question.type == ChecklistQuestion.TYPE_FILE_UPLOAD:
+        uploaded = request.FILES.get(key)
+        return uploaded
+    return (request.POST.get(key, '') or '').strip()
+
+
+def _validate_required_questions(request, questions):
+    errors = []
+    for question in questions:
+        if not question.required:
+            continue
+        value = _extract_answer(request, question)
+        if question.type == ChecklistQuestion.TYPE_FILE_UPLOAD:
+            if not value:
+                errors.append(f'Question {question.order}: file upload is required.')
+        elif not value:
+            errors.append(f'Question {question.order}: answer is required.')
+    return errors
+
+
+def user_checklist_fill(request, checklist_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role not in {'User', 'HOD', 'Management'}:
+        return redirect_for_profile(profile)
+
+    checklist = get_object_or_404(
+        _checklists_for_profile(profile).prefetch_related('questions', 'projects', 'departments'),
+        id=checklist_id,
+    )
+
+    questions = list(checklist.questions.all().order_by('order', 'id'))
+
+    if request.method == 'POST':
+        validation_errors = _validate_required_questions(request, questions)
+        if validation_errors:
+            for err in validation_errors:
+                messages.error(request, err)
+        else:
+            with transaction.atomic():
+                response = ChecklistResponse.objects.create(
+                    checklist=checklist,
+                    submitted_by=request.user,
+                    project=profile.project,
+                    department=profile.department,
+                    hod=None,
+                    status='Pending',
+                    updated_by=request.user,
+                )
+                for question in questions:
+                    value = _extract_answer(request, question)
+                    answer = ChecklistAnswer(response=response, question=question)
+                    if question.type == ChecklistQuestion.TYPE_FILE_UPLOAD:
+                        if value:
+                            answer.file = value
+                    else:
+                        answer.answer_text = value
+                    answer.save()
+
+            write_activity_log(action_type='Checklist Submitted', module_name='Checklist', description=f'Checklist submitted: {checklist.checklist_id} by {request.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            messages.success(request, f'Checklist {checklist.checklist_id} submitted successfully.')
+            return redirect('my_submissions')
+
+    sectioned = {}
+    for question in questions:
+        sectioned.setdefault(question.section or 'General', []).append(question)
+
+    return render(request, 'user_panel/checklist_fill.html', {
+        'checklist': checklist,
+        'sectioned_questions': list(sectioned.items()),
+        'sidebar_menu': _sidebar_menu_for_role(profile.role),
+    })
 
 def user_checklist_preview(request, checklist_id):
     if not request.user.is_authenticated:
