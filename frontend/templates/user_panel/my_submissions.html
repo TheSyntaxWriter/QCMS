@@ -10,4 +10,19 @@
 
 <h2>My Submissions</h2>
 {% include 'admin_panel/partials/response_table.html' with response_view_mode=True %}
+
+<div id="responseViewModal" class="dashboard-modal" aria-hidden="true">
+  <div class="dashboard-modal-content">
+    <div class="dashboard-modal-header">
+      <h3>Response Detail</h3>
+      <button id="closeResponseView" type="button">✖</button>
+    </div>
+    <div class="dashboard-modal-body" id="responseViewContent"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>window.userSubmissionConfig = { actionUrl: "{% url 'user_submission_action' %}" };</script>
+<script src="{% static 'user_panel/my_submissions.js' %}"></script>
 {% endblock %}

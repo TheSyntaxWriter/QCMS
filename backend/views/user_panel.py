@@ -6,13 +6,14 @@ from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
 from PIL import Image
 
-from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, RolePermission
+from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, RolePermission, UserProfile
 from .common import get_user_profile, redirect_for_profile
 from .admin import _checklist_preview_context
 from ..logging_service import write_activity_log
@@ -25,6 +26,36 @@ DEFAULT_VISIBLE_COLUMNS = [
 ]
 DEFAULT_ALLOWED_ACTIONS = ['view', 'edit', 'approve', 'reject', 'delete', 'toggle']
 
+
+
+VALID_RESPONSE_COLUMNS = {
+    'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by', 'project',
+    'department', 'hod_name', 'submission_datetime', 'status', 'last_updated_by',
+    'last_updated', 'actions',
+}
+VALID_ALLOWED_ACTIONS = {'view', 'edit', 'approve', 'reject', 'delete', 'toggle'}
+
+
+def _normalize_permission_list(items, allowed):
+    if not isinstance(items, list):
+        return []
+    normalized = []
+    for item in items:
+        value = (item or '').strip() if isinstance(item, str) else ''
+        if value in allowed and value not in normalized:
+            normalized.append(value)
+    return normalized
+
+
+def _resolve_hod_user(department):
+    if not department:
+        return None
+    return UserProfile.objects.select_related('user').filter(
+        role='HOD',
+        is_active=True,
+        department=department,
+        user__is_active=True,
+    ).order_by('id').values_list('user_id', flat=True).first()
 
 def _sidebar_menu_for_role(role):
     items = [
@@ -65,8 +96,8 @@ def _permission_for_role(role):
     permission = RolePermission.objects.filter(role=role).first()
     if not permission:
         return DEFAULT_VISIBLE_COLUMNS, DEFAULT_ALLOWED_ACTIONS
-    visible_columns = permission.visible_columns or DEFAULT_VISIBLE_COLUMNS
-    allowed_actions = permission.allowed_actions or DEFAULT_ALLOWED_ACTIONS
+    visible_columns = _normalize_permission_list(permission.visible_columns or DEFAULT_VISIBLE_COLUMNS, VALID_RESPONSE_COLUMNS)
+    allowed_actions = _normalize_permission_list(permission.allowed_actions or DEFAULT_ALLOWED_ACTIONS, VALID_ALLOWED_ACTIONS)
     return visible_columns, allowed_actions
 
 
@@ -244,12 +275,13 @@ def user_checklist_fill(request, checklist_id):
                 messages.error(request, err)
         else:
             with transaction.atomic():
+                hod_user_id = _resolve_hod_user(profile.department)
                 response = ChecklistResponse.objects.create(
                     checklist=checklist,
                     submitted_by=request.user,
                     project=profile.project,
                     department=profile.department,
-                    hod=None,
+                    hod_id=hod_user_id,
                     status='Pending',
                     updated_by=request.user,
                 )
@@ -275,6 +307,39 @@ def user_checklist_fill(request, checklist_id):
         'checklist': checklist,
         'sectioned_questions': list(sectioned.items()),
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
+    })
+
+
+
+def user_submission_action(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role not in {'User', 'HOD', 'Management'}:
+        return redirect_for_profile(profile)
+
+    action = request.GET.get('action')
+    response_id = request.GET.get('response_id')
+    if action != 'view' or not response_id:
+        return JsonResponse({'ok': False}, status=400)
+
+    response = _responses_for_profile(profile, request.user).select_related(
+        'checklist', 'project', 'department', 'submitted_by',
+    ).prefetch_related('answers__question').filter(id=response_id).first()
+    if not response:
+        return JsonResponse({'ok': False}, status=404)
+
+    return JsonResponse({
+        'ok': True,
+        'checklist_id': response.checklist.checklist_id,
+        'checklist_name': response.checklist.name,
+        'submitted_by': response.submitted_by.username if response.submitted_by else '',
+        'answers': [{
+            'question': answer.question.question_text,
+            'answer_text': answer.answer_text,
+            'file_url': answer.file.url if answer.file else '',
+        } for answer in response.answers.all()],
     })
 
 def user_checklist_preview(request, checklist_id):
