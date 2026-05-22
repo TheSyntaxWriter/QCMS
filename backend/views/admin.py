@@ -15,6 +15,7 @@ from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 
 from ..models import (
     ChecklistAnswer,
@@ -39,15 +40,15 @@ from ..permission_service import get_role_permission_config, validate_permission
 
 def _admin_sidebar_menu():
     return [
-        {'url': '/admin-panel/', 'label': 'Dashboard'},
-        {'url': '/admin-panel/checklists/', 'label': 'Checklist'},
-        {'url': '/admin-panel/responses/', 'label': 'Responses'},
-        {'url': '/admin-panel/control-panel/', 'label': 'Control Panel'},
-        {'url': '/admin-panel/users/', 'label': 'Users'},
-        {'url': '/admin-panel/departments/', 'label': 'Departments'},
-        {'url': '/admin-panel/projects/', 'label': 'Projects'},
-        {'url': '/admin-panel/logs/', 'label': 'Logs'},
-        {'url': '/admin-panel/profile/', 'label': 'Profile'},
+        {'url': reverse('admin_dashboard'), 'label': 'Dashboard'},
+        {'url': reverse('admin_checklists'), 'label': 'Checklist'},
+        {'url': reverse('admin_responses'), 'label': 'Responses'},
+        {'url': reverse('admin_control_panel'), 'label': 'Control Panel'},
+        {'url': reverse('admin_users'), 'label': 'Users'},
+        {'url': reverse('admin_departments'), 'label': 'Departments'},
+        {'url': reverse('admin_projects'), 'label': 'Projects'},
+        {'url': reverse('admin_logs'), 'label': 'Logs'},
+        {'url': reverse('admin_profile'), 'label': 'Profile'},
     ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()
