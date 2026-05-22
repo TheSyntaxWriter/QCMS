@@ -1,0 +1,23 @@
+{% extends 'admin_panel/admin_base.html' %}
+{% load static %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
+<h2>Control Panel</h2>
+<div class="card">
+  <h3>Role-Based Response Controls</h3>
+  <div class="table-container role-permissions-table-wrap">
+    <table class="role-permissions-table standard-table">
+      <thead><tr><th>Role</th><th>Visible Columns</th><th>Allowed Actions</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for role in 'User,HOD,Management,Admin'.split(',') %}
+        <tr data-role="{{ role }}"><td>{{ role }}</td><td class="role-columns-csv">-</td><td class="role-actions-csv">-</td><td><button type="button" class="btn table-action-btn btn-edit role-edit-btn" data-role="{{ role }}">Edit</button></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div id="permissionEditPopup" class="popup"><div class="popup-content"><div class="popup-header"><h3 id="permissionPopupTitle">Edit Permissions</h3><span class="close-btn" id="permissionPopupClose">✖</span></div><div class="popup-body permission-popup-body"><div class="permission-popup-section"><h4>Columns</h4><div id="permissionColumnsList" class="selection-list"></div></div><div class="permission-popup-section"><h4>Actions</h4><div id="permissionActionsList" class="selection-list"></div></div></div><div class="popup-footer selection-popup-footer"><button class="btn table-action-btn btn-view" type="button" id="permissionPopupCancel">Cancel</button><button class="btn table-action-btn btn-add" type="button" id="permissionPopupSave">Save</button></div></div></div>
+{{ role_permissions|json_script:'role-permission-data' }}
+<script>window.responsePageConfig={actionUrl:"{% url 'admin_response_action' %}",csrfToken:"{{ csrf_token }}"};</script>
+<script src="{% static 'admin_panel/admin_responses.js' %}"></script>
+{% endblock %}

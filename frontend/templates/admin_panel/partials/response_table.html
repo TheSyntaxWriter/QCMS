@@ -1,6 +1,6 @@
 <div class="card">
-  <div class="table-container">
-    <table>
+  <div class="table-container response-table-container">
+    <table class="response-table">
       <thead>
         <tr>
           {% if 'checklist_id' in visible_columns %}<th>Checklist ID</th>{% endif %}
@@ -33,25 +33,15 @@
           {% if 'last_updated' in visible_columns %}<td>{{ response.updated_at|date:'d-m-Y H:i' }}</td>{% endif %}
           {% if 'actions' in visible_columns %}
           <td>
-            {% if response_view_mode %}
-              {% if 'view' in allowed_actions %}<button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
-              {% if 'edit' in allowed_actions and response.status == 'Pending' %}<a class="btn btn-edit" href="{% url 'user_checklist_fill' response.checklist.id %}">Refill</a>{% endif %}
+            <div class="response-action-group">
+              {% if 'view' in allowed_actions %}<button class="btn table-action-btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
+              {% if 'edit' in allowed_actions %}<button class="btn table-action-btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}">Edit</button>{% endif %}
+              {% if 'approve' in allowed_actions %}<button class="btn table-action-btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>{% endif %}
+              {% if 'reject' in allowed_actions %}<button class="btn table-action-btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>{% endif %}
+              {% if 'toggle' in allowed_actions %}<button class="btn table-action-btn btn-view response-action" data-action="toggle" data-id="{{ response.id }}">Toggle</button>{% endif %}
+              {% if 'delete' in allowed_actions %}<button class="btn table-action-btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>{% endif %}
               {% if allowed_actions|length == 0 %}<span>-</span>{% endif %}
-            {% else %}
-              {% if 'view' in allowed_actions %}<button class="btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
-              {% if 'edit' in allowed_actions %}<button class="btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}">Edit</button>{% endif %}
-              {% if 'approve' in allowed_actions %}<button class="btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>{% endif %}
-              {% if 'reject' in allowed_actions %}<button class="btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>{% endif %}
-              {% if 'toggle' in allowed_actions %}
-              <form method="POST" action="{% url 'admin_response_action' %}" class="inline-action-form">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="toggle">
-                <input type="hidden" name="response_id" value="{{ response.id }}">
-                <button type="submit" class="btn btn-view action-toggle-btn">{% if response.status == 'Rejected' %}Activate{% else %}Deactivate{% endif %}</button>
-              </form>
-              {% endif %}
-              {% if 'delete' in allowed_actions %}<button class="btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>{% endif %}
-            {% endif %}
+            </div>
           </td>
           {% endif %}
         </tr>

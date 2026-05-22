@@ -14,7 +14,7 @@
 {% endif %}
 
 <div class="users-add-wrap">
-  <button class="btn btn-add" id="addEntityBtn">+ Add Department</button>
+  <button class="btn table-action-btn btn-add" id="addEntityBtn">+ Add Department</button>
 </div>
 
 <div class="card">
@@ -41,12 +41,12 @@
           <td>{{ dept.created_at|date:"Y-m-d H:i:s"|default:"-" }}</td>
           <td>{{ dept.updated_at|date:"Y-m-d H:i:s"|default:"-" }}</td>
           <td>
-            <button class="btn btn-edit edit-btn"
+            <button class="btn table-action-btn btn-edit edit-btn"
                     data-id="{{ dept.id }}"
                     data-code="{{ dept.code }}"
                     data-name="{{ dept.name }}"
                     data-is-active="{{ dept.is_active|yesno:'true,false' }}">Edit</button>
-            <button class="btn btn-delete delete-btn" data-id="{{ dept.id }}">Delete</button>
+            <button class="btn table-action-btn btn-delete delete-btn" data-id="{{ dept.id }}">Delete</button>
           </td>
         </tr>
         {% empty %}
@@ -65,7 +65,7 @@
     </div>
     <div class="popup-body" id="popup-body"></div>
     <div class="popup-footer">
-      <button class="btn btn-add" id="saveBtn">Save Changes</button>
+      <button class="btn table-action-btn btn-add" id="saveBtn">Save Changes</button>
     </div>
   </div>
 </div>
@@ -80,8 +80,8 @@
       <p>Are you sure you want to delete this department?</p>
     </div>
     <div class="popup-footer delete-popup-footer">
-      <button class="btn btn-view" type="button" onclick="closeDeletePopup()">Cancel</button>
-      <button id="confirmDeleteBtn" type="submit" form="deleteEntityForm" class="btn btn-delete">Delete</button>
+      <button class="btn table-action-btn btn-view" type="button" onclick="closeDeletePopup()">Cancel</button>
+      <button id="confirmDeleteBtn" type="submit" form="deleteEntityForm" class="btn table-action-btn btn-delete">Delete</button>
     </div>
   </div>
 </div>
