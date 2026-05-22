@@ -7,25 +7,42 @@ from ..models import ActivityLog
 
 
 def home(request):
+
+    # User not logged in
     if not request.user.is_authenticated:
         return redirect('login')
 
-    return redirect_for_profile(get_user_profile(request.user))
+    # Redirect based on role/profile
+    return redirect_for_profile(
+        get_user_profile(request.user),
+        request.user
+    )
 
 
 def user_login(request):
-    if request.user.is_authenticated:
-        return redirect_for_profile(get_user_profile(request.user))
 
+    # Already logged in
+    if request.user.is_authenticated:
+
+        return redirect_for_profile(
+            get_user_profile(request.user),
+            request.user
+        )
+
+    # Login form submit
     if request.method == "POST":
+
         user = authenticate(
             request,
             username=request.POST.get('username'),
             password=request.POST.get('password'),
         )
 
+        # Login success
         if user:
+
             login(request, user)
+
             write_activity_log(
                 action_type='Login Success',
                 module_name='Authentication',
@@ -33,8 +50,13 @@ def user_login(request):
                 status=ActivityLog.STATUS_SUCCESS,
                 user=user,
             )
-            return redirect_for_profile(get_user_profile(user))
 
+            return redirect_for_profile(
+                get_user_profile(user),
+                user
+            )
+
+        # Login failed
         write_activity_log(
             action_type='Login Failure',
             module_name='Authentication',
@@ -42,13 +64,20 @@ def user_login(request):
             status=ActivityLog.STATUS_FAILED,
             user=request.user,
         )
-        return render(request, 'login.html', {'error': 'Invalid credentials'})
+
+        return render(
+            request,
+            'login.html',
+            {'error': 'Invalid credentials'}
+        )
 
     return render(request, 'login.html')
 
 
 def user_logout(request):
+
     if request.user.is_authenticated:
+
         write_activity_log(
             action_type='Logout',
             module_name='Authentication',
@@ -56,6 +85,8 @@ def user_logout(request):
             status=ActivityLog.STATUS_INFO,
             user=request.user,
         )
+
     logout(request)
     request.session.flush()
+
     return redirect('login')

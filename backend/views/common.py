@@ -4,19 +4,37 @@ from ..models import UserProfile
 
 
 def get_user_profile(user):
+
     if not user or not user.is_authenticated:
         return None
+
     return UserProfile.objects.filter(user=user).first()
 
 
-def redirect_for_profile(profile):
-    if not profile:
-        return redirect('login')
+def redirect_for_profile(profile, user=None):
+    """
+    Centralized safe redirect logic.
+    """
 
-    if profile.role in {'User', 'HOD'}:
+    # Django superuser
+    if user and user.is_superuser:
+        return redirect('/admin/')
+
+    # No profile fallback
+    if not profile:
         return redirect('my_checklists')
-    if profile.role == 'Management':
-        return redirect('dashboard')
+
+    # QCMS Admin
     if profile.role == 'Admin':
         return redirect('admin_dashboard')
-    return redirect('login')
+
+    # Management
+    if profile.role == 'Management':
+        return redirect('dashboard')
+
+    # User / HOD
+    if profile.role in {'User', 'HOD'}:
+        return redirect('my_checklists')
+
+    # Safe fallback
+    return redirect('my_checklists')

@@ -150,8 +150,7 @@ body {
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  height: 40px;
-  padding: 0 14px;
+  padding: 0 14px !important;
 }
 
 .mini-stats {
@@ -260,9 +259,9 @@ tr:hover {
 }
 
 .btn {
-  padding: 6px 12px;
+  padding: 0px 10px;
   border: none;
-  border-radius: 20px;
+  border-radius: 10px;
   font-size: 12px;
   cursor: pointer;
   transition: 0.3s;
@@ -306,7 +305,7 @@ tr:hover {
 
 .table-container tbody td:last-child {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: row;
   justify-content: center;
   align-items: center;
   gap: 0px;
