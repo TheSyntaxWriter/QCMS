@@ -17,3 +17,7 @@
  .table-container table,.table-responsive .standard-table,table.standard-table{min-width:900px;}
  .btn{height:30px;line-height:30px;padding:0 10px;}
 }
+
+.table-action-btn{display:inline-flex;align-items:center;justify-content:center;min-height:36px;min-width:90px;padding:0 14px;border-radius:8px;font-size:14px;font-weight:500;white-space:nowrap;}
+.action-buttons,.response-action-group{align-items:center;}
+.btn{display:inline-flex;align-items:center;justify-content:center;}

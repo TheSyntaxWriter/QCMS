@@ -276,6 +276,22 @@ def user_submission_action(request):
     if not profile or profile.role not in {'User', 'HOD', 'Management'}:
         return redirect_for_profile(profile)
 
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        response_id = request.POST.get('response_id')
+        allowed_actions = set(get_role_permission_config(profile.role)[1])
+        if action not in allowed_actions:
+            return JsonResponse({'ok': False, 'error': 'Unauthorized action'}, status=403)
+        response = responses_for_profile(profile, request.user).filter(id=response_id).first()
+        if not response:
+            return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
+        if action in {'approve', 'reject'}:
+            response.status = 'Approved' if action == 'approve' else 'Rejected'
+            response.updated_by = request.user
+            response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            return JsonResponse({'ok': True, 'status': response.status})
+        return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)
+
     action = request.GET.get('action')
     response_id = request.GET.get('response_id')
     if action != 'view' or not response_id:

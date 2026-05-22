@@ -42,6 +42,7 @@ def _admin_sidebar_menu():
         {'url': '/admin-panel/', 'label': 'Dashboard'},
         {'url': '/admin-panel/checklists/', 'label': 'Checklist'},
         {'url': '/admin-panel/responses/', 'label': 'Responses'},
+        {'url': '/admin-panel/control-panel/', 'label': 'Control Panel'},
         {'url': '/admin-panel/users/', 'label': 'Users'},
         {'url': '/admin-panel/departments/', 'label': 'Departments'},
         {'url': '/admin-panel/projects/', 'label': 'Projects'},
@@ -675,6 +676,26 @@ def admin_responses(request):
     })
 
 
+
+
+def admin_control_panel(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
+    role_permissions = {
+        permission.role: {
+            'visible_columns': permission.visible_columns,
+            'selected_projects': permission.selected_projects,
+            'allowed_actions': permission.allowed_actions,
+        } for permission in RolePermission.objects.all()
+    }
+    return render(request, 'admin_panel/admin_control_panel.html', {
+        'sidebar_menu': _admin_sidebar_menu(),
+        'role_permissions': role_permissions,
+    })
 def admin_logs(request):
     if not request.user.is_authenticated:
         return redirect('login')

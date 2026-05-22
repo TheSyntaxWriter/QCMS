@@ -23,6 +23,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>window.userSubmissionConfig = { actionUrl: "{% url 'user_submission_action' %}" };</script>
+<script>window.userSubmissionConfig = { actionUrl: "{% url 'user_submission_action' %}", csrfToken: "{{ csrf_token }}" };</script>
 <script src="{% static 'user_panel/my_submissions.js' %}"></script>
 {% endblock %}

@@ -23,11 +23,11 @@
           <td>{% if checklist.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
           <td>
             {% if checklist_view_mode %}
-              <a class="btn btn-add" href="{% url 'user_checklist_fill' checklist.id %}">Fill Checklist</a>
-              <a class="btn btn-view" href="{% url 'user_checklist_preview' checklist.id %}">View Checklist</a>
+              <a class="btn table-action-btn btn-add" href="{% url 'user_checklist_fill' checklist.id %}">Fill Checklist</a>
+              <a class="btn table-action-btn btn-view" href="{% url 'user_checklist_preview' checklist.id %}">View Checklist</a>
             {% else %}
-              <a class="btn btn-view" href="{% url 'admin_checklist_view' checklist.id %}">View</a>
-              <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
+              <a class="btn table-action-btn btn-view" href="{% url 'admin_checklist_view' checklist.id %}">View</a>
+              <a class="btn table-action-btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
               <form method="POST" action="{% url 'admin_checklist_action' %}" class="inline-action-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="toggle">

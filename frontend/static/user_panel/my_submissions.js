@@ -10,7 +10,18 @@
 
   document.querySelectorAll('.response-action').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (btn.dataset.action !== 'view') return;
+      const action = btn.dataset.action;
+      if (action !== 'view') {
+        if (['approve','reject'].includes(action)) {
+          const fd = new FormData();
+          fd.append('action', action);
+          fd.append('response_id', btn.dataset.id);
+          fd.append('csrfmiddlewaretoken', cfg.csrfToken);
+          const res = await fetch(cfg.actionUrl, { method: 'POST', body: fd });
+          if (res.ok) location.reload();
+        }
+        return;
+      }
       const responseId = btn.dataset.id;
       const res = await fetch(`${cfg.actionUrl}?action=view&response_id=${responseId}`);
       if (!res.ok) return;
