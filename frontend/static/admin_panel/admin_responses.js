@@ -197,12 +197,13 @@
         document.getElementById('closeResponseView').onclick = () => modal.classList.remove('is-open');
         return;
       }
-      if (action === 'approve' || action === 'reject') {
+      if (['approve','reject','toggle','edit'].includes(action)) {
         const fd = new FormData();
         fd.append('action', action);
         fd.append('response_id', responseId);
         fd.append('csrfmiddlewaretoken', cfg.csrfToken);
-        await fetch(cfg.actionUrl, { method: 'POST', body: fd });
+        const res = await fetch(cfg.actionUrl, { method: 'POST', body: fd });
+        if (action === 'edit' && res.ok) { window.location.href = '/my-submissions/'; return; }
         location.reload();
       }
     };

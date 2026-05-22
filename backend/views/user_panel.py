@@ -13,38 +13,13 @@ from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
 from PIL import Image
 
-from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, RolePermission, UserProfile
+from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, UserProfile
 from .common import get_user_profile, redirect_for_profile
 from .admin import _checklist_preview_context
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
+from ..permission_service import get_role_permission_config, responses_for_profile
 
-DEFAULT_VISIBLE_COLUMNS = [
-    'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by',
-    'project', 'department', 'hod_name', 'submission_datetime', 'status',
-    'last_updated_by', 'last_updated', 'actions',
-]
-DEFAULT_ALLOWED_ACTIONS = ['view', 'edit', 'approve', 'reject', 'delete', 'toggle']
-
-
-
-VALID_RESPONSE_COLUMNS = {
-    'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by', 'project',
-    'department', 'hod_name', 'submission_datetime', 'status', 'last_updated_by',
-    'last_updated', 'actions',
-}
-VALID_ALLOWED_ACTIONS = {'view', 'edit', 'approve', 'reject', 'delete', 'toggle'}
-
-
-def _normalize_permission_list(items, allowed):
-    if not isinstance(items, list):
-        return []
-    normalized = []
-    for item in items:
-        value = (item or '').strip() if isinstance(item, str) else ''
-        if value in allowed and value not in normalized:
-            normalized.append(value)
-    return normalized
 
 
 def _resolve_hod_user(department):
@@ -81,24 +56,6 @@ def _checklists_for_profile(profile):
     ).distinct()
 
 
-def _responses_for_profile(profile, user):
-    qs = ChecklistResponse.objects.select_related(
-        'checklist', 'submitted_by', 'project', 'department', 'hod', 'updated_by', 'checklist__checklist_type',
-    )
-    if profile.role == 'Management':
-        return qs
-    if profile.role == 'HOD':
-        return qs.filter(department=profile.department)
-    return qs.filter(submitted_by=user)
-
-
-def _permission_for_role(role):
-    permission = RolePermission.objects.filter(role=role).first()
-    if not permission:
-        return DEFAULT_VISIBLE_COLUMNS, DEFAULT_ALLOWED_ACTIONS
-    visible_columns = _normalize_permission_list(permission.visible_columns or DEFAULT_VISIBLE_COLUMNS, VALID_RESPONSE_COLUMNS)
-    allowed_actions = _normalize_permission_list(permission.allowed_actions or DEFAULT_ALLOWED_ACTIONS, VALID_ALLOWED_ACTIONS)
-    return visible_columns, allowed_actions
 
 
 def my_checklists(request):
@@ -125,8 +82,8 @@ def my_submissions(request):
     if not profile or profile.role not in {'User', 'HOD', 'Management'}:
         return redirect_for_profile(profile)
 
-    visible_columns, allowed_actions = _permission_for_role(profile.role)
-    responses = Paginator(_responses_for_profile(profile, request.user).order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+    visible_columns, allowed_actions = get_role_permission_config(profile.role)
+    responses = Paginator(responses_for_profile(profile, request.user).order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
 
     return render(request, 'user_panel/my_submissions.html', {
         'responses': responses,
@@ -324,7 +281,7 @@ def user_submission_action(request):
     if action != 'view' or not response_id:
         return JsonResponse({'ok': False}, status=400)
 
-    response = _responses_for_profile(profile, request.user).select_related(
+    response = responses_for_profile(profile, request.user).select_related(
         'checklist', 'project', 'department', 'submitted_by',
     ).prefetch_related('answers__question').filter(id=response_id).first()
     if not response:
