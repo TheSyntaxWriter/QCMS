@@ -23,7 +23,7 @@
           <td>{% if checklist.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
           <td>
             {% if checklist_view_mode %}
-              <button class="btn btn-add" type="button">Fill Checklist</button>
+              <a class="btn btn-add" href="{% url 'user_checklist_fill' checklist.id %}">Fill Checklist</a>
               <a class="btn btn-view" href="{% url 'user_checklist_preview' checklist.id %}">View Checklist</a>
             {% else %}
               <a class="btn btn-view" href="{% url 'admin_checklist_view' checklist.id %}">View</a>
