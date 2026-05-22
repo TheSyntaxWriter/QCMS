@@ -32,9 +32,9 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="toggle">
                 <input type="hidden" name="checklist_pk" value="{{ checklist.id }}">
-                <button type="submit" class="btn btn-view action-toggle-btn">{% if checklist.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+                <button type="submit" class="btn table-action-btn btn-view action-toggle-btn">{% if checklist.is_active %}Deactivate{% else %}Activate{% endif %}</button>
               </form>
-              <button class="btn btn-delete delete-btn" data-checklist-id="{{ checklist.id }}">Delete</button>
+              <button class="btn table-action-btn btn-delete delete-btn" data-checklist-id="{{ checklist.id }}">Delete</button>
             {% endif %}
           </td>
         </tr>
