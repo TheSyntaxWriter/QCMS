@@ -15,7 +15,7 @@ from PIL import Image
 
 from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, UserProfile
 from .common import get_user_profile, redirect_for_profile
-from .admin import _checklist_preview_context
+from .admin import _admin_sidebar_menu, _checklist_preview_context
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
 from ..permission_service import get_role_permission_config, responses_for_profile
@@ -161,7 +161,7 @@ def _profile_view(request):
         return redirect(target)
 
     template_name = 'admin_panel/admin_profile.html' if profile_obj.role == 'Admin' else 'user_panel/profile.html'
-    sidebar_menu = [{'url': '/admin-panel/profile/', 'label': 'Profile'}] if profile_obj.role == 'Admin' else _sidebar_menu_for_role(profile_obj.role)
+    sidebar_menu = _admin_sidebar_menu() if profile_obj.role == 'Admin' else _sidebar_menu_for_role(profile_obj.role)
 
     return render(request, template_name, {
         'profile_obj': profile_obj,
