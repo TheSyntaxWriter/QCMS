@@ -30,6 +30,7 @@ from ..models import (
 )
 from .common import get_user_profile
 from ..logging_service import write_activity_log
+from ..permission_service import get_role_permission_config, validate_permission_payload
 
 
 
@@ -41,6 +42,7 @@ def _admin_sidebar_menu():
         {'url': '/admin-panel/', 'label': 'Dashboard'},
         {'url': '/admin-panel/checklists/', 'label': 'Checklist'},
         {'url': '/admin-panel/responses/', 'label': 'Responses'},
+        {'url': '/admin-panel/control-panel/', 'label': 'Control Panel'},
         {'url': '/admin-panel/users/', 'label': 'Users'},
         {'url': '/admin-panel/departments/', 'label': 'Departments'},
         {'url': '/admin-panel/projects/', 'label': 'Projects'},
@@ -656,8 +658,8 @@ def admin_responses(request):
 
     return render(request, 'admin_panel/admin_responses.html', {
         'sidebar_menu': _admin_sidebar_menu(),
-        'visible_columns': ['checklist_id','checklist_name','checklist_type','submitted_by','project','department','hod_name','submission_datetime','status','last_updated_by','last_updated','actions'],
-        'allowed_actions': ['view','edit','approve','reject','delete','toggle'],
+        'visible_columns': get_role_permission_config('Admin')[0],
+        'allowed_actions': get_role_permission_config('Admin')[1],
         'responses': page_obj,
         'projects': active_projects,
         'departments': Department.objects.filter(is_active=True).order_by('name'),
@@ -674,6 +676,26 @@ def admin_responses(request):
     })
 
 
+
+
+def admin_control_panel(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != "Admin":
+        return redirect('home')
+
+    role_permissions = {
+        permission.role: {
+            'visible_columns': permission.visible_columns,
+            'selected_projects': permission.selected_projects,
+            'allowed_actions': permission.allowed_actions,
+        } for permission in RolePermission.objects.all()
+    }
+    return render(request, 'admin_panel/admin_control_panel.html', {
+        'sidebar_menu': _admin_sidebar_menu(),
+        'role_permissions': role_permissions,
+    })
 def admin_logs(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -912,9 +934,15 @@ def admin_response_action(request):
             role = request.POST.get('role')
             import json
             permission, _ = RolePermission.objects.get_or_create(role=role)
-            permission.visible_columns = json.loads(request.POST.get('visible_columns') or '[]')
+            raw_columns = json.loads(request.POST.get('visible_columns') or '[]')
+            raw_actions = json.loads(request.POST.get('allowed_actions') or '[]')
+            try:
+                visible_columns, allowed_actions = validate_permission_payload(raw_columns, raw_actions)
+            except ValueError as exc:
+                return JsonResponse({'ok': False, 'error': str(exc)}, status=400)
+            permission.visible_columns = visible_columns
             permission.selected_projects = json.loads(request.POST.get('selected_projects') or '[]')
-            permission.allowed_actions = json.loads(request.POST.get('allowed_actions') or '[]')
+            permission.allowed_actions = allowed_actions
             permission.save()
             write_activity_log(action_type='Permission Changes', module_name='Permissions', description=f'Permissions updated for role: {role}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return JsonResponse({'ok': True})
@@ -937,12 +965,15 @@ def admin_response_action(request):
             if is_ajax:
                 return JsonResponse({'ok': True, 'status': response.status})
             return redirect('admin_responses')
+        if action == 'edit':
+            return JsonResponse({'ok': True})
         if action in {'approve', 'reject'}:
             response.status = 'Approved' if action == 'approve' else 'Rejected'
-        response.updated_by = request.user
-        response.save(update_fields=['status', 'updated_by', 'updated_at'])
-        write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
-        return JsonResponse({'ok': True})
+            response.updated_by = request.user
+            response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            return JsonResponse({'ok': True})
+        return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)
 
     if request.GET.get('action') == 'view':
         response = ChecklistResponse.objects.select_related('checklist', 'project', 'department', 'submitted_by').prefetch_related(

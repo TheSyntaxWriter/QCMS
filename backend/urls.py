@@ -27,6 +27,7 @@ urlpatterns = [
     path('admin-panel/checklists/<int:checklist_id>/view/', views.admin_checklist_view, name='admin_checklist_view'),
     path('admin-panel/checklists/<int:checklist_id>/pdf/', views.admin_checklist_pdf, name='admin_checklist_pdf'),
     path('admin-panel/responses/', views.admin_responses, name='admin_responses'),
+    path('admin-panel/control-panel/', views.admin_control_panel, name='admin_control_panel'),
     path('admin-panel/logs/', views.admin_logs, name='admin_logs'),
 
     path('admin-create/', views.admin_master_create, name='admin_master_create'),
