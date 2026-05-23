@@ -21,8 +21,8 @@
       <h3>Checklist Details Control Panel</h3>
       <p>Manage checklist meta selections and visibility.</p>
     </div>
-    <div class="table-container role-permissions-table-wrap">
-      <table class="role-permissions-table">
+    <div class="table-container role-permissions-table-wrap checklist-details-scroll-wrap">
+      <table class="role-permissions-table checklist-details-table">
         <thead>
           <tr><th>Checklist ID</th><th>Checklist Name</th><th>Checklist Type</th><th>Project</th><th>Department</th><th>Action</th></tr>
         </thead>
@@ -116,6 +116,8 @@ window.checklistPageConfig = { actionUrl: "{% url 'admin_checklist_action' %}", 
   .required-mark{color:#c62828;font-weight:700;}
   .required-toggle{display:flex;align-items:center;gap:6px;}
   .section-one-control-panel{margin-bottom:16px;}
+  .checklist-details-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .checklist-details-table{min-width:980px;}
   .section-one-control-panel .role-permissions-table td input[type="text"]{width:100%;}
   .checklist-id-display{display:inline-flex;align-items:center;min-height:34px;padding:0 2px;font-weight:600;color:#2f3f68;}
   .checklist-name-display{display:inline-flex;align-items:center;min-height:34px;}
