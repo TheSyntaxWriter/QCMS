@@ -1,127 +1,46 @@
 {% extends 'admin_panel/admin_base.html' %}
 {% load static %}
 
-{% block topbar_title %}Control Panel{% endblock %}
-{% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
+{% block topbar_title %}Enterprise Control Panel{% endblock %}
+{% block topbar_welcome %}Configuration Studio{% endblock %}
 
 {% block content %}
 <style>
-  .coming-shell {
-    max-width: 1100px;
-    margin: 0 auto;
-    display: grid;
-    gap: 20px;
-  }
-
-  .coming-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 18px;
-    padding: 28px;
-    box-shadow: 0 8px 24px rgba(16, 24, 40, 0.06);
-  }
-
-  .coming-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: #eef2ff;
-    color: #1e3a8a;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    margin-bottom: 14px;
-  }
-
-  .coming-title {
-    margin: 0;
-    color: #0f172a;
-    font-size: clamp(1.3rem, 1.7vw, 1.9rem);
-    font-weight: 700;
-  }
-
-  .coming-text {
-    margin-top: 10px;
-    color: #475569;
-    line-height: 1.65;
-    max-width: 72ch;
-  }
-
-  .coming-grid {
-    margin-top: 20px;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-  }
-
-  .coming-point {
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 14px;
-    background: linear-gradient(180deg, #fbfdff, #f8fafc);
-  }
-
-  .coming-point h4 {
-    margin: 0 0 8px;
-    color: #0b1b68;
-    font-size: 0.95rem;
-  }
-
-  .coming-point p {
-    margin: 0;
-    color: #475569;
-    font-size: 0.9rem;
-    line-height: 1.5;
-  }
-
-  .coming-footer {
-    margin-top: 20px;
-    padding-top: 14px;
-    border-top: 1px dashed #cbd5e1;
-    color: #64748b;
-    font-size: 0.88rem;
-  }
-
-  @media (max-width: 980px) {
-    .coming-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .coming-card {
-      padding: 20px;
-    }
-  }
+.cp-layout{display:grid;grid-template-columns:260px 1fr;gap:16px}.cp-nav,.cp-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 8px 20px rgba(2,6,23,.05)}
+.cp-nav{padding:12px;position:sticky;top:20px;height:fit-content}.cp-nav a{display:block;padding:10px 12px;border-radius:10px;color:#334155;text-decoration:none}.cp-nav a:hover{background:#eef2ff}
+.cp-card{padding:18px}.cp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cp-field label{display:block;font-size:.8rem;font-weight:600;margin-bottom:6px;color:#334155}.cp-field input,.cp-field select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
+.cp-actions{display:flex;gap:10px;margin-top:16px}.btnx{padding:10px 16px;border-radius:12px;border:0;cursor:pointer}.btn-primary{background:#4f46e5;color:#fff}.btn-muted{background:#e2e8f0}
+.preview{border:1px dashed #cbd5e1;border-radius:14px;padding:14px;margin-top:16px}.preview .bar{padding:10px;border-radius:8px;color:#fff}.preview .side{margin-top:8px;padding:10px;border-radius:8px;color:#fff}
+@media(max-width:980px){.cp-layout{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}
 </style>
 
-<div class="coming-shell">
-  <section class="coming-card" aria-labelledby="control-panel-coming-title">
-    <div class="coming-badge">🚧 Module Status: Coming Soon</div>
-    <h2 id="control-panel-coming-title" class="coming-title">Admin Control Panel is under active development</h2>
-    <p class="coming-text">
-      This module will centralize advanced admin governance controls, permission orchestration, and global workflow settings.
-      The route and layout are now in place so upcoming functionality can be integrated without changing sidebar navigation.
-    </p>
-
-    <div class="coming-grid">
-      <article class="coming-point">
-        <h4>Role & Access Controls</h4>
-        <p>Fine-grained permission templates for every enterprise role.</p>
-      </article>
-      <article class="coming-point">
-        <h4>Workflow Governance</h4>
-        <p>Global checklist and approval flow configuration from one place.</p>
-      </article>
-      <article class="coming-point">
-        <h4>Audit-safe Operations</h4>
-        <p>Action history and policy updates tracked for accountability.</p>
-      </article>
+<form method="post" enctype="multipart/form-data" id="controlForm">
+  {% csrf_token %}
+  <div class="cp-layout">
+    <aside class="cp-nav">
+      <a href="#general">1. General Settings</a>
+      <a href="#branding">2. Branding Settings</a>
+      <a href="#theme">3. Theme & Appearance</a>
+      <a href="#system">4. System Preferences</a>
+      <a href="#security">5. Security Settings</a>
+      <a href="#notifications">6. Notification Settings</a>
+    </aside>
+    <div style="display:grid;gap:14px;">
+      <section id="general" class="cp-card"><h3>General Settings</h3><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name }}"></div><div class="cp-field"><label>Support Email</label><input type="email" name="support_email" value="{{ app_settings.general_settings.support_email|default:'' }}"></div><div class="cp-field" style="grid-column:1/-1"><label>Company Tagline</label><input name="company_tagline" value="{{ app_settings.general_settings.company_tagline|default:'' }}"></div></div></section>
+      <section id="branding" class="cp-card"><h3>Branding Settings</h3><div class="cp-grid"><div class="cp-field"><label>Upload/Change Logo</label><input type="file" name="logo" accept="image/*"></div><div class="cp-field"><label>Upload Favicon</label><input type="file" name="favicon" accept="image/*"></div><div class="cp-field"><label>Update Sidebar Logo</label><input type="file" name="sidebar_logo" accept="image/*"></div></div><p style="color:#64748b;font-size:.85rem">Accepted: PNG/JPG/WEBP/SVG/ICO, max 2MB.</p></section>
+      <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><div class="cp-grid"><div class="cp-field"><label>Mode</label><select name="mode"><option value="light">Light</option><option value="dark" {% if app_settings.theme_settings.mode == 'dark' %}selected{% endif %}>Dark</option></select></div><div class="cp-field"><label>Primary Color</label><input type="color" name="primary_color" id="primary_color" value="{{ app_settings.theme_settings.primary_color|default:'#4f46e5' }}"></div><div class="cp-field"><label>Sidebar Color</label><input type="color" name="sidebar_color" id="sidebar_color" value="{{ app_settings.theme_settings.sidebar_color|default:'#080870' }}"></div><div class="cp-field"><label>Header/Navbar Color</label><input type="color" name="header_color" id="header_color" value="{{ app_settings.theme_settings.header_color|default:'#080870' }}"></div><div class="cp-field"><label>Button Preset</label><select name="button_style"><option value="rounded">Rounded</option><option value="pill" {% if app_settings.theme_settings.button_style == 'pill' %}selected{% endif %}>Pill</option><option value="sharp" {% if app_settings.theme_settings.button_style == 'sharp' %}selected{% endif %}>Sharp</option></select></div><div class="cp-field"><label>Font Family</label><select name="font_family"><option>Poppins</option><option {% if app_settings.theme_settings.font_family == 'Inter' %}selected{% endif %}>Inter</option><option {% if app_settings.theme_settings.font_family == 'Roboto' %}selected{% endif %}>Roboto</option></select></div><div class="cp-field"><label>Layout Width</label><select name="layout_width"><option value="boxed">Boxed</option><option value="full" {% if app_settings.theme_settings.layout_width == 'full' %}selected{% endif %}>Full Width</option></select></div></div>
+      <div class="preview" id="livePreview"><strong id="pvName">{{ app_settings.web_app_name }}</strong><div class="bar" id="pvHeader">Header / Navbar</div><div class="side" id="pvSide">Sidebar</div><button type="button" class="btnx" id="pvButton" style="margin-top:10px">Button preview</button></div></section>
+      <section id="system" class="cp-card"><h3>System Preferences</h3><p style="color:#64748b">Scalable placeholder section for timezone, localization, workflow defaults, and integrations.</p></section>
+      <section id="security" class="cp-card"><h3>Security Settings</h3><p style="color:#64748b">Scalable placeholder section for session policies, password rules, and security modules.</p></section>
+      <section id="notifications" class="cp-card"><h3>Notification Settings</h3><p style="color:#64748b">Scalable placeholder for email/in-app alerts, escalation rules, and event subscriptions.</p></section>
+      <div class="cp-actions"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply Theme</button><button class="btnx btn-muted" type="submit" name="action" value="reset">Reset</button><button class="btnx" type="button" onclick="document.getElementById('theme').scrollIntoView({behavior:'smooth'})">Preview</button></div>
     </div>
-
-    <div class="coming-footer">
-      Ready for future extension: replace this section content while preserving the existing Admin layout, route, and sidebar behavior.
-    </div>
-  </section>
-</div>
+  </div>
+</form>
+<script>
+const bind=()=>{const h=document.getElementById('pvHeader'),s=document.getElementById('pvSide'),b=document.getElementById('pvButton');
+const pc=document.getElementById('primary_color'),sc=document.getElementById('sidebar_color'),hc=document.getElementById('header_color'),nm=document.getElementById('web_app_name');
+const render=()=>{h.style.background=hc.value;s.style.background=sc.value;b.style.background=pc.value;document.getElementById('pvName').textContent=nm.value||'App Name';};
+[pc,sc,hc,nm].forEach(el=>el&&el.addEventListener('input',render));render();};bind();
+</script>
 {% endblock %}

@@ -2,8 +2,8 @@
 <html>
   <head>
     {% load static %}
-    <title>Admin Panel</title>
-    <link rel="icon" href="{% static 'images/favicon.png' %}" />
+    <title>{{ PROJECT_DISPLAY_NAME }} - Admin Panel</title>
+    <link rel="icon" href="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" />
     <link rel="stylesheet" href="{% static 'shared/table_system.css' %}" />
 
     <link
@@ -14,12 +14,12 @@
     <style>
       body {
         margin: 0;
-        font-family: "Poppins", sans-serif;
+        font-family: "{{ GLOBAL_THEME.font_family|default:'Poppins' }}", sans-serif;
         background: #f1f3f9;
       }
       .sidebar {
-        width: 250px;
-        background: #080870;
+        width: 200px;
+        background: {{ GLOBAL_THEME.sidebar_color|default:'#080870' }};
         height: 100vh;
         position: fixed;
         top: 0;
@@ -43,16 +43,11 @@
       .sidebar h2 {
         text-align: left;
         margin: 0 0 16px 0;
-        padding: 4px 0 10px;
-        white-space: nowrap;
-      }
-      .sidebar-toggle {
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        background: transparent;
-        color: #fff;
-        border-radius: 10px;
-        padding: 6px 10px;
-        cursor: pointer;
+        position: sticky;
+        top: 0;
+        background: {{ GLOBAL_THEME.sidebar_color|default:'#080870' }};
+        z-index: 2;
+        padding: 4px 0 10px 0;
       }
       .sidebar-menu {
         display: flex;
@@ -73,7 +68,7 @@
         margin-top: 12px;
         position: sticky;
         bottom: 0;
-        background: #080870;
+        background: {{ GLOBAL_THEME.sidebar_color|default:'#080870' }};
         padding-top: 10px;
       }
       .sidebar-menu-main::-webkit-scrollbar {
@@ -120,7 +115,7 @@
         margin-left: 110px;
       }
       .topbar {
-        background: #080870;
+        background: {{ GLOBAL_THEME.header_color|default:'#080870' }};
         color: white;
         padding: 12px 20px;
         border-radius: 20px;

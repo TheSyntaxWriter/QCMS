@@ -318,3 +318,38 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.timestamp:%Y-%m-%d %H:%M:%S} - {self.module_name} - {self.action_type}"
+
+
+class AppSettings(models.Model):
+    web_app_name = models.CharField(max_length=120, default='QCMS - Quality Control Management System')
+    logo = models.ImageField(upload_to='branding/', null=True, blank=True)
+    favicon = models.ImageField(upload_to='branding/', null=True, blank=True)
+    sidebar_logo = models.ImageField(upload_to='branding/', null=True, blank=True)
+    general_settings = models.JSONField(default=dict, blank=True)
+    theme_settings = models.JSONField(default=dict, blank=True)
+    system_preferences = models.JSONField(default=dict, blank=True)
+    security_settings = models.JSONField(default=dict, blank=True)
+    notification_settings = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'general_settings': {'company_tagline': '', 'support_email': ''},
+                'theme_settings': {
+                    'mode': 'light',
+                    'primary_color': '#4f46e5',
+                    'sidebar_color': '#080870',
+                    'header_color': '#080870',
+                    'button_style': 'rounded',
+                    'font_family': 'Poppins',
+                    'layout_width': 'boxed',
+                },
+                'system_preferences': {'timezone': 'UTC', 'date_format': 'YYYY-MM-DD'},
+                'security_settings': {'session_timeout': 30, 'password_rotation_days': 90},
+                'notification_settings': {'email_alerts': True, 'in_app_alerts': True},
+            },
+        )
+        return obj

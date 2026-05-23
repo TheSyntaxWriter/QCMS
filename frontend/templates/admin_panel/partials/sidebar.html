@@ -1,12 +1,9 @@
 {% load static %}
 <div class="sidebar">
-  <div class="sidebar-header">
-    <h2>
-      <img src="{% static 'images/logo.png' %}" alt="{{ PROJECT_SHORT_NAME }} Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">
-      <span class="sidebar-brand-text">{{ panel_title|default:PROJECT_SHORT_NAME }}</span>
-    </h2>
-    <button class="sidebar-toggle" type="button" aria-label="Toggle sidebar" aria-expanded="true">☰</button>
-  </div>
+  <h2>
+    <img src="{% if GLOBAL_BRANDING.sidebar_logo %}{{ GLOBAL_BRANDING.sidebar_logo.url }}{% elif GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="{{ PROJECT_SHORT_NAME }} Logo" style="width:40px;height:40px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px;">
+    {{ panel_title|default:PROJECT_SHORT_NAME }}
+  </h2>
   <div class="sidebar-menu">
     <div class="sidebar-menu-main">
       {% if menu_items %}
