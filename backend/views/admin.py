@@ -18,6 +18,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from ..models import (
+    AppSettings,
     ChecklistAnswer,
     ChecklistDefinition,
     ChecklistQuestion,
@@ -686,16 +687,55 @@ def admin_control_panel(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
-    role_permissions = {
-        permission.role: {
-            'visible_columns': permission.visible_columns,
-            'selected_projects': permission.selected_projects,
-            'allowed_actions': permission.allowed_actions,
-        } for permission in RolePermission.objects.all()
+    app_settings = AppSettings.get_solo()
+    default_theme = {
+        'mode': 'light',
+        'primary_color': '#4f46e5',
+        'sidebar_color': '#080870',
+        'header_color': '#080870',
+        'button_style': 'rounded',
+        'font_family': 'Poppins',
+        'layout_width': 'boxed',
     }
+    allowed_types = {'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/x-icon'}
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'reset':
+            app_settings.theme_settings = default_theme
+            app_settings.web_app_name = 'QCMS - Quality Control Management System'
+            app_settings.save()
+            messages.success(request, 'Settings reset to defaults.')
+            return redirect('admin_control_panel')
+
+        app_settings.web_app_name = (request.POST.get('web_app_name') or '').strip() or app_settings.web_app_name
+        app_settings.general_settings = {
+            'company_tagline': (request.POST.get('company_tagline') or '').strip(),
+            'support_email': (request.POST.get('support_email') or '').strip(),
+        }
+        app_settings.theme_settings = {
+            'mode': request.POST.get('mode', 'light'),
+            'primary_color': request.POST.get('primary_color', '#4f46e5'),
+            'sidebar_color': request.POST.get('sidebar_color', '#080870'),
+            'header_color': request.POST.get('header_color', '#080870'),
+            'button_style': request.POST.get('button_style', 'rounded'),
+            'font_family': request.POST.get('font_family', 'Poppins'),
+            'layout_width': request.POST.get('layout_width', 'boxed'),
+        }
+        for field in ['logo', 'favicon', 'sidebar_logo']:
+            f = request.FILES.get(field)
+            if f:
+                if f.content_type not in allowed_types or f.size > 2 * 1024 * 1024:
+                    messages.error(request, f'{field.replace("_", " ").title()} must be PNG/JPG/WEBP/SVG/ICO and <= 2MB.')
+                    return redirect('admin_control_panel')
+                setattr(app_settings, field, f)
+        app_settings.save()
+        messages.success(request, 'Control panel settings saved and applied globally.')
+        return redirect('admin_control_panel')
+
     return render(request, 'admin_panel/admin_control_panel.html', {
         'sidebar_menu': _admin_sidebar_menu(),
-        'role_permissions': role_permissions,
+        'app_settings': app_settings,
     })
 def admin_logs(request):
     if not request.user.is_authenticated:
