@@ -8,14 +8,39 @@
     <div class="sidebar-menu-main">
       {% if menu_items %}
       {% for item in menu_items %}
-      <a href="{{ item.url }}" class="{% if request.path == item.url %}active{% endif %}">{{ item.label }}</a>
+      <a href="{{ item.url }}" class="sidebar-link {% if request.path == item.url %}active{% endif %}">
+        <span class="sidebar-link-icon">{{ item.icon|default:"•" }}</span>
+        <span class="sidebar-link-label">{{ item.label }}</span>
+      </a>
       {% endfor %}
       {% endif %}
     </div>
 
     <div class="sidebar-menu-footer">
       <hr />
-      <a href="{% url 'logout' %}">Logout</a>
+      <a href="{% url 'logout' %}" class="sidebar-link">
+        <span class="sidebar-link-icon">↩️</span>
+        <span class="sidebar-link-label">Logout</span>
+      </a>
     </div>
   </div>
 </div>
+<script>
+  (function () {
+    const sidebar = document.querySelector('.sidebar');
+    const toggle = document.querySelector('.sidebar-toggle');
+    if (!sidebar || !toggle) return;
+    const storageKey = 'qcms-sidebar-collapsed';
+    const setCollapsed = (collapsed) => {
+      sidebar.classList.toggle('collapsed', collapsed);
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+    };
+    const saved = localStorage.getItem(storageKey) === 'true';
+    if (window.innerWidth > 920 && saved) setCollapsed(true);
+    toggle.addEventListener('click', () => {
+      const collapsed = !sidebar.classList.contains('collapsed');
+      setCollapsed(collapsed);
+      localStorage.setItem(storageKey, String(collapsed));
+    });
+  })();
+</script>

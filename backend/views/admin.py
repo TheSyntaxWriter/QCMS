@@ -41,15 +41,15 @@ from ..permission_service import get_role_permission_config, validate_permission
 
 def _admin_sidebar_menu():
     return [
-        {'url': reverse('admin_dashboard'), 'label': 'Dashboard'},
-        {'url': reverse('admin_checklists'), 'label': 'Checklist'},
-        {'url': reverse('admin_responses'), 'label': 'Responses'},
-        {'url': reverse('admin_control_panel'), 'label': 'Control Panel'},
-        {'url': reverse('admin_users'), 'label': 'Users'},
-        {'url': reverse('admin_departments'), 'label': 'Departments'},
-        {'url': reverse('admin_projects'), 'label': 'Projects'},
-        {'url': reverse('admin_logs'), 'label': 'Logs'},
-        {'url': reverse('admin_profile'), 'label': 'Profile'},
+        {'url': reverse('admin_dashboard'), 'label': 'Dashboard', 'icon': '📊'},
+        {'url': reverse('admin_profile'), 'label': 'Profile', 'icon': '👤'},
+        {'url': reverse('admin_checklists'), 'label': 'Checklist', 'icon': '✅'},
+        {'url': reverse('admin_control_panel'), 'label': 'Control Panel', 'icon': '🎛️'},
+        {'url': reverse('admin_logs'), 'label': 'Logs', 'icon': '📝'},
+        {'url': reverse('admin_responses'), 'label': 'Responses', 'icon': '📬'},
+        {'url': reverse('admin_users'), 'label': 'Users', 'icon': '👥'},
+        {'url': reverse('admin_departments'), 'label': 'Departments', 'icon': '🏢'},
+        {'url': reverse('admin_projects'), 'label': 'Projects', 'icon': '📁'},
     ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()
