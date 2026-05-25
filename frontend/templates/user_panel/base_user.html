@@ -3,15 +3,15 @@
   <head>
     {% load static %}
     <title>User Panel</title>
-    <link rel="icon" href="{% static 'images/favicon.png' %}" />
+    <link rel="icon" href="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" />
     <link rel="stylesheet" href="{% static 'shared/table_system.css' %}" />
     <link rel="stylesheet" href="{% static 'shared/sidebar.css' %}" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600&family=Roboto:wght@400;500;700&family=Nunito+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"/>
     <style>
       :root { --brand:#0b1b68; --bg:#f4f6fb; --card:#fff; --muted:#667085; }
-      .app-layout { --theme-primary: {{ GLOBAL_THEME.primary_color|default:'#0b1b68' }}; --theme-sidebar: {{ GLOBAL_THEME.sidebar_color|default:'#0b1b68' }}; --theme-header: {{ GLOBAL_THEME.header_color|default:'#0b1b68' }}; }
+      .app-layout { --theme-primary: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}; --theme-sidebar: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}; --theme-header: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}; }
       * { box-sizing: border-box; }
-      body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:#111827; }
+      body { margin:0; font-family:'{{ GLOBAL_THEME.font_family|default:"Inter" }}',sans-serif; background:var(--bg); color:#111827; }
       .topbar { background:var(--theme-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
       .content { padding:24px; }
     </style>
