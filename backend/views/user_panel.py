@@ -123,7 +123,7 @@ def _profile_view(request):
 
     profile_obj = get_user_profile(request.user)
     if not profile_obj:
-        return redirect('login')
+        return redirect('home')
 
     if request.method == 'POST':
         action = request.POST.get('action')
