@@ -92,6 +92,9 @@
       </div>
       <form method="POST">
         {% csrf_token %}
+        {% if next %}
+        <input type="hidden" name="next" value="{{ next }}" />
+        {% endif %}
         <label for="id_username">Username</label>
         <input
           id="id_username"

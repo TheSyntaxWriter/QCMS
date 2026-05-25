@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect, render
 
-from .common import get_user_profile, redirect_for_profile
+from .common import get_user_profile, redirect_for_profile, safe_next_url
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
 
@@ -23,6 +23,9 @@ def user_login(request):
 
     # Already logged in
     if request.user.is_authenticated:
+        next_url = safe_next_url(request)
+        if next_url:
+            return redirect(next_url)
 
         return redirect_for_profile(
             get_user_profile(request.user),
@@ -42,6 +45,7 @@ def user_login(request):
         if user:
 
             login(request, user)
+            request.session.cycle_key()
 
             write_activity_log(
                 action_type='Login Success',
@@ -50,6 +54,10 @@ def user_login(request):
                 status=ActivityLog.STATUS_SUCCESS,
                 user=user,
             )
+
+            next_url = safe_next_url(request)
+            if next_url:
+                return redirect(next_url)
 
             return redirect_for_profile(
                 get_user_profile(user),
@@ -68,10 +76,10 @@ def user_login(request):
         return render(
             request,
             'login.html',
-            {'error': 'Invalid credentials'}
+            {'error': 'Invalid credentials', 'next': safe_next_url(request)}
         )
 
-    return render(request, 'login.html')
+    return render(request, 'login.html', {'next': safe_next_url(request)})
 
 
 def user_logout(request):
@@ -87,6 +95,5 @@ def user_logout(request):
         )
 
     logout(request)
-    request.session.flush()
 
     return redirect('login')
