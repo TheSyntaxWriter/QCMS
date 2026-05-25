@@ -1,46 +1,46 @@
 {% extends 'admin_panel/admin_base.html' %}
 {% load static %}
 
-{% block topbar_title %}Enterprise Control Panel{% endblock %}
-{% block topbar_welcome %}Configuration Studio{% endblock %}
+{% block topbar_title %}Global Settings Center{% endblock %}
+{% block topbar_welcome %}Enterprise Configuration{% endblock %}
 
 {% block content %}
 <style>
-.cp-layout{display:grid;grid-template-columns:260px 1fr;gap:16px}.cp-nav,.cp-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 8px 20px rgba(2,6,23,.05)}
-.cp-nav{padding:12px;position:sticky;top:20px;height:fit-content}.cp-nav a{display:block;padding:10px 12px;border-radius:10px;color:#334155;text-decoration:none}.cp-nav a:hover{background:#eef2ff}
-.cp-card{padding:18px}.cp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cp-field label{display:block;font-size:.8rem;font-weight:600;margin-bottom:6px;color:#334155}.cp-field input,.cp-field select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
-.cp-actions{display:flex;gap:10px;margin-top:16px}.btnx{padding:10px 16px;border-radius:12px;border:0;cursor:pointer}.btn-primary{background:#4f46e5;color:#fff}.btn-muted{background:#e2e8f0}
-.preview{border:1px dashed #cbd5e1;border-radius:14px;padding:14px;margin-top:16px}.preview .bar{padding:10px;border-radius:8px;color:#fff}.preview .side{margin-top:8px;padding:10px;border-radius:8px;color:#fff}
-@media(max-width:980px){.cp-layout{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}
+.cp-shell{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
+.cp-nav,.cp-card,.cp-actions,.cp-modal__dialog{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 12px 30px rgba(2,6,23,.06)}
+.cp-nav{padding:14px;position:sticky;top:20px;height:fit-content}.cp-nav a{display:block;padding:11px 12px;border-radius:10px;text-decoration:none;color:#334155;font-weight:500;transition:.2s}.cp-nav a:hover{background:#f1f5f9;color:#0f172a}
+.cp-card{padding:22px}.cp-card h3{margin:0 0 14px;font-size:1.05rem}.cp-sub{margin:0 0 14px;color:#64748b;font-size:.9rem}
+.cp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cp-field label{display:block;font-size:.83rem;margin-bottom:6px;font-weight:600;color:#334155}
+.cp-field input,.cp-field select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;transition:.2s;background:#fff}
+.cp-field input:focus,.cp-field select:focus{outline:none;border-color:var(--theme-primary);box-shadow:0 0 0 3px rgba(15,23,42,.08)}
+.cp-preview{display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed #cbd5e1;border-radius:10px;color:#475569}.cp-preview img{width:46px;height:46px;object-fit:contain}
+.cp-actions{padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:16px}
+.btnx{border:0;border-radius:10px;padding:11px 18px;cursor:pointer;font-weight:600;transition:.2s}.btn-primary{background:var(--theme-primary);color:#fff}.btn-secondary{background:#e2e8f0;color:#0f172a}.btnx:hover{transform:translateY(-1px)}
+.cp-modal{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}.cp-modal.is-open{display:flex}
+.cp-modal__dialog{max-width:430px;width:100%;padding:20px}.cp-modal__title{margin:0 0 6px}.cp-modal__meta{margin:0 0 14px;color:#64748b;font-size:.9rem}
+@media(max-width:1024px){.cp-shell{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}
 </style>
-
 <form method="post" enctype="multipart/form-data" id="controlForm">
   {% csrf_token %}
-  <div class="cp-layout">
+  <input type="hidden" name="confirm_password" id="confirmPasswordInput">
+  <div class="cp-shell">
     <aside class="cp-nav">
-      <a href="#general">1. General Settings</a>
-      <a href="#branding">2. Branding Settings</a>
-      <a href="#theme">3. Theme & Appearance</a>
-      <a href="#system">4. System Preferences</a>
-      <a href="#security">5. Security Settings</a>
-      <a href="#notifications">6. Notification Settings</a>
+      <a href="#general">General</a><a href="#branding">Branding</a><a href="#theme">Theme</a>
     </aside>
-    <div style="display:grid;gap:14px;">
-      <section id="general" class="cp-card"><h3>General Settings</h3><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name }}"></div><div class="cp-field"><label>Support Email</label><input type="email" name="support_email" value="{{ app_settings.general_settings.support_email|default:'' }}"></div><div class="cp-field" style="grid-column:1/-1"><label>Company Tagline</label><input name="company_tagline" value="{{ app_settings.general_settings.company_tagline|default:'' }}"></div></div></section>
-      <section id="branding" class="cp-card"><h3>Branding Settings</h3><div class="cp-grid"><div class="cp-field"><label>Upload/Change Logo</label><input type="file" name="logo" accept="image/*"></div><div class="cp-field"><label>Upload Favicon</label><input type="file" name="favicon" accept="image/*"></div><div class="cp-field"><label>Update Sidebar Logo</label><input type="file" name="sidebar_logo" accept="image/*"></div></div><p style="color:#64748b;font-size:.85rem">Accepted: PNG/JPG/WEBP/SVG/ICO, max 2MB.</p></section>
-      <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><div class="cp-grid"><div class="cp-field"><label>Mode</label><select name="mode"><option value="light">Light</option><option value="dark" {% if app_settings.theme_settings.mode == 'dark' %}selected{% endif %}>Dark</option></select></div><div class="cp-field"><label>Primary Color</label><input type="color" name="primary_color" id="primary_color" value="{{ app_settings.theme_settings.primary_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Sidebar Color</label><input type="color" name="sidebar_color" id="sidebar_color" value="{{ app_settings.theme_settings.sidebar_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Header/Navbar Color</label><input type="color" name="header_color" id="header_color" value="{{ app_settings.theme_settings.header_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Button Preset</label><select name="button_style"><option value="rounded">Rounded</option><option value="pill" {% if app_settings.theme_settings.button_style == 'pill' %}selected{% endif %}>Pill</option><option value="sharp" {% if app_settings.theme_settings.button_style == 'sharp' %}selected{% endif %}>Sharp</option></select></div><div class="cp-field"><label>Font Family</label><select name="font_family"><option>Poppins</option><option {% if app_settings.theme_settings.font_family == 'Inter' %}selected{% endif %}>Inter</option><option {% if app_settings.theme_settings.font_family == 'Roboto' %}selected{% endif %}>Roboto</option></select></div><div class="cp-field"><label>Layout Width</label><select name="layout_width"><option value="boxed">Boxed</option><option value="full" {% if app_settings.theme_settings.layout_width == 'full' %}selected{% endif %}>Full Width</option></select></div></div>
-      <div class="preview" id="livePreview"><strong id="pvName">{{ app_settings.web_app_name }}</strong><div class="bar" id="pvHeader">Header / Navbar</div><div class="side" id="pvSide">Sidebar</div><button type="button" class="btnx" id="pvButton" style="margin-top:10px">Button preview</button></div></section>
-      <section id="system" class="cp-card"><h3>System Preferences</h3><p style="color:#64748b">Scalable placeholder section for timezone, localization, workflow defaults, and integrations.</p></section>
-      <section id="security" class="cp-card"><h3>Security Settings</h3><p style="color:#64748b">Scalable placeholder section for session policies, password rules, and security modules.</p></section>
-      <section id="notifications" class="cp-card"><h3>Notification Settings</h3><p style="color:#64748b">Scalable placeholder for email/in-app alerts, escalation rules, and event subscriptions.</p></section>
-      <div class="cp-actions"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply Theme</button><button class="btnx btn-muted" type="submit" name="action" value="reset">Reset</button><button class="btnx" type="button" onclick="document.getElementById('theme').scrollIntoView({behavior:'smooth'})">Preview</button></div>
-    </div>
+    <main style="display:grid;gap:16px">
+      <section id="general" class="cp-card"><h3>General Settings</h3><p class="cp-sub">Global product identity used across titles, headers, and navigation.</p><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name|default:'QCMS' }}" placeholder="QCMS"></div></div></section>
+      <section id="branding" class="cp-card"><h3>Branding Settings</h3><p class="cp-sub">Single-source branding assets applied globally.</p><div class="cp-grid"><div class="cp-field"><label>Application Logo</label><input type="file" name="logo" accept="image/*"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current logo"><span>Used in sidebar, header, login, and reports.</span></div></div><div class="cp-field"><label>Favicon</label><input type="file" name="favicon" accept="image/*"></div></div></section>
+      <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><p class="cp-sub">Unified enterprise theme controls.</p><div class="cp-grid"><div class="cp-field"><label>Global Theme Color</label><input type="color" name="global_theme_color" id="global_theme_color" value="{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Font Family</label><select name="font_family">{% for font in font_options %}<option value="{{ font }}" {% if GLOBAL_THEME.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select></div></div></section>
+      <div class="cp-actions"><p style="margin:0;color:#64748b">Changes require admin password confirmation.</p><div style="display:flex;gap:10px"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
+    </main>
   </div>
 </form>
+<div class="cp-modal" id="passwordModal" aria-hidden="true"><div class="cp-modal__dialog"><h3 class="cp-modal__title">Confirm Admin Password</h3><p class="cp-modal__meta">Re-enter your current password to authorize global settings changes.</p><label for="confirmPasswordField" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">Password</label><input id="confirmPasswordField" type="password" autocomplete="current-password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px"><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px"><button type="button" class="btnx btn-secondary" id="cancelModal">Cancel</button><button type="button" class="btnx btn-primary" id="confirmModal">Confirm & Continue</button></div></div></div>
 <script>
-const bind=()=>{const h=document.getElementById('pvHeader'),s=document.getElementById('pvSide'),b=document.getElementById('pvButton');
-const pc=document.getElementById('primary_color'),sc=document.getElementById('sidebar_color'),hc=document.getElementById('header_color'),nm=document.getElementById('web_app_name');
-const render=()=>{h.style.background=hc.value;s.style.background=sc.value;b.style.background=pc.value;document.getElementById('pvName').textContent=nm.value||'QCMS';};
-[pc,sc,hc,nm].forEach(el=>el&&el.addEventListener('input',render));render();};bind();
+(()=>{const form=document.getElementById('controlForm'),modal=document.getElementById('passwordModal'),pwdInput=document.getElementById('confirmPasswordField'),hidden=document.getElementById('confirmPasswordInput'),cancel=document.getElementById('cancelModal'),ok=document.getElementById('confirmModal');let pendingSubmitter=null;
+form.addEventListener('submit',e=>{if(hidden.value)return; e.preventDefault(); pendingSubmitter=e.submitter; modal.classList.add('is-open'); pwdInput.value=''; pwdInput.focus();});
+cancel.addEventListener('click',()=>modal.classList.remove('is-open'));
+ok.addEventListener('click',()=>{if(!pwdInput.value.trim()){pwdInput.focus();return;} hidden.value=pwdInput.value; modal.classList.remove('is-open'); if(form.requestSubmit&&pendingSubmitter){form.requestSubmit(pendingSubmitter);}else{form.submit();}});
+})();
 </script>
 {% endblock %}

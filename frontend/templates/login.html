@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ PROJECT_SHORT_NAME }} Login</title>
-    <link rel="icon" href="{% static 'images/favicon.png' %}" />
+    <link rel="icon" href="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" />
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
       rel="stylesheet"
@@ -85,7 +85,7 @@
       <div class="brand">
         <img
           class="brand-mark"
-          src="{% static 'images/logo.png' %}"
+          src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}"
           alt="{{ PROJECT_SHORT_NAME }} Logo"
         />
         <h2>Welcome Back</h2>

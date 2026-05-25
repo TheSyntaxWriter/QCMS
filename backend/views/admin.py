@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Count, Q
@@ -690,45 +691,51 @@ def admin_control_panel(request):
     app_settings = AppSettings.get_solo()
     default_theme = {
         'mode': 'light',
-        'primary_color': '#4f46e5',
-        'sidebar_color': '#0b1b68',
-        'header_color': '#0b1b68',
+        'global_theme_color': '#0b1b68',
         'button_style': 'rounded',
-        'font_family': 'Poppins',
+        'font_family': 'Inter',
         'layout_width': 'boxed',
     }
     allowed_types = {'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/x-icon'}
 
     if request.method == 'POST':
+        confirm_password = (request.POST.get('confirm_password') or '').strip()
+        if not authenticate(request, username=request.user.username, password=confirm_password):
+            messages.error(request, 'Password confirmation failed. No settings were changed.')
+            return redirect('admin_control_panel')
+
         action = request.POST.get('action')
         if action == 'reset':
             app_settings.theme_settings = default_theme
             app_settings.web_app_name = 'QCMS'
+            app_settings.general_settings = {}
+            app_settings.logo = None
+            app_settings.favicon = None
             app_settings.save()
             messages.success(request, 'Settings reset to defaults.')
             return redirect('admin_control_panel')
 
-        app_settings.web_app_name = (request.POST.get('web_app_name') or '').strip() or app_settings.web_app_name
-        app_settings.general_settings = {
-            'company_tagline': (request.POST.get('company_tagline') or '').strip(),
-            'support_email': (request.POST.get('support_email') or '').strip(),
-        }
+        app_settings.web_app_name = (request.POST.get('web_app_name') or '').strip() or 'QCMS'
+        app_settings.general_settings = {}
+        theme_color = request.POST.get('global_theme_color', '#0b1b68')
         app_settings.theme_settings = {
             'mode': request.POST.get('mode', 'light'),
-            'primary_color': request.POST.get('primary_color', '#4f46e5'),
-            'sidebar_color': request.POST.get('sidebar_color', '#0b1b68'),
-            'header_color': request.POST.get('header_color', '#0b1b68'),
+            'global_theme_color': theme_color,
+            'primary_color': theme_color,
+            'sidebar_color': theme_color,
+            'header_color': theme_color,
             'button_style': request.POST.get('button_style', 'rounded'),
-            'font_family': request.POST.get('font_family', 'Poppins'),
+            'font_family': request.POST.get('font_family', 'Inter'),
             'layout_width': request.POST.get('layout_width', 'boxed'),
         }
-        for field in ['logo', 'favicon', 'sidebar_logo']:
+        for field in ['logo', 'favicon']:
             f = request.FILES.get(field)
             if f:
                 if f.content_type not in allowed_types or f.size > 2 * 1024 * 1024:
                     messages.error(request, f'{field.replace("_", " ").title()} must be PNG/JPG/WEBP/SVG/ICO and <= 2MB.')
                     return redirect('admin_control_panel')
                 setattr(app_settings, field, f)
+        app_settings.sidebar_logo = app_settings.logo
         app_settings.save()
         messages.success(request, 'Control panel settings saved and applied globally.')
         return redirect('admin_control_panel')
@@ -736,6 +743,7 @@ def admin_control_panel(request):
     return render(request, 'admin_panel/admin_control_panel.html', {
         'sidebar_menu': _admin_sidebar_menu(),
         'app_settings': app_settings,
+        'font_options': ['Inter', 'Poppins', 'Roboto', 'Open Sans', 'Nunito Sans', 'Source Sans Pro'],
     })
 def admin_logs(request):
     if not request.user.is_authenticated:

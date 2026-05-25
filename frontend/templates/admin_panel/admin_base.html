@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{% static 'shared/sidebar.css' %}" />
 
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600&family=Roboto:wght@400;500;700&family=Nunito+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
 
@@ -19,9 +19,9 @@
         background: #f1f3f9;
       }
       .app-layout {
-        --theme-primary: {{ GLOBAL_THEME.primary_color|default:'#0b1b68' }};
-        --theme-sidebar: {{ GLOBAL_THEME.sidebar_color|default:'#0b1b68' }};
-        --theme-header: {{ GLOBAL_THEME.header_color|default:'#0b1b68' }};
+        --theme-primary: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }};
+        --theme-sidebar: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }};
+        --theme-header: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }};
       }
       .topbar {
         background: var(--theme-header);
