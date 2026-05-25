@@ -10,7 +10,6 @@ body {
 }
 
 .content {
-  max-width: calc(100vw - 240px);
   box-sizing: border-box;
 }
 
@@ -164,7 +163,7 @@ body {
   border-radius: 20px;
   text-align: center;
   color: white;
-  background: #0a1163;
+  background: var(--color-button-primary, var(--theme-primary, #0a1163));
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
@@ -204,8 +203,8 @@ table {
 }
 
 thead {
-  background: #0a1163;
-  color: white;
+  background: var(--tbl-head, var(--color-table-head, var(--theme-primary, #0a1163)));
+  color: var(--tbl-head-text, white);
 }
 
 .sort-link {
