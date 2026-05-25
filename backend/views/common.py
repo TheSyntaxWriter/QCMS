@@ -1,4 +1,5 @@
 from django.shortcuts import redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from ..models import UserProfile
 
@@ -30,7 +31,7 @@ def redirect_for_profile(profile, user=None):
 
     # Management
     if profile.role == 'Management':
-        return redirect('dashboard')
+        return redirect('management_dashboard')
 
     # User / HOD
     if profile.role in {'User', 'HOD'}:
@@ -38,3 +39,13 @@ def redirect_for_profile(profile, user=None):
 
     # Safe fallback
     return redirect('my_checklists')
+
+
+def safe_next_url(request):
+    """Return a safe local next URL, or None."""
+    next_url = (request.POST.get('next') or request.GET.get('next') or '').strip()
+    if not next_url:
+        return None
+    if url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return next_url
+    return None
