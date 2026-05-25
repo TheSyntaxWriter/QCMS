@@ -321,7 +321,7 @@ class ActivityLog(models.Model):
 
 
 class AppSettings(models.Model):
-    web_app_name = models.CharField(max_length=120, default='QCMS - Quality Control Management System')
+    web_app_name = models.CharField(max_length=120, default='QCMS')
     logo = models.ImageField(upload_to='branding/', null=True, blank=True)
     favicon = models.ImageField(upload_to='branding/', null=True, blank=True)
     sidebar_logo = models.ImageField(upload_to='branding/', null=True, blank=True)
@@ -341,8 +341,8 @@ class AppSettings(models.Model):
                 'theme_settings': {
                     'mode': 'light',
                     'primary_color': '#4f46e5',
-                    'sidebar_color': '#080870',
-                    'header_color': '#080870',
+                    'sidebar_color': '#0b1b68',
+                    'header_color': '#0b1b68',
                     'button_style': 'rounded',
                     'font_family': 'Poppins',
                     'layout_width': 'boxed',

@@ -34,12 +34,12 @@ def _resolve_hod_user(department):
 
 def _sidebar_menu_for_role(role):
     items = [
-        {'url': '/my-checklists/', 'label': 'My Checklists', 'icon': '✅'},
-        {'url': '/my-submissions/', 'label': 'My Submissions', 'icon': '📨'},
-        {'url': '/user/profile/', 'label': 'Profile', 'icon': '👤'},
+        {'url': '/my-checklists/', 'label': 'Checklist', 'icon': 'checklist'},
+        {'url': '/my-submissions/', 'label': 'Response', 'icon': 'response'},
+        {'url': '/user/profile/', 'label': 'Profile', 'icon': 'profile'},
     ]
     if role == 'Management':
-        items.insert(0, {'url': '/dashboard/', 'label': 'Dashboard', 'icon': '📊'})
+        items.insert(0, {'url': '/dashboard/', 'label': 'Dashboard', 'icon': 'dashboard'})
     return items
 
 

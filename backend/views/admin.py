@@ -41,15 +41,15 @@ from ..permission_service import get_role_permission_config, validate_permission
 
 def _admin_sidebar_menu():
     return [
-        {'url': reverse('admin_dashboard'), 'label': 'Dashboard', 'icon': '📊'},
-        {'url': reverse('admin_profile'), 'label': 'Profile', 'icon': '👤'},
-        {'url': reverse('admin_checklists'), 'label': 'Checklist', 'icon': '✅'},
-        {'url': reverse('admin_control_panel'), 'label': 'Control Panel', 'icon': '🎛️'},
-        {'url': reverse('admin_logs'), 'label': 'Logs', 'icon': '📝'},
-        {'url': reverse('admin_responses'), 'label': 'Responses', 'icon': '📬'},
-        {'url': reverse('admin_users'), 'label': 'Users', 'icon': '👥'},
-        {'url': reverse('admin_departments'), 'label': 'Departments', 'icon': '🏢'},
-        {'url': reverse('admin_projects'), 'label': 'Projects', 'icon': '📁'},
+        {'url': reverse('admin_dashboard'), 'label': 'Dashboard', 'icon': 'dashboard'},
+        {'url': reverse('admin_checklists'), 'label': 'Checklist', 'icon': 'checklist'},
+        {'url': reverse('admin_responses'), 'label': 'Response', 'icon': 'response'},
+        {'url': reverse('admin_users'), 'label': 'User', 'icon': 'user'},
+        {'url': reverse('admin_departments'), 'label': 'Department', 'icon': 'department'},
+        {'url': reverse('admin_projects'), 'label': 'Project', 'icon': 'project'},
+        {'url': reverse('admin_control_panel'), 'label': 'Control Panel', 'icon': 'control'},
+        {'url': reverse('admin_logs'), 'label': 'Logs', 'icon': 'logs'},
+        {'url': reverse('admin_profile'), 'label': 'Profile', 'icon': 'profile'},
     ]
 def _clean_email_or_error(request, raw_email):
     email = (raw_email or '').strip()
@@ -691,8 +691,8 @@ def admin_control_panel(request):
     default_theme = {
         'mode': 'light',
         'primary_color': '#4f46e5',
-        'sidebar_color': '#080870',
-        'header_color': '#080870',
+        'sidebar_color': '#0b1b68',
+        'header_color': '#0b1b68',
         'button_style': 'rounded',
         'font_family': 'Poppins',
         'layout_width': 'boxed',
@@ -703,7 +703,7 @@ def admin_control_panel(request):
         action = request.POST.get('action')
         if action == 'reset':
             app_settings.theme_settings = default_theme
-            app_settings.web_app_name = 'QCMS - Quality Control Management System'
+            app_settings.web_app_name = 'QCMS'
             app_settings.save()
             messages.success(request, 'Settings reset to defaults.')
             return redirect('admin_control_panel')
@@ -716,8 +716,8 @@ def admin_control_panel(request):
         app_settings.theme_settings = {
             'mode': request.POST.get('mode', 'light'),
             'primary_color': request.POST.get('primary_color', '#4f46e5'),
-            'sidebar_color': request.POST.get('sidebar_color', '#080870'),
-            'header_color': request.POST.get('header_color', '#080870'),
+            'sidebar_color': request.POST.get('sidebar_color', '#0b1b68'),
+            'header_color': request.POST.get('header_color', '#0b1b68'),
             'button_style': request.POST.get('button_style', 'rounded'),
             'font_family': request.POST.get('font_family', 'Poppins'),
             'layout_width': request.POST.get('layout_width', 'boxed'),

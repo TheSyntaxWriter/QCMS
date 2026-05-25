@@ -93,7 +93,7 @@ STATICFILES_DIRS = [BASE_DIR / 'frontend/static']  # ✅ added
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Branding
-PROJECT_DISPLAY_NAME = 'QCMS - Quality Control Management System'
+PROJECT_DISPLAY_NAME = 'QCMS'
 PROJECT_SHORT_NAME = 'QCMS'
 
 MEDIA_URL = '/media/'
