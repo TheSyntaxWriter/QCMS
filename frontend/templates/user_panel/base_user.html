@@ -9,9 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <style>
       :root { --brand:#0b1b68; --bg:#f4f6fb; --card:#fff; --muted:#667085; }
+      .app-layout { --theme-primary: {{ GLOBAL_THEME.primary_color|default:'#0b1b68' }}; --theme-sidebar: {{ GLOBAL_THEME.sidebar_color|default:'#0b1b68' }}; --theme-header: {{ GLOBAL_THEME.header_color|default:'#0b1b68' }}; }
       * { box-sizing: border-box; }
       body { margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:#111827; }
-      .topbar { background:var(--brand); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
+      .topbar { background:var(--theme-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
       .content { padding:24px; }
     </style>
   </head>

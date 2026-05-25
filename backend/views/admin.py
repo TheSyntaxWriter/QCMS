@@ -691,8 +691,8 @@ def admin_control_panel(request):
     default_theme = {
         'mode': 'light',
         'primary_color': '#4f46e5',
-        'sidebar_color': '#080870',
-        'header_color': '#080870',
+        'sidebar_color': '#0b1b68',
+        'header_color': '#0b1b68',
         'button_style': 'rounded',
         'font_family': 'Poppins',
         'layout_width': 'boxed',
@@ -703,7 +703,7 @@ def admin_control_panel(request):
         action = request.POST.get('action')
         if action == 'reset':
             app_settings.theme_settings = default_theme
-            app_settings.web_app_name = 'QCMS - Quality Control Management System'
+            app_settings.web_app_name = 'QCMS'
             app_settings.save()
             messages.success(request, 'Settings reset to defaults.')
             return redirect('admin_control_panel')
@@ -716,8 +716,8 @@ def admin_control_panel(request):
         app_settings.theme_settings = {
             'mode': request.POST.get('mode', 'light'),
             'primary_color': request.POST.get('primary_color', '#4f46e5'),
-            'sidebar_color': request.POST.get('sidebar_color', '#080870'),
-            'header_color': request.POST.get('header_color', '#080870'),
+            'sidebar_color': request.POST.get('sidebar_color', '#0b1b68'),
+            'header_color': request.POST.get('header_color', '#0b1b68'),
             'button_style': request.POST.get('button_style', 'rounded'),
             'font_family': request.POST.get('font_family', 'Poppins'),
             'layout_width': request.POST.get('layout_width', 'boxed'),
