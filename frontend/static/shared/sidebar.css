@@ -8,6 +8,13 @@
   --sidebar-width: 268px;
   --sidebar-width-collapsed: 90px;
 }
+.app-layout {
+  --sidebar-bg: var(--color-sidebar, var(--theme-sidebar, #0b1b68));
+  --sidebar-hover: var(--color-hover, rgba(255, 255, 255, 0.12));
+  --sidebar-active: var(--color-active, rgba(255, 255, 255, 0.2));
+  --sidebar-text: var(--color-text-light, #eef2ff);
+  --sidebar-muted: rgba(238, 242, 255, 0.72);
+}
 .app-layout { --sidebar-current-width: var(--sidebar-width); }
 .app-sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: var(--sidebar-current-width); background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; padding: 16px 12px; border-right: 1px solid var(--sidebar-border); z-index: 1000; transition: width .24s ease, background-color .24s ease; }
 .app-sidebar__header { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }

@@ -9,10 +9,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Open+Sans:wght@400;500;600&family=Poppins:wght@400;500;600&family=Roboto:wght@400;500;700&family=Nunito+Sans:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"/>
     <style>
       :root { --brand:#0b1b68; --bg:#f4f6fb; --card:#fff; --muted:#667085; }
-      .app-layout { --theme-primary: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}; --theme-sidebar: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}; --theme-header: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}; }
+      .app-layout {
+        --color-brand: {{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }};
+        --color-sidebar: var(--color-brand);
+        --color-header: var(--color-brand);
+        --color-table-head: var(--color-brand);
+        --color-button-primary: var(--color-brand);
+        --color-hover: #eef2ff;
+        --color-active: rgba(255, 255, 255, 0.2);
+        --color-surface: #ffffff;
+        --color-border: #e6eaf2;
+        --color-text-light: #ffffff;
+        --theme-primary: var(--color-brand);
+        --theme-sidebar: var(--color-sidebar);
+        --theme-header: var(--color-header);
+        --tbl-head: var(--color-table-head);
+        --tbl-head-text: var(--color-text-light);
+      }
       * { box-sizing: border-box; }
       body { margin:0; font-family:'{{ GLOBAL_THEME.font_family|default:"Inter" }}',sans-serif; background:var(--bg); color:#111827; }
-      .topbar { background:var(--theme-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
+      .topbar { background:var(--color-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
       .content { padding:24px; }
     </style>
   </head>
