@@ -2,7 +2,7 @@
 <div class="app-sidebar" id="appSidebar">
   <div class="app-sidebar__header">
     <a href="{% if menu_items and menu_items.0 %}{{ menu_items.0.url }}{% else %}#{% endif %}" class="app-sidebar__brand" aria-label="{{ PROJECT_SHORT_NAME }} home">
-      <img class="app-sidebar__brand-logo" src="{% if GLOBAL_BRANDING.sidebar_logo %}{{ GLOBAL_BRANDING.sidebar_logo.url }}{% elif GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="{{ PROJECT_SHORT_NAME }} logo">
+      <img class="app-sidebar__brand-logo" src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="{{ PROJECT_SHORT_NAME }} logo">
       <span class="app-sidebar__brand-text">{{ panel_title|default:PROJECT_SHORT_NAME }}</span>
     </a>
     <button class="app-sidebar__toggle" id="sidebarToggle" type="button" aria-label="Toggle sidebar" aria-expanded="true">
