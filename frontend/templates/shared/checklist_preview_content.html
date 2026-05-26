@@ -15,7 +15,7 @@
       <a class="btn btn-edit" href="{% url 'admin_checklist_edit' checklist.id %}">Edit</a>
       {% endif %}
       <button class="btn btn-add" type="button" onclick="window.print()">Print</button>
-      <a class="btn btn-delete" href="{% url 'admin_checklist_pdf' checklist.id %}">Download PDF</a>
+      <a class="btn btn-delete" href="{% if preview_mode == 'user' %}{% url 'user_checklist_pdf' checklist.id %}{% else %}{% url 'admin_checklist_pdf' checklist.id %}{% endif %}">Download PDF</a>
     </div>
   </div>
 
