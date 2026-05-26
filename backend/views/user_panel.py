@@ -18,7 +18,8 @@ from .common import get_user_profile, redirect_for_profile
 from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
-from ..permission_service import get_role_permission_config, responses_for_profile
+from ..permission_service import get_role_permission_config, responses_for_profile, is_action_permitted_for_response
+from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
 
@@ -239,7 +240,7 @@ def user_checklist_fill(request, checklist_id):
                     project=profile.project,
                     department=profile.department,
                     hod_id=hod_user_id,
-                    status='Pending',
+                    status=ResponseStatus.PENDING,
                     updated_by=request.user,
                 )
                 for question in questions:
@@ -285,8 +286,13 @@ def user_submission_action(request):
         response = responses_for_profile(profile, request.user).filter(id=response_id).first()
         if not response:
             return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
+        if not is_action_permitted_for_response(action, response, profile, request.user):
+            return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action in {'approve', 'reject'}:
-            response.status = 'Approved' if action == 'approve' else 'Rejected'
+            decision = evaluate_status_action(response.status, action)
+            if not decision.allowed:
+                return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
+            response.status = decision.next_status
             response.updated_by = request.user
             response.save(update_fields=['status', 'updated_by', 'updated_at'])
             return JsonResponse({'ok': True, 'status': response.status})

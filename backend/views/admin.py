@@ -33,7 +33,8 @@ from ..models import (
 )
 from .common import get_user_profile
 from ..logging_service import write_activity_log
-from ..permission_service import get_role_permission_config, validate_permission_payload
+from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response
+from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
 
@@ -93,9 +94,9 @@ def admin_dashboard(request):
     checklists_active = ChecklistDefinition.objects.filter(is_active=True).count()
     checklists_inactive = ChecklistDefinition.objects.filter(is_active=False).count()
 
-    approved = txns.filter(status='Approved').count()
-    pending = txns.filter(status='Pending').count()
-    rejected = txns.filter(status='Rejected').count()
+    approved = txns.filter(status=ResponseStatus.APPROVED).count()
+    pending = txns.filter(status=ResponseStatus.PENDING).count()
+    rejected = txns.filter(status=ResponseStatus.REJECTED).count()
 
     # ---------------------------------------------
     # Column chart datasets (users by master entity)
@@ -629,9 +630,9 @@ def admin_responses(request):
 
     stats = responses.aggregate(
         total=Count('id'),
-        pending=Count('id', filter=Q(status='Pending')),
-        approved=Count('id', filter=Q(status='Approved')),
-        rejected=Count('id', filter=Q(status='Rejected')),
+        pending=Count('id', filter=Q(status=ResponseStatus.PENDING)),
+        approved=Count('id', filter=Q(status=ResponseStatus.APPROVED)),
+        rejected=Count('id', filter=Q(status=ResponseStatus.REJECTED)),
     )
 
     project_chart = list(
@@ -1004,6 +1005,8 @@ def admin_response_action(request):
         response = ChecklistResponse.objects.filter(id=response_id).first()
         if not response:
             return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
+        if action not in {'save_permissions'} and not is_action_permitted_for_response(action, response, profile, request.user):
+            return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action == 'delete':
             write_activity_log(action_type='Response Deleted', module_name='Response', description=f'Response deleted: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             response.delete()
@@ -1011,17 +1014,23 @@ def admin_response_action(request):
                 return JsonResponse({'ok': True})
             return redirect('admin_responses')
         if action == 'toggle':
-            response.status = 'Pending' if response.status == 'Rejected' else 'Rejected'
+            decision = evaluate_status_action(response.status, action)
+            if not decision.allowed:
+                return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
+            response.status = decision.next_status
             response.updated_by = request.user
             response.save(update_fields=['status', 'updated_by', 'updated_at'])
-            write_activity_log(action_type='Response Reopened' if response.status == 'Pending' else 'Response Rejected', module_name='Response', description=f'Response status toggled: {response.id} -> {response.status}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            write_activity_log(action_type='Response Reopened' if response.status == ResponseStatus.PENDING else 'Response Rejected', module_name='Response', description=f'Response status toggled: {response.id} -> {response.status}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             if is_ajax:
                 return JsonResponse({'ok': True, 'status': response.status})
             return redirect('admin_responses')
         if action == 'edit':
             return JsonResponse({'ok': True})
         if action in {'approve', 'reject'}:
-            response.status = 'Approved' if action == 'approve' else 'Rejected'
+            decision = evaluate_status_action(response.status, action)
+            if not decision.allowed:
+                return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
+            response.status = decision.next_status
             response.updated_by = request.user
             response.save(update_fields=['status', 'updated_by', 'updated_at'])
             write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
