@@ -428,6 +428,32 @@ def _checklist_pdf_filename(item):
     return f'{base}.pdf'
 
 
+def _render_checklist_pdf_response(request, context, filename, template_name):
+    try:
+        from weasyprint import HTML
+    except ModuleNotFoundError:
+        return HttpResponse(
+            "PDF export dependency is missing: install WeasyPrint (pip install weasyprint) and restart the server.",
+            status=503,
+            content_type='text/plain; charset=utf-8',
+        )
+
+    html = render_to_string(template_name, context, request=request)
+    pdf_bytes = HTML(
+        string=html,
+        base_url=request.build_absolute_uri('/'),
+    ).write_pdf(media_type='print', presentational_hints=True, optimize_size=('fonts', 'images'))
+
+    if not isinstance(pdf_bytes, (bytes, bytearray)) or not bytes(pdf_bytes).startswith(b'%PDF-'):
+        return HttpResponse('PDF generation failed.', status=500, content_type='text/plain; charset=utf-8')
+
+    response = HttpResponse(bytes(pdf_bytes), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Length'] = str(len(pdf_bytes))
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
 def _static_file_uri(static_path):
     resolved = finders.find(static_path)
     if not resolved:
@@ -563,29 +589,7 @@ def admin_checklist_pdf(request, checklist_id):
     context = _checklist_preview_context(request, item, pdf_mode=False)
     filename = _checklist_pdf_filename(item)
 
-    try:
-        from weasyprint import HTML
-    except ModuleNotFoundError:
-        return HttpResponse(
-            "PDF export dependency is missing: install WeasyPrint (pip install weasyprint) and restart the server.",
-            status=503,
-            content_type='text/plain; charset=utf-8',
-        )
-
-    html = render_to_string('admin_panel/checklist_view.html', context, request=request)
-    pdf_bytes = HTML(
-        string=html,
-        base_url=request.build_absolute_uri('/'),
-    ).write_pdf(media_type='print', presentational_hints=True, optimize_size=('fonts', 'images'))
-
-    if not isinstance(pdf_bytes, (bytes, bytearray)) or not bytes(pdf_bytes).startswith(b'%PDF-'):
-        return HttpResponse('PDF generation failed.', status=500, content_type='text/plain; charset=utf-8')
-
-    response = HttpResponse(bytes(pdf_bytes), content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response['Content-Length'] = str(len(pdf_bytes))
-    response['X-Content-Type-Options'] = 'nosniff'
-    return response
+    return _render_checklist_pdf_response(request, context, filename, 'admin_panel/checklist_view.html')
 
 
 def admin_responses(request):
