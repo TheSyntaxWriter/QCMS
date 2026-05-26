@@ -81,8 +81,9 @@
 
 @media print{
   html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .sidebar,.topbar,.no-print{display:none!important;}
+  .sidebar,.app-sidebar,.topbar,.no-print{display:none!important;}
   .content{margin-left:0!important;padding:0!important;}
+  .app-content-wrapper,.page-container,.responsive-content-area{margin:0!important;padding:0!important;max-width:none!important;width:100%!important;}
   .checklist-view-shell{max-width:none;margin:0;}
   .pdf-page{box-shadow:none!important;border-radius:0!important;padding:0!important;width:192mm!important;max-width:192mm!important;min-height:auto!important;margin:0 auto!important;}
   .pdf-section,.pdf-question{break-inside:avoid-page;page-break-inside:avoid;}
