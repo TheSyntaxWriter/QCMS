@@ -21,7 +21,8 @@
           <td>{% for department in checklist.departments.all %}{{ department.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
           <td>{{ checklist.updated_at|date:'d-m-Y H:i' }}</td>
           <td>{% if checklist.is_active %}<span class="active-text">Active</span>{% else %}<span class="inactive-text">Inactive</span>{% endif %}</td>
-          <td>
+          <td class="actions-column">
+            <div class="action-buttons">
             {% if checklist_view_mode %}
               <a class="btn table-action-btn btn-add" href="{% url 'user_checklist_fill' checklist.id %}">Fill Checklist</a>
               <a class="btn table-action-btn btn-view" href="{% url 'user_checklist_preview' checklist.id %}">View Checklist</a>
@@ -36,6 +37,7 @@
               </form>
               <button class="btn table-action-btn btn-delete delete-btn" data-checklist-id="{{ checklist.id }}">Delete</button>
             {% endif %}
+            </div>
           </td>
         </tr>
         {% empty %}
