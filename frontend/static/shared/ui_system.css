@@ -1,0 +1,16 @@
+:root { --layout-max-width: 1280px; --layout-gutter: 24px; --layout-gutter-mobile: 16px; --space-2: 12px; --space-3: 16px; --space-4: 20px; --radius-md: 12px; --shadow-card: 0 4px 15px rgba(0,0,0,.08); }
+.app-content-wrapper{width:100%;min-width:0}
+.page-container{width:100%;max-width:var(--layout-max-width);box-sizing:border-box;margin:0 auto;padding:var(--layout-gutter);min-width:0}
+.page-header{margin-bottom:var(--space-4)}
+.page-toolbar{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;margin-bottom:var(--space-3)}
+.content-grid{display:grid;gap:var(--space-4)}
+.responsive-content-area{min-width:0}
+.card,.panel-card,.cp-card{border-radius:var(--radius-md);box-shadow:var(--shadow-card)}
+.btn,.btnx{height:36px;padding:0 14px;font-size:13px;line-height:36px;border-radius:10px;font-weight:600}
+.btn.btn-primary,.btn-primary,.btn-view,.btn-add{background:var(--color-button-primary,var(--theme-primary));color:#fff}
+.btn-secondary,.btn.btn-muted{background:#e2e8f0;color:#0f172a}
+.btn-success{background:#15803d;color:#fff}.btn-danger,.btn-delete{background:#b91c1c;color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--color-border,#cbd5e1);color:#0f172a}.btn-ghost{background:transparent;color:#0f172a}
+.form-control,input[type='text'],input[type='password'],input[type='file'],select,textarea{border-radius:10px;border:1px solid var(--color-border,#cbd5e1)}
+.alert-inline{background:#fff;border-left:4px solid var(--color-button-primary,#2563eb);padding:10px 12px;border-radius:8px;margin:8px 0}
+@media (max-width:920px){.page-container{padding:var(--layout-gutter-mobile)}}

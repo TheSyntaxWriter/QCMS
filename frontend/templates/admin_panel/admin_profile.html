@@ -4,7 +4,7 @@
 {% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
 {% block content %}
 <style>
-.profile-shell{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr;gap:20px}
+.profile-shell{display:grid;grid-template-columns:1.6fr 1fr;gap:20px}
 .panel-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(16,24,40,.06)}
 .panel-title{margin:0 0 14px;font-size:1.05rem;font-weight:600;color:#111827}
 .info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

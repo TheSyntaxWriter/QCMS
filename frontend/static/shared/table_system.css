@@ -1,5 +1,5 @@
 :root {
-  --tbl-head: #080870;
+  --tbl-head: var(--color-table-head, var(--theme-primary, #080870));
   --tbl-head-text: #fff;
   --tbl-border: #e6eaf2;
   --tbl-row-hover: #eef2ff;

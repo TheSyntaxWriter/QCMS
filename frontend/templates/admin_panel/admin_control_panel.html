@@ -6,7 +6,7 @@
 
 {% block content %}
 <style>
-.cp-shell{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
+.cp-shell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
 .cp-nav,.cp-card,.cp-actions,.cp-modal__dialog{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 12px 30px rgba(2,6,23,.06)}
 .cp-nav{padding:14px;position:sticky;top:20px;height:fit-content}.cp-nav a{display:block;padding:11px 12px;border-radius:10px;text-decoration:none;color:#334155;font-weight:500;transition:.2s}.cp-nav a:hover{background:#f1f5f9;color:#0f172a}
 .cp-card{padding:22px}.cp-card h3{margin:0 0 14px;font-size:1.05rem}.cp-sub{margin:0 0 14px;color:#64748b;font-size:.9rem}
@@ -19,6 +19,7 @@
 .cp-modal{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}.cp-modal.is-open{display:flex}
 .cp-modal__dialog{max-width:430px;width:100%;padding:20px}.cp-modal__title{margin:0 0 6px}.cp-modal__meta{margin:0 0 14px;color:#64748b;font-size:.9rem}
 @media(max-width:1024px){.cp-shell{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}
+.cp-main{display:grid;gap:16px}.cp-actions__meta{margin:0;color:#64748b}.cp-actions__buttons{display:flex;gap:10px}.cp-modal__label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}.cp-modal__input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}.cp-modal__footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 </style>
 <form method="post" enctype="multipart/form-data" id="controlForm">
   {% csrf_token %}
@@ -27,15 +28,15 @@
     <aside class="cp-nav">
       <a href="#general">General</a><a href="#branding">Branding</a><a href="#theme">Theme</a>
     </aside>
-    <main style="display:grid;gap:16px">
+    <main class="cp-main">
       <section id="general" class="cp-card"><h3>General Settings</h3><p class="cp-sub">Global product identity used across titles, headers, and navigation.</p><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name|default:'QCMS' }}" placeholder="QCMS"></div></div></section>
       <section id="branding" class="cp-card"><h3>Branding Settings</h3><p class="cp-sub">Single-source branding assets applied globally.</p><div class="cp-grid"><div class="cp-field"><label>Application Logo</label><input type="file" name="logo" accept="image/*"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current logo"><span>Used in sidebar, header, login, and reports.</span></div></div><div class="cp-field"><label>Favicon</label><input type="file" name="favicon" accept="image/*"></div></div></section>
       <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><p class="cp-sub">Unified enterprise theme controls.</p><div class="cp-grid"><div class="cp-field"><label>Global Theme Color</label><input type="color" name="global_theme_color" id="global_theme_color" value="{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Font Family</label><select name="font_family">{% for font in font_options %}<option value="{{ font }}" {% if GLOBAL_THEME.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select></div></div></section>
-      <div class="cp-actions"><p style="margin:0;color:#64748b">Changes require admin password confirmation.</p><div style="display:flex;gap:10px"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
+      <div class="cp-actions"><p class="cp-actions__meta">Changes require admin password confirmation.</p><div class="cp-actions__buttons"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
     </main>
   </div>
 </form>
-<div class="cp-modal" id="passwordModal" aria-hidden="true"><div class="cp-modal__dialog"><h3 class="cp-modal__title">Confirm Admin Password</h3><p class="cp-modal__meta">Re-enter your current password to authorize global settings changes.</p><label for="confirmPasswordField" style="display:block;font-size:.85rem;font-weight:600;margin-bottom:6px">Password</label><input id="confirmPasswordField" type="password" autocomplete="current-password" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px"><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px"><button type="button" class="btnx btn-secondary" id="cancelModal">Cancel</button><button type="button" class="btnx btn-primary" id="confirmModal">Confirm & Continue</button></div></div></div>
+<div class="cp-modal" id="passwordModal" aria-hidden="true"><div class="cp-modal__dialog"><h3 class="cp-modal__title">Confirm Admin Password</h3><p class="cp-modal__meta">Re-enter your current password to authorize global settings changes.</p><label for="confirmPasswordField" class="cp-modal__label">Password</label><input id="confirmPasswordField" class="cp-modal__input" type="password" autocomplete="current-password"><div class="cp-modal__footer"><button type="button" class="btnx btn-secondary" id="cancelModal">Cancel</button><button type="button" class="btnx btn-primary" id="confirmModal">Confirm & Continue</button></div></div></div>
 <script>
 (()=>{const form=document.getElementById('controlForm'),modal=document.getElementById('passwordModal'),pwdInput=document.getElementById('confirmPasswordField'),hidden=document.getElementById('confirmPasswordInput'),cancel=document.getElementById('cancelModal'),ok=document.getElementById('confirmModal');let pendingSubmitter=null;
 form.addEventListener('submit',e=>{if(hidden.value)return; e.preventDefault(); pendingSubmitter=e.submitter; modal.classList.add('is-open'); pwdInput.value=''; pwdInput.focus();});
