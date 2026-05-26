@@ -15,7 +15,7 @@ from PIL import Image
 
 from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, UserProfile
 from .common import get_user_profile, redirect_for_profile
-from .admin import _admin_sidebar_menu, _checklist_preview_context
+from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
 from ..permission_service import get_role_permission_config, responses_for_profile
@@ -332,4 +332,26 @@ def user_checklist_preview(request, checklist_id):
         write_activity_log(action_type='Checklist Printed', module_name='Checklist', description=f'Checklist print preview opened: {item.checklist_id}', status=ActivityLog.STATUS_INFO, user=request.user)
     ctx = _checklist_preview_context(request, item)
     ctx['preview_mode'] = 'user'
-    return render(request, 'admin_panel/checklist_view.html', ctx)
+    ctx['sidebar_menu'] = _sidebar_menu_for_role(profile.role)
+    return render(request, 'user_panel/checklist_view.html', ctx)
+
+
+def user_checklist_pdf(request, checklist_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role not in {'User', 'HOD', 'Management'}:
+        return redirect_for_profile(profile)
+
+    item = get_object_or_404(
+        _checklists_for_profile(profile).prefetch_related('questions', 'projects', 'departments'),
+        id=checklist_id,
+    )
+    write_activity_log(action_type='Checklist PDF Downloaded', module_name='Checklist', description=f'Checklist PDF downloaded: {item.checklist_id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+
+    context = _checklist_preview_context(request, item, pdf_mode=False)
+    context['preview_mode'] = 'user'
+    context['sidebar_menu'] = _sidebar_menu_for_role(profile.role)
+    filename = _checklist_pdf_filename(item)
+    return _render_checklist_pdf_response(request, context, filename, 'user_panel/checklist_view.html')

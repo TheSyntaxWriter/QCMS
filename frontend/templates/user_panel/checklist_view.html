@@ -1,0 +1,8 @@
+{% extends 'user_panel/base_user.html' %}
+
+{% block topbar_title %}Checklist Preview{% endblock %}
+{% block topbar_welcome %}{{ checklist.checklist_id }}{% endblock %}
+
+{% block content %}
+{% include 'shared/checklist_preview_content.html' %}
+{% endblock %}
