@@ -97,6 +97,33 @@ table.standard-table {
   font-weight: 500;
   white-space: nowrap;
 }
+
+.btn-fill-checklist {
+  background: #1f6b2a;
+  color: #fff;
+}
+
+.btn-view-checklist {
+  background: #2a4ec6;
+  color: #fff;
+}
+
+.enterprise-checklist-action {
+  transition: background-color .22s ease, transform .22s ease, box-shadow .22s ease;
+}
+
+.enterprise-checklist-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(11, 27, 104, 0.2);
+}
+
+.btn-fill-checklist:hover {
+  background: #257d32;
+}
+
+.btn-view-checklist:hover {
+  background: #345bd8;
+}
 .action-buttons,
 .response-action-group {
   align-items: center;
