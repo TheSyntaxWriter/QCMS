@@ -332,4 +332,5 @@ def user_checklist_preview(request, checklist_id):
         write_activity_log(action_type='Checklist Printed', module_name='Checklist', description=f'Checklist print preview opened: {item.checklist_id}', status=ActivityLog.STATUS_INFO, user=request.user)
     ctx = _checklist_preview_context(request, item)
     ctx['preview_mode'] = 'user'
-    return render(request, 'admin_panel/checklist_view.html', ctx)
+    ctx['sidebar_menu'] = _sidebar_menu_for_role(profile.role)
+    return render(request, 'user_panel/checklist_view.html', ctx)
