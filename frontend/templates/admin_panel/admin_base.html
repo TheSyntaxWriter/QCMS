@@ -46,31 +46,7 @@
         align-items: center;
         margin-bottom: 20px;
       }
-      .table-container {
-        overflow-x: auto;
-      }
-      table {
-        width: 100%;
-        min-width: 1000px;
-        border-collapse: collapse;
-      }
-      thead th {
-        background: var(--theme-primary);
-        color: white;
-        padding: 10px;
-        font-size: 13px;
-        text-align: left;
-      }
-      tbody td {
-        padding: 5px;
-        font-size: 12px;
-      }
-      tr {
-        border-bottom: 1px solid #eee;
-      }
-      tr:hover {
-        background: var(--color-hover);
-      }
+      /* Table width/overflow is centralized in shared/table_system.css */
       .btn {
         padding: 0px 10px;
         font-size: 12px;
@@ -102,7 +78,7 @@
       .inactive-text {
         color: red;
       }
-          .content { padding: 24px; min-width: 0; }
+          .content { min-width: 0; }
       @media (max-width: 920px){ .content{ padding:16px; width:100%; margin-left:0 !important; } .topbar{ border-radius:12px; } }
     </style>
   </head>

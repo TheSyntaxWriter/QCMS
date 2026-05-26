@@ -1,6 +1,6 @@
 :root { --layout-max-width: 1280px; --layout-gutter: 24px; --layout-gutter-mobile: 16px; --space-2: 12px; --space-3: 16px; --space-4: 20px; --radius-md: 12px; --shadow-card: 0 4px 15px rgba(0,0,0,.08); }
-.app-content-wrapper{width:100%}
-.page-container{max-width:var(--layout-max-width);margin:0 auto;padding:var(--layout-gutter)}
+.app-content-wrapper{width:100%;min-width:0}
+.page-container{width:100%;max-width:var(--layout-max-width);box-sizing:border-box;margin:0 auto;padding:var(--layout-gutter);min-width:0}
 .page-header{margin-bottom:var(--space-4)}
 .page-toolbar{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;margin-bottom:var(--space-3)}
 .content-grid{display:grid;gap:var(--space-4)}
