@@ -21,7 +21,7 @@ from .admin import (
 )
 from .auth import home, user_login, user_logout
 from .management import management_dashboard
-from .user_panel import dashboard, my_checklists, my_submissions, user_profile, admin_profile, user_checklist_preview, user_checklist_fill, user_submission_action
+from .user_panel import dashboard, my_checklists, my_submissions, user_profile, admin_profile, user_checklist_preview, user_checklist_pdf, user_checklist_fill, user_submission_action
 
 __all__ = [
     'home',
@@ -52,6 +52,7 @@ __all__ = [
     'user_profile',
     'admin_profile',
     'user_checklist_preview',
+    'user_checklist_pdf',
     'user_checklist_fill',
     'user_submission_action',
     'management_dashboard',
