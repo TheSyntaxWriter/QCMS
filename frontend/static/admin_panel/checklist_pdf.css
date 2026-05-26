@@ -56,7 +56,19 @@
 .answer-line{height:22px;min-width:320px;border-bottom:1px solid #8696b5;}
 .answer-box{border:1px solid #aebad1;border-radius:7px;width:100%;height:50px;background:var(--qc-field);} 
 .answer-box.large{height:72px;}
-.radio-dot{width:11px;height:11px;border:1px solid #344466;border-radius:50%;display:inline-block;}
+.radio-dot{
+  width:11px;
+  height:11px;
+  border:1.2px solid #344466;
+  border-radius:999px;
+  display:inline-block;
+  box-sizing:border-box;
+  flex:0 0 11px;
+  min-width:11px;
+  min-height:11px;
+  background:transparent;
+  vertical-align:middle;
+}
 .check-box{width:11px;height:11px;border:1px solid #344466;border-radius:2px;display:inline-block;}
 .dropdown-box,.attachment-box,.date-box{border:1px solid #aebad1;border-radius:7px;padding:7px 10px;min-width:250px;background:var(--qc-field);color:#46546d;font-size:10.5px;}
 
