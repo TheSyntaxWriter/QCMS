@@ -24,7 +24,7 @@
           <td class="actions-column">
             <div class="action-buttons">
             {% if checklist_view_mode %}
-              <a class="btn table-action-btn btn-add" href="{% url 'user_checklist_fill' checklist.id %}">Fill Checklist</a>
+              <a class="btn table-action-btn btn-fill-checklist" href="{% url 'user_checklist_fill' checklist.id %}">Fill Checklist</a>
               <a class="btn table-action-btn btn-view" href="{% url 'user_checklist_preview' checklist.id %}">View Checklist</a>
             {% else %}
               <a class="btn table-action-btn btn-view" href="{% url 'admin_checklist_view' checklist.id %}">View</a>

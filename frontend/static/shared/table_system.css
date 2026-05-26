@@ -97,6 +97,15 @@ table.standard-table {
   font-weight: 500;
   white-space: nowrap;
 }
+
+.btn-fill-checklist {
+  background: #1f6b2a;
+  color: #fff;
+}
+
+.btn-fill-checklist:hover {
+  background: #257d32;
+}
 .action-buttons,
 .response-action-group {
   align-items: center;
