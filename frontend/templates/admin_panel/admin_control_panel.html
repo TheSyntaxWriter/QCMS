@@ -33,22 +33,11 @@
 .cp-color-swatch input[type="color"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
 .cp-color-value{font-size:.86rem;color:#475569;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .cp-actions{padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:16px}
-.cp-actions__note{margin:0;color:#64748b}
-.cp-actions__buttons{display:flex;gap:10px;flex-wrap:wrap}
-.btnx{border:0;border-radius:10px;padding:11px 18px;cursor:pointer;font-weight:600;transition:.2s}
-.btn-primary{background:var(--theme-primary);color:#fff}
-.btn-secondary{background:#e2e8f0;color:#0f172a}
-.btnx:hover{transform:translateY(-1px)}
-.cp-modal{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
-.cp-modal.is-open{display:flex}
-.cp-modal__dialog{max-width:430px;width:100%;padding:20px}
-.cp-modal__title{margin:0 0 6px}
-.cp-modal__meta{margin:0 0 14px;color:#64748b;font-size:.9rem}
-.cp-modal__label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}
-.cp-modal__input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
-.cp-modal__actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-@media(max-width:1024px){.cp-shell{grid-template-columns:1fr}.cp-nav{position:relative;top:0}.cp-grid{grid-template-columns:1fr}.cp-card{padding:22px}}
-@media(max-width:640px){.cp-actions{flex-direction:column;align-items:stretch}.cp-actions__buttons{width:100%}.cp-actions__buttons .btnx{flex:1}.cp-color-control{align-items:flex-start;flex-direction:column}}
+.btnx{border:0;border-radius:10px;padding:11px 18px;cursor:pointer;font-weight:600;transition:.2s}.btn-primary{background:var(--theme-primary);color:#fff}.btn-secondary{background:#e2e8f0;color:#0f172a}.btnx:hover{transform:translateY(-1px)}
+.cp-modal{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}.cp-modal.is-open{display:flex}
+.cp-modal__dialog{max-width:430px;width:100%;padding:20px}.cp-modal__title{margin:0 0 6px}.cp-modal__meta{margin:0 0 14px;color:#64748b;font-size:.9rem}
+@media(max-width:1024px){.cp-shell{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}
+.cp-main{display:grid;gap:16px}.cp-actions__meta{margin:0;color:#64748b}.cp-actions__buttons{display:flex;gap:10px}.cp-modal__label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}.cp-modal__input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}.cp-modal__footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
 </style>
 <form method="post" enctype="multipart/form-data" id="controlForm">
   {% csrf_token %}
@@ -58,65 +47,14 @@
       <a href="#general">General</a><a href="#branding">Branding</a><a href="#theme">Theme</a>
     </aside>
     <main class="cp-main">
-      <section id="general" class="cp-card"><h3>General Settings</h3><p class="cp-sub">Global product identity used across titles, headers, and navigation.</p><div class="cp-grid"><div class="cp-field"><label for="web_app_name">Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name|default:'QCMS' }}" placeholder="QCMS"></div></div></section>
-
-      <section id="branding" class="cp-card">
-        <h3>Branding Settings</h3>
-        <p class="cp-sub">Single-source branding assets applied globally. Update media below and preview current identity elements before saving.</p>
-        <div class="cp-stack">
-          <div class="cp-field">
-            <label for="logoUpload">Application Logo</label>
-            <div class="cp-upload-card">
-              <div class="cp-upload-control">
-                <input id="logoUpload" type="file" name="logo" accept="image/*">
-                <p class="cp-upload-help">Recommended: transparent PNG or SVG-compatible image with balanced spacing for sidebars, headers, and reports.</p>
-              </div>
-              <div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current logo"><div><strong>Current logo</strong><span>Used in sidebar, header, login, and reports.</span></div></div>
-            </div>
-          </div>
-          <div class="cp-field">
-            <label for="faviconUpload">Favicon</label>
-            <div class="cp-upload-card">
-              <div class="cp-upload-control">
-                <input id="faviconUpload" type="file" name="favicon" accept="image/*">
-                <p class="cp-upload-help">Recommended: square icon (32x32 or 64x64) with clear contrast for browser tabs and bookmarks.</p>
-              </div>
-              <div class="cp-preview"><img src="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" alt="Current favicon"><div><strong>Current favicon</strong><span>Shown in browser tabs and shortcuts.</span></div></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="theme" class="cp-card">
-        <h3>Theme & Appearance</h3>
-        <p class="cp-sub">Unified enterprise theme controls. Manage global brand color and typography in a consistent, centralized layout.</p>
-        <div class="cp-stack">
-          <div class="cp-field">
-            <label for="global_theme_color">Global Theme Color</label>
-            <div class="cp-upload-card">
-              <div class="cp-color-control">
-                <label class="cp-color-swatch" for="global_theme_color" aria-label="Select global theme color" id="themeColorSwatch">
-                  <input type="color" name="global_theme_color" id="global_theme_color" value="{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}">
-                </label>
-                <span class="cp-color-value" id="themeColorValue">{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}</span>
-              </div>
-              <p class="cp-upload-help">Click the color square to open your browser picker and apply a consistent primary accent across key UI surfaces.</p>
-            </div>
-          </div>
-          <div class="cp-field">
-            <label for="font_family">Font Family</label>
-            <div class="cp-upload-card">
-              <select name="font_family" id="font_family">{% for font in font_options %}<option value="{{ font }}" {% if GLOBAL_THEME.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select>
-              <p class="cp-upload-help">Applies globally to maintain readability and visual consistency across dashboards and forms.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-      <div class="cp-actions"><p class="cp-actions__note">Changes require admin password confirmation.</p><div class="cp-actions__buttons"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
+      <section id="general" class="cp-card"><h3>General Settings</h3><p class="cp-sub">Global product identity used across titles, headers, and navigation.</p><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name|default:'QCMS' }}" placeholder="QCMS"></div></div></section>
+      <section id="branding" class="cp-card"><h3>Branding Settings</h3><p class="cp-sub">Single-source branding assets applied globally.</p><div class="cp-grid"><div class="cp-field"><label>Application Logo</label><input type="file" name="logo" accept="image/*"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current logo"><span>Used in sidebar, header, login, and reports.</span></div></div><div class="cp-field"><label>Favicon</label><input type="file" name="favicon" accept="image/*"></div></div></section>
+      <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><p class="cp-sub">Unified enterprise theme controls.</p><div class="cp-grid"><div class="cp-field"><label>Global Theme Color</label><input type="color" name="global_theme_color" id="global_theme_color" value="{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Font Family</label><select name="font_family">{% for font in font_options %}<option value="{{ font }}" {% if GLOBAL_THEME.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select></div></div></section>
+      <div class="cp-actions"><p class="cp-actions__meta">Changes require admin password confirmation.</p><div class="cp-actions__buttons"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
     </main>
   </div>
 </form>
-<div class="cp-modal" id="passwordModal" aria-hidden="true"><div class="cp-modal__dialog"><h3 class="cp-modal__title">Confirm Admin Password</h3><p class="cp-modal__meta">Re-enter your current password to authorize global settings changes.</p><label for="confirmPasswordField" class="cp-modal__label">Password</label><input id="confirmPasswordField" type="password" autocomplete="current-password" class="cp-modal__input"><div class="cp-modal__actions"><button type="button" class="btnx btn-secondary" id="cancelModal">Cancel</button><button type="button" class="btnx btn-primary" id="confirmModal">Confirm & Continue</button></div></div></div>
+<div class="cp-modal" id="passwordModal" aria-hidden="true"><div class="cp-modal__dialog"><h3 class="cp-modal__title">Confirm Admin Password</h3><p class="cp-modal__meta">Re-enter your current password to authorize global settings changes.</p><label for="confirmPasswordField" class="cp-modal__label">Password</label><input id="confirmPasswordField" class="cp-modal__input" type="password" autocomplete="current-password"><div class="cp-modal__footer"><button type="button" class="btnx btn-secondary" id="cancelModal">Cancel</button><button type="button" class="btnx btn-primary" id="confirmModal">Confirm & Continue</button></div></div></div>
 <script>
 (()=>{
   const form=document.getElementById('controlForm'),modal=document.getElementById('passwordModal'),pwdInput=document.getElementById('confirmPasswordField'),hidden=document.getElementById('confirmPasswordInput'),cancel=document.getElementById('cancelModal'),ok=document.getElementById('confirmModal');

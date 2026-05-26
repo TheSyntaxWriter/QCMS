@@ -4,5 +4,7 @@
 {% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
 
 {% block content %}
-<div class="card" style="padding: 24px; font-size: 18px; font-weight: 600;">Dashboard Coming Soon</div>
+<div class="card dashboard-placeholder">Dashboard Coming Soon</div>
 {% endblock %}
+
+<style>.dashboard-placeholder{padding:24px;font-size:18px;font-weight:600}</style>
