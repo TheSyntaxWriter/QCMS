@@ -1,5 +1,5 @@
 {% extends 'user_panel/base_user.html' %}
-{% load static %}
+{% load static form_extras %}
 
 {% block topbar_title %}Fill Checklist{% endblock %}
 {% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
@@ -12,7 +12,7 @@
     <div>
       <span class="chip">{{ checklist.checklist_id }}</span>
       <h2>{{ checklist.name }}</h2>
-      <p>Complete all required answers marked with * and submit for approval workflow.</p>
+      <p>Complete answers and either save Work In Progress or submit for approval workflow.</p>
     </div>
     <div class="actions">
       <a href="{% url 'my_checklists' %}" class="btn ghost">← Back</a>
@@ -34,35 +34,35 @@
             </label>
 
             {% if question.type == 'short_text' %}
-              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="text" class="field" />
+              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="text" class="field" value="{{ existing_answers|get_item:question.id }}" />
             {% elif question.type == 'long_text' %}
-              <textarea id="q_{{ question.id }}" name="q_{{ question.id }}" rows="4" class="field"></textarea>
+              <textarea id="q_{{ question.id }}" name="q_{{ question.id }}" rows="4" class="field">{{ existing_answers|get_item:question.id }}</textarea>
             {% elif question.type == 'multiple_choice' %}
               <div class="choices">
                 {% for option in question.options %}
-                  <label><input type="radio" name="q_{{ question.id }}" value="{{ option }}" /> {{ option }}</label>
+                  <label><input type="radio" name="q_{{ question.id }}" value="{{ option }}" {% if existing_answers|get_item:question.id == option %}checked{% endif %} /> {{ option }}</label>
                 {% endfor %}
               </div>
             {% elif question.type == 'checkbox' %}
               <div class="choices">
                 {% for option in question.options %}
-                  <label><input type="checkbox" name="q_{{ question.id }}" value="{{ option }}" /> {{ option }}</label>
+                  <label><input type="checkbox" name="q_{{ question.id }}" value="{{ option }}" {% if option in (existing_answers|get_item:question.id|default:'') %}checked{% endif %} /> {{ option }}</label>
                 {% endfor %}
               </div>
             {% elif question.type == 'dropdown' %}
               <select id="q_{{ question.id }}" name="q_{{ question.id }}" class="field">
                 <option value="">Select an option</option>
                 {% for option in question.options %}
-                  <option value="{{ option }}">{{ option }}</option>
+                  <option value="{{ option }}" {% if existing_answers|get_item:question.id == option %}selected{% endif %}>{{ option }}</option>
                 {% endfor %}
               </select>
             {% elif question.type == 'yes_no' %}
               <div class="choices inline">
-                <label><input type="radio" name="q_{{ question.id }}" value="Yes" /> Yes</label>
-                <label><input type="radio" name="q_{{ question.id }}" value="No" /> No</label>
+                <label><input type="radio" name="q_{{ question.id }}" value="Yes" {% if existing_answers|get_item:question.id == 'Yes' %}checked{% endif %} /> Yes</label>
+                <label><input type="radio" name="q_{{ question.id }}" value="No" {% if existing_answers|get_item:question.id == 'No' %}checked{% endif %} /> No</label>
               </div>
             {% elif question.type == 'date' %}
-              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="date" class="field" />
+              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="date" class="field" value="{{ existing_answers|get_item:question.id }}" />
             {% elif question.type == 'file_upload' %}
               <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="file" class="field" />
             {% else %}
@@ -73,8 +73,9 @@
       </section>
     {% endfor %}
 
-    <div class="submit-row">
-      <button class="btn primary" type="submit">Submit Checklist</button>
+    <div class="submit-row workflow-actions">
+      <button class="btn wip" type="submit" name="workflow_action" value="save_wip">Save as WIP</button>
+      <button class="btn submit" type="submit" name="workflow_action" value="submit">Submit for Approval</button>
     </div>
   </form>
 </div>

@@ -1,6 +1,7 @@
 from django.db.models import Q
 
 from .models import ChecklistResponse, RolePermission
+from .workflow_service import can_edit_response, can_approve_response, can_reject_response
 
 VALID_COLUMNS = [
     'checklist_id', 'checklist_name', 'checklist_type', 'submitted_by',
@@ -77,3 +78,27 @@ def validate_permission_payload(columns, actions):
     if invalid_actions:
         raise ValueError(f'Invalid actions: {", ".join(invalid_actions)}')
     return normalized_columns, normalized_actions
+
+
+def is_action_permitted_for_response(action, response, profile, user):
+    """
+    Backend-safe policy layer that evaluates workflow allowance in addition to
+    role-level action visibility from RolePermission.
+    """
+    if action == 'view':
+        return True
+    if action == 'delete':
+        return profile.role == 'Admin'
+    if action == 'toggle':
+        return profile.role == 'Admin'
+    if action == 'edit':
+        return can_edit_response(response, user, profile.role)
+    if action == 'approve':
+        return can_approve_response(response, profile.role)
+    if action == 'reject':
+        return can_reject_response(response, profile.role)
+    return False
+
+
+def effective_allowed_actions_for_response(base_actions, response, profile, user):
+    return [action for action in base_actions if is_action_permitted_for_response(action, response, profile, user)]
