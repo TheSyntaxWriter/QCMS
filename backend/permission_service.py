@@ -98,3 +98,7 @@ def is_action_permitted_for_response(action, response, profile, user):
     if action == 'reject':
         return can_reject_response(response, profile.role)
     return False
+
+
+def effective_allowed_actions_for_response(base_actions, response, profile, user):
+    return [action for action in base_actions if is_action_permitted_for_response(action, response, profile, user)]

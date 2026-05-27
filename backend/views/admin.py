@@ -33,7 +33,7 @@ from ..models import (
 )
 from .common import get_user_profile
 from ..logging_service import write_activity_log
-from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response
+from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response, effective_allowed_actions_for_response
 from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
@@ -653,6 +653,10 @@ def admin_responses(request):
     )
 
     page_obj = Paginator(responses.order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+    admin_allowed_actions = get_role_permission_config('Admin')[1]
+    for response in page_obj.object_list:
+        response.workflow_allowed_actions = effective_allowed_actions_for_response(admin_allowed_actions, response, profile, request.user)
+        response.workflow_can_edit = 'edit' in response.workflow_allowed_actions
 
     active_projects = Project.objects.filter(is_active=True).order_by('name')
 
@@ -667,7 +671,7 @@ def admin_responses(request):
     return render(request, 'admin_panel/admin_responses.html', {
         'sidebar_menu': _admin_sidebar_menu(),
         'visible_columns': get_role_permission_config('Admin')[0],
-        'allowed_actions': get_role_permission_config('Admin')[1],
+        'allowed_actions': admin_allowed_actions,
         'responses': page_obj,
         'projects': active_projects,
         'departments': Department.objects.filter(is_active=True).order_by('name'),
