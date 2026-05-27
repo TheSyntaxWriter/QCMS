@@ -67,6 +67,8 @@
   <select id="responseStatusFilter" name="status" class="form-control">
     <option value="">All Status</option>
     <option value="Pending" {% if request.GET.status == 'Pending' %}selected{% endif %}>Pending</option>
+    <option value="WIP" {% if request.GET.status == 'WIP' %}selected{% endif %}>WIP</option>
+    <option value="Pending for Approval" {% if request.GET.status == 'Pending for Approval' %}selected{% endif %}>Pending for Approval</option>
     <option value="Approved" {% if request.GET.status == 'Approved' %}selected{% endif %}>Approved</option>
     <option value="Rejected" {% if request.GET.status == 'Rejected' %}selected{% endif %}>Rejected</option>
   </select>
@@ -114,6 +116,7 @@
 <script>
 window.responsePageConfig = {
   actionUrl: "{% url 'admin_response_action' %}",
+  editFillUrlTemplate: "{% url 'user_checklist_fill' 0 %}",
   csrfToken: "{{ csrf_token }}"
 };
 </script>

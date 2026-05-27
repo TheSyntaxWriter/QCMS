@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.core.validators import RegexValidator
+from .workflow_service import ResponseStatus
 
 
 # =========================================================
@@ -181,18 +182,14 @@ class ChecklistQuestion(models.Model):
 
 
 class ChecklistResponse(models.Model):
-    STATUS_CHOICES = (
-        ('Pending', 'Pending'),
-        ('Approved', 'Approved'),
-        ('Rejected', 'Rejected'),
-    )
+    STATUS_CHOICES = ResponseStatus.CHOICES
 
     checklist = models.ForeignKey(ChecklistDefinition, on_delete=models.CASCADE, related_name='responses')
     submitted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='checklist_responses')
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     hod = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='hod_reviews')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending', db_index=True)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=ResponseStatus.PENDING, db_index=True)
     submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='response_updates')
