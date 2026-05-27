@@ -12,6 +12,14 @@
     btn.addEventListener('click', async () => {
       const action = btn.dataset.action;
       if (action !== 'view') {
+        if (action === 'edit') {
+          const checklistId = btn.dataset.checklistId;
+          const responseId = btn.dataset.id;
+          if (checklistId && responseId) {
+            window.location.href = `/my-checklists/${checklistId}/fill/?response_id=${responseId}`;
+          }
+          return;
+        }
         if (['approve','reject'].includes(action)) {
           const fd = new FormData();
           fd.append('action', action);
