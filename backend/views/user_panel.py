@@ -18,7 +18,8 @@ from .common import get_user_profile, redirect_for_profile
 from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
-from ..permission_service import get_role_permission_config, responses_for_profile
+from ..permission_service import get_role_permission_config, responses_for_profile, is_action_permitted_for_response, effective_allowed_actions_for_response
+from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
 
@@ -84,6 +85,9 @@ def my_submissions(request):
 
     visible_columns, allowed_actions = get_role_permission_config(profile.role)
     responses = Paginator(responses_for_profile(profile, request.user).order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+    for response in responses.object_list:
+        response.workflow_allowed_actions = effective_allowed_actions_for_response(allowed_actions, response, profile, request.user)
+        response.workflow_can_edit = 'edit' in response.workflow_allowed_actions
 
     return render(request, 'user_panel/my_submissions.html', {
         'responses': responses,
@@ -225,26 +229,64 @@ def user_checklist_fill(request, checklist_id):
 
     questions = list(checklist.questions.all().order_by('order', 'id'))
 
+    draft_response = ChecklistResponse.objects.filter(
+        checklist=checklist,
+        submitted_by=request.user,
+        status=ResponseStatus.WIP,
+    ).order_by('-updated_at').prefetch_related('answers__question').first()
+    editing_response = draft_response
+    if request.method == 'GET' and request.GET.get('response_id'):
+        editing_response = ChecklistResponse.objects.filter(
+            id=request.GET.get('response_id'),
+            checklist=checklist,
+            submitted_by=request.user,
+            status=ResponseStatus.WIP,
+        ).prefetch_related('answers__question').first()
+
+    existing_answers = {}
+    if editing_response:
+        for ans in editing_response.answers.all():
+            existing_answers[ans.question_id] = ans.answer_text
+    for question in questions:
+        prefill = existing_answers.get(question.id, '')
+        question.prefill_value = prefill
+        question.prefill_options = [item.strip() for item in prefill.split(' | ') if item.strip()] if prefill else []
+
     if request.method == 'POST':
+        workflow_action = request.POST.get('workflow_action', 'submit')
+        target_status = ResponseStatus.WIP if workflow_action == 'save_wip' else ResponseStatus.PENDING_APPROVAL
         validation_errors = _validate_required_questions(request, questions)
-        if validation_errors:
+        if validation_errors and target_status != ResponseStatus.WIP:
             for err in validation_errors:
                 messages.error(request, err)
         else:
             with transaction.atomic():
                 hod_user_id = _resolve_hod_user(profile.department)
-                response = ChecklistResponse.objects.create(
+                response = ChecklistResponse.objects.filter(
                     checklist=checklist,
                     submitted_by=request.user,
-                    project=profile.project,
-                    department=profile.department,
-                    hod_id=hod_user_id,
-                    status='Pending',
-                    updated_by=request.user,
-                )
+                    status=ResponseStatus.WIP,
+                ).order_by('-updated_at').first()
+                if response:
+                    response.project = profile.project
+                    response.department = profile.department
+                    response.hod_id = hod_user_id
+                    response.status = target_status
+                    response.updated_by = request.user
+                    response.save(update_fields=['project', 'department', 'hod', 'status', 'updated_by', 'updated_at'])
+                else:
+                    response = ChecklistResponse.objects.create(
+                        checklist=checklist,
+                        submitted_by=request.user,
+                        project=profile.project,
+                        department=profile.department,
+                        hod_id=hod_user_id,
+                        status=target_status,
+                        updated_by=request.user,
+                    )
                 for question in questions:
                     value = _extract_answer(request, question)
-                    answer = ChecklistAnswer(response=response, question=question)
+                    answer = ChecklistAnswer.objects.filter(response=response, question=question).first() or ChecklistAnswer(response=response, question=question)
                     if question.type == ChecklistQuestion.TYPE_FILE_UPLOAD:
                         if value:
                             answer.file = value
@@ -252,8 +294,12 @@ def user_checklist_fill(request, checklist_id):
                         answer.answer_text = value
                     answer.save()
 
-            write_activity_log(action_type='Checklist Submitted', module_name='Checklist', description=f'Checklist submitted: {checklist.checklist_id} by {request.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
-            messages.success(request, f'Checklist {checklist.checklist_id} submitted successfully.')
+            if target_status == ResponseStatus.WIP:
+                write_activity_log(action_type='Checklist WIP Saved', module_name='Checklist', description=f'Checklist WIP saved: {checklist.checklist_id} by {request.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                messages.success(request, f'Checklist {checklist.checklist_id} saved as WIP.')
+            else:
+                write_activity_log(action_type='Checklist Submitted', module_name='Checklist', description=f'Checklist submitted: {checklist.checklist_id} by {request.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                messages.success(request, f'Checklist {checklist.checklist_id} submitted for approval.')
             return redirect('my_submissions')
 
     sectioned = {}
@@ -263,6 +309,7 @@ def user_checklist_fill(request, checklist_id):
     return render(request, 'user_panel/checklist_fill.html', {
         'checklist': checklist,
         'sectioned_questions': list(sectioned.items()),
+        'editing_response': editing_response,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
     })
 
@@ -285,8 +332,13 @@ def user_submission_action(request):
         response = responses_for_profile(profile, request.user).filter(id=response_id).first()
         if not response:
             return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
+        if not is_action_permitted_for_response(action, response, profile, request.user):
+            return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action in {'approve', 'reject'}:
-            response.status = 'Approved' if action == 'approve' else 'Rejected'
+            decision = evaluate_status_action(response.status, action)
+            if not decision.allowed:
+                return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
+            response.status = decision.next_status
             response.updated_by = request.user
             response.save(update_fields=['status', 'updated_by', 'updated_at'])
             return JsonResponse({'ok': True, 'status': response.status})
