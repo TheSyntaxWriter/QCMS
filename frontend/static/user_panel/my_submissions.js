@@ -16,7 +16,7 @@
           const checklistId = btn.dataset.checklistId;
           const responseId = btn.dataset.id;
           if (checklistId && responseId) {
-            window.location.href = `/checklist-fill/${checklistId}/?response_id=${responseId}`;
+            window.location.href = `/my-checklists/${checklistId}/fill/?response_id=${responseId}`;
           }
           return;
         }

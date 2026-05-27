@@ -229,15 +229,11 @@ def user_checklist_fill(request, checklist_id):
 
     questions = list(checklist.questions.all().order_by('order', 'id'))
 
-    draft_response = ChecklistResponse.objects.filter(
-        checklist=checklist,
-        submitted_by=request.user,
-        status=ResponseStatus.WIP,
-    ).order_by('-updated_at').prefetch_related('answers__question').first()
-    editing_response = draft_response
-    if request.method == 'GET' and request.GET.get('response_id'):
+    editing_response = None
+    editing_response_id = request.GET.get('response_id') if request.method == 'GET' else request.POST.get('response_id')
+    if editing_response_id:
         editing_response = ChecklistResponse.objects.filter(
-            id=request.GET.get('response_id'),
+            id=editing_response_id,
             checklist=checklist,
             submitted_by=request.user,
             status=ResponseStatus.WIP,
@@ -262,19 +258,17 @@ def user_checklist_fill(request, checklist_id):
         else:
             with transaction.atomic():
                 hod_user_id = _resolve_hod_user(profile.department)
-                response = ChecklistResponse.objects.filter(
-                    checklist=checklist,
-                    submitted_by=request.user,
-                    status=ResponseStatus.WIP,
-                ).order_by('-updated_at').first()
-                if response:
-                    response.project = profile.project
-                    response.department = profile.department
-                    response.hod_id = hod_user_id
-                    response.status = target_status
-                    response.updated_by = request.user
-                    response.save(update_fields=['project', 'department', 'hod', 'status', 'updated_by', 'updated_at'])
-                else:
+                response = None
+                post_response_id = request.POST.get('response_id')
+                if post_response_id:
+                    response = ChecklistResponse.objects.filter(
+                        id=post_response_id,
+                        checklist=checklist,
+                        submitted_by=request.user,
+                        status=ResponseStatus.WIP,
+                    ).first()
+
+                if response is None:
                     response = ChecklistResponse.objects.create(
                         checklist=checklist,
                         submitted_by=request.user,
@@ -284,6 +278,13 @@ def user_checklist_fill(request, checklist_id):
                         status=target_status,
                         updated_by=request.user,
                     )
+                else:
+                    response.project = profile.project
+                    response.department = profile.department
+                    response.hod_id = hod_user_id
+                    response.status = target_status
+                    response.updated_by = request.user
+                    response.save(update_fields=['project', 'department', 'hod', 'status', 'updated_by', 'updated_at'])
                 for question in questions:
                     value = _extract_answer(request, question)
                     answer = ChecklistAnswer.objects.filter(response=response, question=question).first() or ChecklistAnswer(response=response, question=question)

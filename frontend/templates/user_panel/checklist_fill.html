@@ -22,6 +22,7 @@
 
   <form method="post" enctype="multipart/form-data" class="premium-form">
     {% csrf_token %}
+    {% if editing_response %}<input type="hidden" name="response_id" value="{{ editing_response.id }}" />{% endif %}
 
     {% for section_name, section_questions in sectioned_questions %}
       <section class="q-section">
