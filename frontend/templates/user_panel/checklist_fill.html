@@ -1,5 +1,5 @@
 {% extends 'user_panel/base_user.html' %}
-{% load static %}
+{% load static form_extras %}
 
 {% block topbar_title %}Fill Checklist{% endblock %}
 {% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
