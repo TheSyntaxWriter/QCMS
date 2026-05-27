@@ -247,6 +247,10 @@ def user_checklist_fill(request, checklist_id):
     if editing_response:
         for ans in editing_response.answers.all():
             existing_answers[ans.question_id] = ans.answer_text
+    for question in questions:
+        prefill = existing_answers.get(question.id, '')
+        question.prefill_value = prefill
+        question.prefill_options = [item.strip() for item in prefill.split(' | ') if item.strip()] if prefill else []
 
     if request.method == 'POST':
         workflow_action = request.POST.get('workflow_action', 'submit')
@@ -305,7 +309,6 @@ def user_checklist_fill(request, checklist_id):
     return render(request, 'user_panel/checklist_fill.html', {
         'checklist': checklist,
         'sectioned_questions': list(sectioned.items()),
-        'existing_answers': existing_answers,
         'editing_response': editing_response,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
     })

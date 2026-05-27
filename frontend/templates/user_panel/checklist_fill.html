@@ -34,35 +34,35 @@
             </label>
 
             {% if question.type == 'short_text' %}
-              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="text" class="field" value="{{ existing_answers|get_item:question.id }}" />
+              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="text" class="field" value="{{ question.prefill_value }}" />
             {% elif question.type == 'long_text' %}
-              <textarea id="q_{{ question.id }}" name="q_{{ question.id }}" rows="4" class="field">{{ existing_answers|get_item:question.id }}</textarea>
+              <textarea id="q_{{ question.id }}" name="q_{{ question.id }}" rows="4" class="field">{{ question.prefill_value }}</textarea>
             {% elif question.type == 'multiple_choice' %}
               <div class="choices">
                 {% for option in question.options %}
-                  <label><input type="radio" name="q_{{ question.id }}" value="{{ option }}" {% if existing_answers|get_item:question.id == option %}checked{% endif %} /> {{ option }}</label>
+                  <label><input type="radio" name="q_{{ question.id }}" value="{{ option }}" {% if question.prefill_value == option %}checked{% endif %} /> {{ option }}</label>
                 {% endfor %}
               </div>
             {% elif question.type == 'checkbox' %}
               <div class="choices">
                 {% for option in question.options %}
-                  <label><input type="checkbox" name="q_{{ question.id }}" value="{{ option }}" {% if option in (existing_answers|get_item:question.id|default:'') %}checked{% endif %} /> {{ option }}</label>
+                  <label><input type="checkbox" name="q_{{ question.id }}" value="{{ option }}" {% if option in question.prefill_options %}checked{% endif %} /> {{ option }}</label>
                 {% endfor %}
               </div>
             {% elif question.type == 'dropdown' %}
               <select id="q_{{ question.id }}" name="q_{{ question.id }}" class="field">
                 <option value="">Select an option</option>
                 {% for option in question.options %}
-                  <option value="{{ option }}" {% if existing_answers|get_item:question.id == option %}selected{% endif %}>{{ option }}</option>
+                  <option value="{{ option }}" {% if question.prefill_value == option %}selected{% endif %}>{{ option }}</option>
                 {% endfor %}
               </select>
             {% elif question.type == 'yes_no' %}
               <div class="choices inline">
-                <label><input type="radio" name="q_{{ question.id }}" value="Yes" {% if existing_answers|get_item:question.id == 'Yes' %}checked{% endif %} /> Yes</label>
-                <label><input type="radio" name="q_{{ question.id }}" value="No" {% if existing_answers|get_item:question.id == 'No' %}checked{% endif %} /> No</label>
+                <label><input type="radio" name="q_{{ question.id }}" value="Yes" {% if question.prefill_value == 'Yes' %}checked{% endif %} /> Yes</label>
+                <label><input type="radio" name="q_{{ question.id }}" value="No" {% if question.prefill_value == 'No' %}checked{% endif %} /> No</label>
               </div>
             {% elif question.type == 'date' %}
-              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="date" class="field" value="{{ existing_answers|get_item:question.id }}" />
+              <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="date" class="field" value="{{ question.prefill_value }}" />
             {% elif question.type == 'file_upload' %}
               <input id="q_{{ question.id }}" name="q_{{ question.id }}" type="file" class="field" />
             {% else %}
