@@ -116,6 +116,7 @@
 <script>
 window.responsePageConfig = {
   actionUrl: "{% url 'admin_response_action' %}",
+  editFillUrlTemplate: "{% url 'user_checklist_fill' 0 %}",
   csrfToken: "{{ csrf_token }}"
 };
 </script>

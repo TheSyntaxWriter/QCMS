@@ -15,8 +15,9 @@
         if (action === 'edit') {
           const checklistId = btn.dataset.checklistId;
           const responseId = btn.dataset.id;
-          if (checklistId && responseId) {
-            window.location.href = `/my-checklists/${checklistId}/fill/?response_id=${responseId}`;
+          if (checklistId && responseId && cfg.editFillUrlTemplate) {
+            const baseFillUrl = cfg.editFillUrlTemplate.replace('/0/fill/', `/${checklistId}/fill/`);
+            window.location.href = `${baseFillUrl}?response_id=${encodeURIComponent(responseId)}`;
           }
           return;
         }
