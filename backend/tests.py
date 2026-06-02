@@ -70,6 +70,9 @@ class AccessControlTests(TestCase):
         response = self.client.get(reverse("dashboard"))
         self.assertEqual(response.status_code, 200)
 
+        legacy_response = self.client.get(reverse("management_dashboard"))
+        self.assertRedirects(legacy_response, reverse("dashboard"))
+
     def test_home_redirects_by_role(self):
         role_expected = {
             'User': 'my_checklists',

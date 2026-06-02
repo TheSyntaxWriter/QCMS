@@ -197,13 +197,20 @@
         document.getElementById('closeResponseView').onclick = () => modal.classList.remove('is-open');
         return;
       }
-      if (['approve','reject','toggle','edit'].includes(action)) {
+      if (action === 'edit') {
+        const checklistId = btn.dataset.checklistId;
+        if (checklistId && responseId && cfg.editFillUrlTemplate) {
+          const baseFillUrl = cfg.editFillUrlTemplate.replace('/0/fill/', `/${checklistId}/fill/`);
+          window.location.href = `${baseFillUrl}?response_id=${encodeURIComponent(responseId)}`;
+        }
+        return;
+      }
+      if (['approve','reject','toggle'].includes(action)) {
         const fd = new FormData();
         fd.append('action', action);
         fd.append('response_id', responseId);
         fd.append('csrfmiddlewaretoken', cfg.csrfToken);
-        const res = await fetch(cfg.actionUrl, { method: 'POST', body: fd });
-        if (action === 'edit' && res.ok) { window.location.href = '/my-submissions/'; return; }
+        await fetch(cfg.actionUrl, { method: 'POST', body: fd });
         location.reload();
       }
     };

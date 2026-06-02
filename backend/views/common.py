@@ -31,7 +31,7 @@ def redirect_for_profile(profile, user=None):
 
     # Management
     if profile.role == 'Management':
-        return redirect('management_dashboard')
+        return redirect('dashboard')
 
     # User / HOD
     if profile.role in {'User', 'HOD'}:
