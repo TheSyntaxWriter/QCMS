@@ -34,13 +34,15 @@
           {% if 'actions' in visible_columns %}
           <td>
             <div class="response-action-group">
-              {% if 'view' in allowed_actions %}<button class="btn table-action-btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
-              {% if 'edit' in allowed_actions and response.workflow_can_edit|default:True %}<button class="btn table-action-btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}" data-checklist-id="{{ response.checklist.id }}">Edit</button>{% endif %}
-              {% if 'approve' in allowed_actions %}<button class="btn table-action-btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>{% endif %}
-              {% if 'reject' in allowed_actions %}<button class="btn table-action-btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>{% endif %}
-              {% if 'toggle' in allowed_actions %}<button class="btn table-action-btn btn-view response-action" data-action="toggle" data-id="{{ response.id }}">Toggle</button>{% endif %}
-              {% if 'delete' in allowed_actions %}<button class="btn table-action-btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>{% endif %}
-              {% if allowed_actions|length == 0 %}<span>-</span>{% endif %}
+              {% with row_actions=response.workflow_allowed_actions %}
+              {% if 'view' in row_actions %}<button class="btn table-action-btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
+              {% if 'edit' in row_actions %}<button class="btn table-action-btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}" data-checklist-id="{{ response.checklist.id }}">Edit</button>{% endif %}
+              {% if 'approve' in row_actions %}<button class="btn table-action-btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">Approve</button>{% endif %}
+              {% if 'reject' in row_actions %}<button class="btn table-action-btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">Reject</button>{% endif %}
+              {% if 'toggle' in row_actions %}<button class="btn table-action-btn btn-view response-action" data-action="toggle" data-id="{{ response.id }}">Toggle</button>{% endif %}
+              {% if 'delete' in row_actions %}<button class="btn table-action-btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>{% endif %}
+              {% if row_actions|length == 0 %}<span>-</span>{% endif %}
+              {% endwith %}
             </div>
           </td>
           {% endif %}

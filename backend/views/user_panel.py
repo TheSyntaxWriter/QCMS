@@ -39,6 +39,8 @@ def _sidebar_menu_for_role(role):
         {'url': '/my-submissions/', 'label': 'Response', 'icon': 'response'},
         {'url': '/user/profile/', 'label': 'Profile', 'icon': 'profile'},
     ]
+    if role == 'HOD':
+        items.insert(0, {'url': '/hod/reviews/', 'label': 'HOD Reviews', 'icon': 'response'})
     if role == 'Management':
         items.insert(0, {'url': '/dashboard/', 'label': 'Dashboard', 'icon': 'dashboard'})
     return items
@@ -93,6 +95,41 @@ def my_submissions(request):
         'responses': responses,
         'visible_columns': visible_columns,
         'allowed_actions': allowed_actions,
+        'sidebar_menu': _sidebar_menu_for_role(profile.role),
+    })
+
+
+def hod_reviews(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile or profile.role != 'HOD':
+        return redirect_for_profile(profile)
+
+    visible_columns, allowed_actions = get_role_permission_config(profile.role)
+    review_qs = responses_for_profile(profile, request.user).filter(
+        status=ResponseStatus.PENDING_APPROVAL,
+    ).filter(
+        Q(hod=request.user) | Q(hod__isnull=True, department=profile.department),
+    ).order_by('-submitted_at')
+
+    stats = {
+        'pending_review': review_qs.count(),
+        'approved': responses_for_profile(profile, request.user).filter(status=ResponseStatus.APPROVED).count(),
+        'rejected': responses_for_profile(profile, request.user).filter(status=ResponseStatus.REJECTED).count(),
+    }
+
+    responses = Paginator(review_qs, 10).get_page(request.GET.get('page'))
+    for response in responses.object_list:
+        response.workflow_allowed_actions = effective_allowed_actions_for_response(allowed_actions, response, profile, request.user)
+        response.workflow_can_edit = 'edit' in response.workflow_allowed_actions
+
+    return render(request, 'user_panel/hod_reviews.html', {
+        'responses': responses,
+        'visible_columns': visible_columns,
+        'allowed_actions': allowed_actions,
+        'stats': stats,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
     })
 
@@ -342,6 +379,7 @@ def user_submission_action(request):
             response.status = decision.next_status
             response.updated_by = request.user
             response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id} by {profile.role} {request.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             return JsonResponse({'ok': True, 'status': response.status})
         return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)
 

@@ -4,14 +4,18 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
+from .workflow_service import ResponseStatus
+
 from .models import (
     Checklist,
     ChecklistDefinition,
     ChecklistQuestion,
+    ChecklistResponse,
     ChecklistType,
     Department,
     Project,
     Question,
+    RolePermission,
     Section,
     UserProfile,
 )
@@ -63,7 +67,7 @@ class AccessControlTests(TestCase):
         user = self.create_user_with_role("hod_user", "HOD")
         self.client.force_login(user)
         response = self.client.get(reverse("dashboard"))
-        self.assertRedirects(response, reverse("my_checklists"))
+        self.assertRedirects(response, reverse("hod_reviews"))
 
         management_user = self.create_user_with_role("mgmt_user", "Management")
         self.client.force_login(management_user)
@@ -76,7 +80,7 @@ class AccessControlTests(TestCase):
     def test_home_redirects_by_role(self):
         role_expected = {
             'User': 'my_checklists',
-            'HOD': 'my_checklists',
+            'HOD': 'hod_reviews',
             'Management': 'dashboard',
             'Admin': 'admin_dashboard',
         }
@@ -86,6 +90,52 @@ class AccessControlTests(TestCase):
             response = self.client.get(reverse('home'))
             self.assertRedirects(response, reverse(expected))
             self.client.logout()
+
+    def test_hod_review_queue_shows_pending_approval_and_allows_approval(self):
+        department = Department.objects.create(code="D-HOD", name="HOD Department")
+        project = Project.objects.create(code="P-HOD", name="HOD Project", domain="Ops")
+        hod_user = User.objects.create_user(username="hod_reviewer", password="pass12345")
+        UserProfile.objects.create(user=hod_user, role="HOD", department=department, project=project)
+        submitter = User.objects.create_user(username="submitter", password="pass12345")
+        checklist_type = ChecklistType.objects.create(name="Review Type")
+        checklist = ChecklistDefinition.objects.create(
+            checklist_id="CL-HOD",
+            name="HOD Reviewed Checklist",
+            checklist_type=checklist_type,
+        )
+        response_obj = ChecklistResponse.objects.create(
+            checklist=checklist,
+            submitted_by=submitter,
+            project=project,
+            department=department,
+            hod=hod_user,
+            status=ResponseStatus.PENDING_APPROVAL,
+        )
+        RolePermission.objects.create(
+            role="HOD",
+            visible_columns=["checklist_id", "checklist_name", "submitted_by", "status", "actions"],
+            allowed_actions=["view", "approve", "reject"],
+        )
+
+        self.client.force_login(hod_user)
+        queue_response = self.client.get(reverse("hod_reviews"))
+
+        self.assertEqual(queue_response.status_code, 200)
+        self.assertContains(queue_response, "HOD Review Queue")
+        self.assertContains(queue_response, "CL-HOD")
+        self.assertContains(queue_response, "Approve")
+        self.assertContains(queue_response, "Reject")
+
+        approve_response = self.client.post(
+            reverse("user_submission_action"),
+            data={"action": "approve", "response_id": response_obj.id},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(approve_response.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.APPROVED)
+
 
 
 class ChecklistBuilderTests(TestCase):

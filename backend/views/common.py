@@ -33,8 +33,12 @@ def redirect_for_profile(profile, user=None):
     if profile.role == 'Management':
         return redirect('dashboard')
 
-    # User / HOD
-    if profile.role in {'User', 'HOD'}:
+    # HOD
+    if profile.role == 'HOD':
+        return redirect('hod_reviews')
+
+    # User
+    if profile.role == 'User':
         return redirect('my_checklists')
 
     # Safe fallback
