@@ -12,6 +12,15 @@
     btn.addEventListener('click', async () => {
       const action = btn.dataset.action;
       if (action !== 'view') {
+        if (action === 'edit') {
+          const checklistId = btn.dataset.checklistId;
+          const responseId = btn.dataset.id;
+          if (checklistId && responseId && cfg.editFillUrlTemplate) {
+            const baseFillUrl = cfg.editFillUrlTemplate.replace('/0/fill/', `/${checklistId}/fill/`);
+            window.location.href = `${baseFillUrl}?response_id=${encodeURIComponent(responseId)}`;
+          }
+          return;
+        }
         if (['approve','reject'].includes(action)) {
           const fd = new FormData();
           fd.append('action', action);

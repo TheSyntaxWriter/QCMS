@@ -1,14 +1,22 @@
 {% extends 'user_panel/base_user.html' %}
 {% load static %}
 
-{% block topbar_title %}My Submissions{% endblock %}
+{% block topbar_title %}HOD Review Queue{% endblock %}
 {% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'admin_panel/checklist_response.css' %}" />
 <link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
 
-<h2>My Submissions</h2>
+<h2>HOD Review Queue</h2>
+<p class="page-subtitle">Review responses submitted for approval in your department.</p>
+
+<div class="stats-grid">
+  <div class="dashboard-mini-card card"><span>Pending Review</span><strong>{{ stats.pending_review }}</strong></div>
+  <div class="dashboard-mini-card card"><span>Approved</span><strong>{{ stats.approved }}</strong></div>
+  <div class="dashboard-mini-card card"><span>Rejected</span><strong>{{ stats.rejected }}</strong></div>
+</div>
+
 {% include 'admin_panel/partials/response_table.html' with response_view_mode=True %}
 
 <div id="responseViewModal" class="dashboard-modal" aria-hidden="true">

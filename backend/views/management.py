@@ -1,4 +1,4 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
 
 from .common import get_user_profile
 
@@ -11,4 +11,4 @@ def management_dashboard(request):
     if not profile or profile.role != "Management":
         return redirect('home')
 
-    return render(request, 'management_dashboard.html')
+    return redirect('dashboard')
