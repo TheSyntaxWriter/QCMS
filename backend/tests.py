@@ -1,13 +1,20 @@
 import json
+from io import BytesIO
 
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from pypdf import PdfWriter
 
+from .upload_validation import MAX_CHECKLIST_UPLOAD_SIZE, validate_branding_upload, validate_checklist_upload
 from .models import (
     Checklist,
+    ChecklistAnswer,
     ChecklistDefinition,
     ChecklistQuestion,
+    ChecklistResponse,
     ChecklistType,
     Department,
     Project,
@@ -15,6 +22,7 @@ from .models import (
     Section,
     UserProfile,
 )
+from .workflow_service import ResponseStatus
 
 
 class AccessControlTests(TestCase):
@@ -36,7 +44,10 @@ class AccessControlTests(TestCase):
         for url_name in admin_urls:
             with self.subTest(url_name=url_name):
                 response = self.client.get(reverse(url_name))
-                self.assertRedirects(response, reverse("login"))
+                if url_name == "admin_create":
+                    self.assertRedirects(response, reverse("admin_master_create"), fetch_redirect_response=False)
+                else:
+                    self.assertRedirects(response, reverse("login"))
 
     def test_admin_pages_reject_non_admin_users(self):
         user = self.create_user_with_role("basic_user", "User")
@@ -54,7 +65,8 @@ class AccessControlTests(TestCase):
         for url_name in admin_urls:
             with self.subTest(url_name=url_name):
                 response = self.client.get(reverse(url_name))
-                self.assertRedirects(response, reverse("my_checklists"))
+                expected = reverse("admin_master_create") if url_name == "admin_create" else reverse("home")
+                self.assertRedirects(response, expected, fetch_redirect_response=False)
 
     def test_dashboard_access_control(self):
         response = self.client.get(reverse("dashboard"))
@@ -217,7 +229,7 @@ class ChecklistBuilderTests(TestCase):
         self.assertEqual(view_response.status_code, 200)
         self.assertContains(view_response, "Printable Checklist")
         self.assertContains(view_response, "Download PDF")
-        self.assertContains(view_response, "Work Management System")
+        self.assertContains(view_response, "Quality Control Management System")
         self.assertNotContains(view_response, "Open PDF View")
         self.assertEqual(pdf_response.status_code, 200)
         self.assertEqual(pdf_response["Content-Type"], "application/pdf")
@@ -227,3 +239,119 @@ class ChecklistBuilderTests(TestCase):
         )
         self.assertTrue(pdf_response.content.startswith(b"%PDF-"))
         self.assertGreater(len(pdf_response.content), 500)
+
+
+class SecurityHardeningTests(TestCase):
+    def _pdf_upload(self, name="evidence.pdf"):
+        buffer = BytesIO()
+        writer = PdfWriter()
+        writer.add_blank_page(width=72, height=72)
+        writer.write(buffer)
+        return SimpleUploadedFile(name, buffer.getvalue(), content_type="application/pdf")
+
+    def test_checklist_upload_rejects_html(self):
+        uploaded = SimpleUploadedFile(
+            "payload.html",
+            b"<script>alert('xss')</script>",
+            content_type="text/html",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_checklist_upload(uploaded)
+
+    def test_checklist_upload_rejects_spoofed_pdf(self):
+        uploaded = SimpleUploadedFile(
+            "payload.pdf",
+            b"<script>alert('xss')</script>",
+            content_type="application/pdf",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_checklist_upload(uploaded)
+
+    def test_checklist_upload_allows_pdf(self):
+        uploaded = self._pdf_upload()
+
+        validate_checklist_upload(uploaded)
+
+    def test_checklist_upload_rejects_invalid_image(self):
+        uploaded = SimpleUploadedFile(
+            "payload.png",
+            b"not a png image",
+            content_type="image/png",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_checklist_upload(uploaded)
+
+    def test_checklist_upload_rejects_oversized_file(self):
+        uploaded = SimpleUploadedFile(
+            "large.txt",
+            b"a" * (MAX_CHECKLIST_UPLOAD_SIZE + 1),
+            content_type="text/plain",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_checklist_upload(uploaded)
+
+    def test_branding_upload_rejects_svg(self):
+        uploaded = SimpleUploadedFile(
+            "logo.svg",
+            b"<svg><script>alert('xss')</script></svg>",
+            content_type="image/svg+xml",
+        )
+
+        with self.assertRaises(ValidationError):
+            validate_branding_upload(uploaded)
+
+    def test_attachment_download_requires_response_scope(self):
+        department = Department.objects.create(code="SEC", name="Security")
+        project = Project.objects.create(code="PSEC", name="Project Security", domain="Corporate")
+        checklist_type = ChecklistType.objects.create(name="Evidence")
+        checklist = ChecklistDefinition.objects.create(
+            checklist_id="CLSEC",
+            name="Security Evidence",
+            checklist_type=checklist_type,
+        )
+        checklist.projects.add(project)
+        checklist.departments.add(department)
+        question = ChecklistQuestion.objects.create(
+            checklist=checklist,
+            question_text="Upload evidence",
+            type=ChecklistQuestion.TYPE_FILE_UPLOAD,
+            section="Evidence",
+            order=1,
+        )
+        owner = User.objects.create_user(username="owner", password="pass12345")
+        other = User.objects.create_user(username="other", password="pass12345")
+        admin = User.objects.create_user(username="admin_user", password="pass12345")
+        UserProfile.objects.create(user=owner, role="User", department=department, project=project)
+        UserProfile.objects.create(user=other, role="User")
+        UserProfile.objects.create(user=admin, role="Admin")
+        response = ChecklistResponse.objects.create(
+            checklist=checklist,
+            submitted_by=owner,
+            department=department,
+            project=project,
+            status=ResponseStatus.PENDING_APPROVAL,
+        )
+        answer = ChecklistAnswer(response=response, question=question)
+        answer.file.save(
+            "evidence.txt",
+            SimpleUploadedFile("evidence.txt", b"plain evidence", content_type="text/plain"),
+            save=True,
+        )
+        url = reverse("checklist_answer_download", args=[answer.id])
+
+        self.client.force_login(other)
+        unauthorized = self.client.get(url)
+        self.assertEqual(unauthorized.status_code, 404)
+
+        self.client.force_login(owner)
+        authorized = self.client.get(url)
+        self.assertEqual(authorized.status_code, 200)
+        self.assertEqual(authorized["X-Content-Type-Options"], "nosniff")
+
+        self.client.force_login(admin)
+        admin_response = self.client.get(url)
+        self.assertEqual(admin_response.status_code, 200)

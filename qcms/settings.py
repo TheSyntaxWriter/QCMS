@@ -1,12 +1,36 @@
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-0m$i!iv+ttoc1ha-!rq$bi8%klk7^bq0uvk%3=_y8%2l4yi43='
 
-DEBUG = True
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
 
-ALLOWED_HOSTS = []
+
+def env_list(name, default=None):
+    value = os.environ.get(name)
+    if value is None:
+        return default or []
+    return [item.strip() for item in value.split(',') if item.strip()]
+
+
+DEBUG = env_bool('DJANGO_DEBUG', True)
+
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'qcms-dev-only-secret-key-change-before-production-2026',
+)
+
+if not DEBUG and 'DJANGO_SECRET_KEY' not in os.environ:
+    raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is false.')
+
+ALLOWED_HOSTS = env_list('DJANGO_ALLOWED_HOSTS', ['localhost', '127.0.0.1', 'testserver'])
 
 # ✅ Application definition
 
@@ -102,3 +126,14 @@ PROJECT_SHORT_NAME = 'QCMS'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Production security settings can be enabled through environment variables.
+SECURE_SSL_REDIRECT = env_bool('DJANGO_SECURE_SSL_REDIRECT', not DEBUG)
+SESSION_COOKIE_SECURE = env_bool('DJANGO_SESSION_COOKIE_SECURE', not DEBUG)
+CSRF_COOKIE_SECURE = env_bool('DJANGO_CSRF_COOKIE_SECURE', not DEBUG)
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '0' if DEBUG else '31536000'))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS', not DEBUG)
+SECURE_HSTS_PRELOAD = env_bool('DJANGO_SECURE_HSTS_PRELOAD', not DEBUG)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = os.environ.get('DJANGO_X_FRAME_OPTIONS', 'DENY')
+CSRF_TRUSTED_ORIGINS = env_list('DJANGO_CSRF_TRUSTED_ORIGINS')

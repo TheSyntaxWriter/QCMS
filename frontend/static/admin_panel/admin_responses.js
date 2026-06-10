@@ -90,6 +90,61 @@
     return [...container.querySelectorAll('input[type="checkbox"]:checked')].map((el) => el.value);
   }
 
+  function safeFileUrl(rawUrl) {
+    if (!rawUrl) return '';
+    try {
+      const parsed = new URL(rawUrl, window.location.origin);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+      if (parsed.origin !== window.location.origin) return '';
+      return parsed.href;
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function renderResponseDetail(container, data) {
+    container.replaceChildren();
+
+    const title = document.createElement('h4');
+    title.textContent = `${data.checklist_id || ''} - ${data.checklist_name || ''}`;
+    container.appendChild(title);
+
+    (data.answers || []).forEach((answer) => {
+      const item = document.createElement('div');
+      item.className = 'question-item';
+
+      const question = document.createElement('strong');
+      question.textContent = answer.question || '';
+      item.appendChild(question);
+
+      const answerText = document.createElement('p');
+      answerText.textContent = answer.answer_text || '-';
+      item.appendChild(answerText);
+
+      const fileUrl = safeFileUrl(answer.file_url);
+      if (fileUrl) {
+        const viewLink = document.createElement('a');
+        viewLink.href = fileUrl;
+        viewLink.target = '_blank';
+        viewLink.rel = 'noopener noreferrer';
+        viewLink.textContent = 'View';
+
+        const separator = document.createTextNode(' | ');
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = fileUrl;
+        downloadLink.download = '';
+        downloadLink.textContent = 'Download';
+
+        item.appendChild(viewLink);
+        item.appendChild(separator);
+        item.appendChild(downloadLink);
+      }
+
+      container.appendChild(item);
+    });
+  }
+
   function openPermissionPopup(role) {
     const roleData = getRolePermissions(role);
     editingRole = role;
@@ -192,7 +247,7 @@
         const data = await res.json();
         const modal = document.getElementById('responseViewModal');
         const body = document.getElementById('responseViewContent');
-        body.innerHTML = `<h4>${data.checklist_id} - ${data.checklist_name}</h4>` + data.answers.map((a) => `<div class='question-item'><strong>${a.question}</strong><p>${a.answer_text || '-'}</p>${a.file_url ? `<a href='${a.file_url}' target='_blank'>View</a> | <a href='${a.file_url}' download>Download</a>` : ''}</div>`).join('');
+        renderResponseDetail(body, data);
         modal.classList.add('is-open');
         document.getElementById('closeResponseView').onclick = () => modal.classList.remove('is-open');
         return;

@@ -34,6 +34,7 @@ from ..models import (
 from .common import get_user_profile
 from ..logging_service import write_activity_log
 from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response, effective_allowed_actions_for_response
+from ..upload_validation import validate_branding_upload
 from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
@@ -705,8 +706,6 @@ def admin_control_panel(request):
         'font_family': 'Inter',
         'layout_width': 'boxed',
     }
-    allowed_types = {'image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/x-icon'}
-
     if request.method == 'POST':
         confirm_password = (request.POST.get('confirm_password') or '').strip()
         if not authenticate(request, username=request.user.username, password=confirm_password):
@@ -740,8 +739,10 @@ def admin_control_panel(request):
         for field in ['logo', 'favicon']:
             f = request.FILES.get(field)
             if f:
-                if f.content_type not in allowed_types or f.size > 2 * 1024 * 1024:
-                    messages.error(request, f'{field.replace("_", " ").title()} must be PNG/JPG/WEBP/SVG/ICO and <= 2MB.')
+                try:
+                    validate_branding_upload(f)
+                except ValidationError as exc:
+                    messages.error(request, f'{field.replace("_", " ").title()}: {" ".join(exc.messages)}')
                     return redirect('admin_control_panel')
                 setattr(app_settings, field, f)
         app_settings.sidebar_logo = app_settings.logo
@@ -1054,7 +1055,7 @@ def admin_response_action(request):
             'answers': [{
                 'question': answer.question.question_text,
                 'answer_text': answer.answer_text,
-                'file_url': answer.file.url if answer.file else '',
+                'file_url': reverse('checklist_answer_download', args=[answer.id]) if answer.file else '',
             } for answer in response.answers.all()],
         })
 

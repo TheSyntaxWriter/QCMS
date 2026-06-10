@@ -1,16 +1,19 @@
 from io import BytesIO
 import base64
+import binascii
+from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
+from django.urls import reverse
 from PIL import Image
 
 from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, UserProfile
@@ -19,6 +22,7 @@ from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_p
 from ..logging_service import write_activity_log
 from ..models import ActivityLog
 from ..permission_service import get_role_permission_config, responses_for_profile, is_action_permitted_for_response, effective_allowed_actions_for_response
+from ..upload_validation import validate_checklist_upload, validate_profile_image_bytes
 from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
@@ -112,13 +116,18 @@ def dashboard(request):
 
 def _save_profile_image_from_data_url(profile_obj, data_url):
     header, encoded = data_url.split(';base64,', 1)
-    ext = 'png' if 'png' in header else 'jpg'
-    image_bytes = base64.b64decode(encoded)
+    declared_content_type = header.replace('data:', '').strip().lower()
+    try:
+        image_bytes = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValidationError('Unable to decode profile image.') from exc
+
+    validate_profile_image_bytes(image_bytes, declared_content_type)
     image = Image.open(BytesIO(image_bytes)).convert('RGB')
     image.thumbnail((512, 512))
     output = BytesIO()
     image.save(output, format='JPEG', quality=85, optimize=True)
-    profile_obj.profile_image.save(f'avatar_{profile_obj.user_id}.{ext}', ContentFile(output.getvalue()), save=True)
+    profile_obj.profile_image.save(f'avatar_{profile_obj.user_id}.jpg', ContentFile(output.getvalue()), save=True)
 
 
 def _profile_view(request):
@@ -137,9 +146,13 @@ def _profile_view(request):
                 messages.error(request, 'Unable to process image upload.')
                 write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to invalid image payload.', status=ActivityLog.STATUS_FAILED, user=request.user)
             else:
-                _save_profile_image_from_data_url(profile_obj, cropped)
-                messages.success(request, 'Profile image updated successfully.')
-                write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image updated successfully.', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                try:
+                    _save_profile_image_from_data_url(profile_obj, cropped)
+                    messages.success(request, 'Profile image updated successfully.')
+                    write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image updated successfully.', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                except ValidationError as exc:
+                    messages.error(request, ' '.join(exc.messages))
+                    write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to validation.', status=ActivityLog.STATUS_FAILED, user=request.user)
         elif action == 'change_password':
             current_password = request.POST.get('current_password', '')
             new_password = request.POST.get('new_password', '')
@@ -214,6 +227,21 @@ def _validate_required_questions(request, questions):
     return errors
 
 
+def _validate_uploaded_files(request, questions):
+    errors = []
+    for question in questions:
+        if question.type != ChecklistQuestion.TYPE_FILE_UPLOAD:
+            continue
+        uploaded = request.FILES.get(f'q_{question.id}')
+        if not uploaded:
+            continue
+        try:
+            validate_checklist_upload(uploaded)
+        except ValidationError as exc:
+            errors.append(f'Question {question.order}: {" ".join(exc.messages)}')
+    return errors
+
+
 def user_checklist_fill(request, checklist_id):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -251,8 +279,10 @@ def user_checklist_fill(request, checklist_id):
     if request.method == 'POST':
         workflow_action = request.POST.get('workflow_action', 'submit')
         target_status = ResponseStatus.WIP if workflow_action == 'save_wip' else ResponseStatus.PENDING_APPROVAL
-        validation_errors = _validate_required_questions(request, questions)
-        if validation_errors and target_status != ResponseStatus.WIP:
+        upload_errors = _validate_uploaded_files(request, questions)
+        required_errors = [] if target_status == ResponseStatus.WIP else _validate_required_questions(request, questions)
+        validation_errors = [*upload_errors, *required_errors]
+        if validation_errors:
             for err in validation_errors:
                 messages.error(request, err)
         else:
@@ -364,9 +394,34 @@ def user_submission_action(request):
         'answers': [{
             'question': answer.question.question_text,
             'answer_text': answer.answer_text,
-            'file_url': answer.file.url if answer.file else '',
+            'file_url': reverse('checklist_answer_download', args=[answer.id]) if answer.file else '',
         } for answer in response.answers.all()],
     })
+
+
+def checklist_answer_download(request, answer_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    profile = get_user_profile(request.user)
+    if not profile:
+        raise Http404
+
+    answer = ChecklistAnswer.objects.select_related(
+        'response', 'response__checklist', 'response__submitted_by',
+    ).filter(id=answer_id).first()
+    if not answer or not answer.file:
+        raise Http404
+
+    if profile.role != 'Admin':
+        allowed = responses_for_profile(profile, request.user).filter(id=answer.response_id).exists()
+        if not allowed:
+            raise Http404
+
+    response = FileResponse(answer.file.open('rb'), as_attachment=False, filename=Path(answer.file.name).name)
+    response['X-Content-Type-Options'] = 'nosniff'
+    response['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    return response
 
 def user_checklist_preview(request, checklist_id):
     if not request.user.is_authenticated:
