@@ -2,15 +2,16 @@
 
 ## 1. Purpose
 
-This proposal reviews the current QCMS checklist response workflow and recommends a clearer approval design for:
+This proposal documents the confirmed QCMS approval rule and revises the workflow recommendations accordingly.
 
-- WIP
-- Pending
-- Pending for Approval
-- Approved
-- Rejected
+Confirmed business rule:
 
-The goal is to remove ambiguity between legacy and new statuses, make HOD and Management responsibilities explicit, improve dashboard accuracy, and prepare the workflow for audit-ready production use.
+- Every checklist response belongs to a user.
+- The user's assigned HOD is the primary approver.
+- HOD approval is mandatory.
+- Management approval is not part of the normal workflow.
+- Management may approve or reject any response only as an override authority.
+- Management acts as escalation and oversight, not as a required approval stage.
 
 ## 2. Current Workflow Summary
 
@@ -18,367 +19,193 @@ QCMS currently defines five response statuses in `backend/workflow_service.py`:
 
 | Status | Current Meaning |
 | --- | --- |
-| WIP | Draft response saved by a user. Required-question validation is relaxed, but upload validation still applies. |
-| Pending for Approval | Newly submitted response awaiting approval. This is the current submit target from the checklist fill screen. |
-| Pending | Legacy pending status retained for backward compatibility. Older responses and some toggle flows still use this. |
-| Approved | Final accepted response. No further transition is currently allowed. |
-| Rejected | Response rejected by an approver. Owner can edit rejected responses. |
+| WIP | Draft response saved by a user. |
+| Pending for Approval | Submitted response waiting for review. This is the current submit target. |
+| Pending | Legacy pending status retained for backward compatibility. |
+| Approved | Final accepted response. |
+| Rejected | Response returned for correction. |
 
 Current transition map:
 
 | From | To | Trigger |
 | --- | --- | --- |
 | WIP | Pending for Approval | User submits a saved draft. |
-| Pending for Approval | Approved | Admin, HOD, or Management approves. |
-| Pending for Approval | Rejected | Admin, HOD, or Management rejects. |
-| Pending for Approval | WIP | Defined in transition map, but not exposed by the current UI. |
-| Pending | Approved | Legacy approve flow. |
-| Pending | Rejected | Legacy reject flow. |
-| Rejected | Pending | Admin toggle action. |
-| Rejected | WIP | Defined in transition map, but normal user edit creates WIP only through form resubmission path. |
+| Pending for Approval | Approved | HOD/Admin approval today; Management can also approve by current permissions. |
+| Pending for Approval | Rejected | HOD/Admin rejection today; Management can also reject by current permissions. |
+| Pending | Approved | Legacy approval flow. |
+| Pending | Rejected | Legacy rejection flow. |
+| Rejected | WIP | Rework path. |
 | Approved | None | Terminal. |
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WIP: Save as WIP
-    [*] --> PendingForApproval: Submit
+    [*] --> WIP: Save draft
     WIP --> PendingForApproval: Submit
-    PendingForApproval --> Approved: Approve
-    PendingForApproval --> Rejected: Reject
-    PendingForApproval --> WIP: Rework (defined, not exposed)
+    PendingForApproval --> Approved: HOD approval
+    PendingForApproval --> Rejected: HOD rejection
+    PendingForApproval --> Approved: Management override approve
+    PendingForApproval --> Rejected: Management override reject
     Pending --> Approved: Legacy approve
     Pending --> Rejected: Legacy reject
-    Rejected --> Pending: Admin toggle
-    Rejected --> WIP: Rework (defined)
+    Rejected --> WIP: User rework
     Approved --> [*]
 
     state "Pending for Approval" as PendingForApproval
 ```
 
-## 3. Current Approval Process
+## 3. Recommended Workflow Model
 
-### User Flow
+The future workflow should keep a single required approval stage owned by the assigned HOD.
 
-1. User opens an assigned checklist.
-2. User clicks `Save as WIP`.
-3. System creates or updates a `ChecklistResponse` with status `WIP`.
-4. User clicks `Submit for Approval`.
-5. System validates required fields and uploads, then saves status `Pending for Approval`.
-6. User can edit only responses in `WIP` according to the current edit query. The service layer also permits editing `Rejected`, but the fill view currently fetches only `WIP` responses for editing.
+Recommended long-term statuses:
 
-### HOD Flow
+| Status | Purpose |
+| --- | --- |
+| WIP | User draft. Not submitted for approval. |
+| Pending HOD Approval | Submitted by user and awaiting assigned HOD decision. |
+| Approved | Final approved response. Normally approved by HOD. |
+| Rejected | Returned to user for correction. |
 
-HOD users see responses through `responses_for_profile()` when:
+`Pending` should remain only as a legacy alias during migration. `Pending for Approval` may either remain as the active pending label or be renamed to `Pending HOD Approval` in a future migration.
 
-- The response department matches the HOD department.
-- If the HOD has a project, the response project must also match.
-- If that project has a domain, the response project domain must also match.
+```mermaid
+stateDiagram-v2
+    [*] --> WIP: User saves draft
+    WIP --> PendingHOD: User submits
+    Rejected --> WIP: User edits
+    WIP --> PendingHOD: User resubmits
+    PendingHOD --> Approved: Assigned HOD approves
+    PendingHOD --> Rejected: Assigned HOD rejects
+    PendingHOD --> Approved: Management override approve
+    PendingHOD --> Rejected: Management override reject
+    Approved --> [*]
 
-HODs can approve or reject if role permissions include the action and the workflow transition allows it.
+    state "Pending HOD Approval" as PendingHOD
+```
 
-Current limitation: the `hod` field is assigned at submission, but approval authorization does not require `response.hod == request.user`. Any HOD matching the department/project scope may approve.
+## 4. Role Responsibilities
 
-### Management Flow
+| Role | Normal Responsibility | Override Responsibility |
+| --- | --- | --- |
+| User | Create, save, submit, and rework own checklist responses. | None. |
+| HOD | Mandatory primary approval or rejection for assigned users. | None unless business explicitly grants cross-HOD backup. |
+| Management | Oversight, escalation review, exceptional approval/rejection. | May approve/reject any response within authorized scope as an override. |
+| Admin | Configure workflow, inspect all responses, recover exceptional states. | May override for administration and support. |
 
-Management users see responses through `responses_for_profile()` when:
+## 5. Approval Ownership
 
-- Their department is set and matches the response department, or
-- Their project is set and matches both response project and domain.
+Every submitted response should resolve its primary HOD from the submitting user's profile.
 
-Management users can approve or reject if role permissions include the action and the workflow transition allows it.
+Recommended authorization rule:
 
-Current limitation: there is no distinct Management approval stage. HOD and Management both approve the same `Pending for Approval` status directly to `Approved`.
+| Stage | Required Actor | Rule |
+| --- | --- | --- |
+| Draft | Owner user | `response.submitted_by == request.user` |
+| HOD Approval | Assigned HOD | `response.hod == request.user` |
+| Management Override | Management | Authorized Management user with override permission and response visibility. |
+| Admin Override | Admin | Admin role with explicit override action. |
+| Rework | Owner user | `response.submitted_by == request.user` and status is `Rejected` or `WIP`. |
 
-### Admin Flow
+Management override should be visible in audit records as an override, not as normal approval.
 
-Admins can view all responses, approve, reject, delete, edit, and toggle according to the centralized permission policy.
+## 6. Current Gaps
 
-Admin toggle currently maps:
+| Area | Current Gap | Recommendation |
+| --- | --- | --- |
+| Pending naming | Both `Pending` and `Pending for Approval` exist. | Treat `Pending` as legacy; keep `Pending for Approval` or rename to `Pending HOD Approval`. |
+| Dashboard counts | Legacy pending and active pending can be counted differently. | Count both as active pending until migration; show WIP separately. |
+| HOD ownership | `response.hod` exists but current approval scope does not require assigned HOD. | Enforce assigned HOD for normal approval. |
+| Management role | Management can approve/reject but the UI does not distinguish override from normal approval. | Label Management actions as override/escalation actions. |
+| Auditability | Status changes do not preserve decision history. | Add workflow decision history with actor role and override flag. |
 
-- Rejected -> Pending
-- Any other status -> Rejected, if the transition is allowed
-
-This preserves older behavior but conflicts with the newer `Pending for Approval` status model.
-
-## 4. Dashboard Count Review
-
-### Current Admin Dashboard
-
-Admin dashboard counts:
-
-- `Approved`
-- `Pending`
-- `Rejected`
-
-It does not count:
-
-- `WIP`
-- `Pending for Approval`
-
-This means newly submitted responses may increase total submissions but not appear in the pending card if they use `Pending for Approval`.
-
-### Current Admin Responses Page
-
-The response filter includes all five statuses, but summary cards count only:
-
-- `Pending`
-- `Approved`
-- `Rejected`
-
-The page does not separately show:
-
-- WIP
-- Pending for Approval
-
-### Current Management Dashboard
-
-The Management dashboard currently renders a placeholder and does not show workflow counts.
-
-### Recommendation
-
-Use a shared status aggregation helper so every dashboard counts the same workflow states.
+## 7. Dashboard Recommendations
 
 Recommended dashboard counts:
 
 | Count | Definition |
 | --- | --- |
-| Draft / WIP | `status = WIP` |
-| Awaiting HOD | `status = Pending for Approval` if using one-step approval, or `Pending HOD Review` if adopting the staged redesign. |
-| Awaiting Management | New explicit status if adopting staged approval. |
-| Pending Total | All non-terminal, non-WIP review statuses. |
+| WIP Drafts | `status = WIP` |
+| Pending HOD Approval | `status = Pending for Approval` plus legacy `Pending` until migration |
 | Approved | `status = Approved` |
 | Rejected | `status = Rejected` |
-| Total Submitted | Exclude WIP if business meaning is "submitted"; include WIP only in "Total Responses". |
-
-## 5. Key Issues In Current Design
-
-| Area | Issue | Impact |
-| --- | --- | --- |
-| Status naming | Both `Pending` and `Pending for Approval` exist. | Users and reports may disagree about what "pending" means. |
-| Dashboard counts | New submissions use `Pending for Approval`, but cards count `Pending`. | Pending workload is underreported. |
-| HOD workflow | HOD field is assigned but not enforced as the only approver. | Review ownership is unclear. |
-| Management workflow | Management approval is not a separate stage. | Cannot prove two-level approval. |
-| Rejection flow | Rejected can transition to `Pending` through admin toggle, while user rework expects WIP-like editing. | Rework path is inconsistent. |
-| UI action visibility | Approve/reject buttons render based on role action config, not per-row workflow actions in the partial. Backend still blocks invalid actions. | Users may see actions that fail after click. |
-| Auditability | Status changes record only status and `updated_by`; no approval stage, comment, or decision history model. | Limited audit trail for regulated workflows. |
-
-## 6. Recommended Workflow Model
-
-Replace ambiguous pending states with explicit review stages.
-
-Recommended statuses:
-
-| Status | Purpose |
-| --- | --- |
-| WIP | User draft. Not submitted for review. |
-| Pending HOD Review | Submitted by user and awaiting assigned HOD review. |
-| Pending Management Review | HOD approved and Management must review. |
-| Approved | Final approved state. |
-| Rejected | Returned to user for correction. |
-
-Keep legacy `Pending` only as a migration alias, not as a long-term active status.
-
-```mermaid
-stateDiagram-v2
-    [*] --> WIP: Save draft
-    WIP --> PendingHOD: Submit
-    Rejected --> WIP: User edits/resubmits draft
-    PendingHOD --> PendingManagement: HOD approves
-    PendingHOD --> Rejected: HOD rejects
-    PendingManagement --> Approved: Management approves
-    PendingManagement --> Rejected: Management rejects
-    Approved --> [*]
-
-    state "Pending HOD Review" as PendingHOD
-    state "Pending Management Review" as PendingManagement
-```
-
-## 7. Proposed Status Transition Matrix
-
-| Current Status | User | HOD | Management | Admin |
-| --- | --- | --- | --- | --- |
-| WIP | Save, submit | View if scoped | View if scoped | View, edit, delete |
-| Pending HOD Review | View | Approve to Management, reject to User | View | Approve/reject/override |
-| Pending Management Review | View | View | Approve final, reject to User | Approve/reject/override |
-| Approved | View | View | View | View, reopen through explicit override |
-| Rejected | Edit, resubmit | View | View | View, reopen/delete |
-
-Recommended machine transitions:
-
-| From | Action | Role | To |
-| --- | --- | --- | --- |
-| WIP | submit | User | Pending HOD Review |
-| Rejected | resubmit | User | Pending HOD Review |
-| Pending HOD Review | approve | Assigned HOD | Pending Management Review |
-| Pending HOD Review | reject | Assigned HOD | Rejected |
-| Pending Management Review | approve | Management | Approved |
-| Pending Management Review | reject | Management | Rejected |
-| Any non-terminal | override_reject | Admin | Rejected |
-| Approved | reopen | Admin | Pending Management Review or WIP, based on business rule |
-
-## 8. Proposed Approval Architecture
-
-```mermaid
-flowchart TD
-    U["User completes checklist"] --> D{"Save or Submit?"}
-    D -->|Save| W["WIP"]
-    D -->|Submit| H["Pending HOD Review"]
-    H --> HA{"HOD decision"}
-    HA -->|Approve| M["Pending Management Review"]
-    HA -->|Reject| R["Rejected"]
-    M --> MA{"Management decision"}
-    MA -->|Approve| A["Approved"]
-    MA -->|Reject| R
-    R --> E["User edits response"]
-    E --> H
-```
-
-Recommended decision ownership:
-
-| Stage | Owner | Authorization Rule |
-| --- | --- | --- |
-| Draft | Submitting user | `response.submitted_by == request.user` |
-| HOD Review | Assigned HOD | `response.hod == request.user`, with Admin override |
-| Management Review | Scoped Management user | Department/project/domain scope, with Admin override |
-| Final Approval | Management | Only from Management stage |
-| Rework | Submitting user | Only rejected owner can edit/resubmit |
-
-## 9. Dashboard Redesign Recommendations
-
-### Admin Dashboard
-
-Show complete workflow health:
-
-- Total Responses
-- Draft WIP
-- Submitted for HOD
-- Submitted for Management
-- Approved
-- Rejected
-- Average approval time
-- Rejection rate
-- Aging: pending more than 2, 5, and 10 days
-
-### HOD Dashboard
-
-Add a HOD-focused dashboard or enhance `my_submissions`:
-
-- My Pending Reviews
-- Approved by Me
-- Rejected by Me
-- Overdue Reviews
-- Department workload
-
-### Management Dashboard
-
-Replace the placeholder with:
-
-- Pending Management Review
-- Approved this month
-- Rejected this month
-- Department/project distribution
-- HOD bottleneck summary
+| Management Overrides | Count of decisions made by Management as override, once decision history exists |
+| Overdue HOD Reviews | Pending HOD approvals older than configured SLA |
 
 ```mermaid
 flowchart LR
-    R["ChecklistResponse"] --> S["Shared Status Aggregation Service"]
-    S --> AD["Admin Dashboard"]
-    S --> HD["HOD Dashboard"]
-    S --> MD["Management Dashboard"]
-    S --> RP["Reports / Exports"]
+    R["ChecklistResponse"] --> S["Status Aggregation"]
+    S --> A["Admin Dashboard"]
+    S --> H["HOD Review Queue"]
+    S --> M["Management Oversight Dashboard"]
+    S --> P["Reports"]
 ```
 
-## 10. Implementation Recommendations
+## 8. Recommended Transition Matrix
+
+| From | Action | Role | To | Notes |
+| --- | --- | --- | --- | --- |
+| WIP | submit | User owner | Pending HOD Approval | Normal submission. |
+| Rejected | resubmit | User owner | Pending HOD Approval | Corrected response returns to HOD. |
+| Pending HOD Approval | approve | Assigned HOD | Approved | Normal required approval. |
+| Pending HOD Approval | reject | Assigned HOD | Rejected | Normal required rejection. |
+| Pending HOD Approval | override_approve | Management/Admin | Approved | Escalation/oversight only. |
+| Pending HOD Approval | override_reject | Management/Admin | Rejected | Escalation/oversight only. |
+| Approved | reopen | Admin | WIP or Pending HOD Approval | Exceptional support path. |
+
+## 9. Implementation Recommendations
 
 ### Phase 1: Normalize Current Behavior
 
-1. Treat `Pending for Approval` as the active pending review status in all counts.
-2. Update dashboard cards to count WIP and Pending for Approval.
-3. Rename UI labels from `Pending` to `Legacy Pending` where old data still exists.
-4. Ensure action buttons use `response.workflow_allowed_actions`, not only static role permissions.
-5. Allow owners to edit `Rejected` responses through the fill view if the service layer already permits it.
+Already recommended and implemented separately:
 
-### Phase 2: Introduce Explicit Stages
+1. Count `Pending` and `Pending for Approval` consistently.
+2. Show WIP separately.
+3. Allow owners to rework rejected responses.
+4. Render per-response actions from backend workflow permissions.
+5. Label `Pending` as legacy.
 
-1. Add `Pending HOD Review`.
-2. Add `Pending Management Review`.
-3. Map existing `Pending for Approval` records to the appropriate starting stage.
-4. Require HOD approval before Management final approval.
-5. Replace admin toggle with explicit actions: `reject`, `reopen`, `send_to_hod`, `send_to_management`.
+### Phase 2: Enforce HOD-Mandatory Approval
 
-### Phase 3: Add Audit-Grade Approval Records
+1. Keep existing status values initially to avoid migration risk.
+2. Make normal approval require `response.hod == request.user`.
+3. Keep Management approve/reject as override actions, not normal actions.
+4. Update UI labels so Management sees "Override Approve" and "Override Reject".
+5. Add HOD queue filters for pending approvals.
 
-Create a separate decision history model.
+### Phase 3: Improve Audit And Escalation
 
-Recommended fields:
+1. Add workflow decision history.
+2. Record whether a decision is normal approval or Management/Admin override.
+3. Add rejection/override comments.
+4. Add SLA aging and escalation indicators.
+5. Add Management oversight dashboard focused on exceptions, overdue items, and override history.
 
-- response
-- from_status
-- to_status
-- action
-- actor
-- actor_role
-- comment
-- created_at
-- ip_address
+## 10. Backward Compatibility Plan
 
-This avoids losing historical decisions when `ChecklistResponse.status` changes.
-
-```mermaid
-erDiagram
-    CHECKLIST_RESPONSE ||--o{ CHECKLIST_ANSWER : contains
-    CHECKLIST_RESPONSE ||--o{ WORKFLOW_DECISION : records
-    USER ||--o{ WORKFLOW_DECISION : performs
-    USER ||--o{ CHECKLIST_RESPONSE : submits
-    USER ||--o{ CHECKLIST_RESPONSE : reviews_as_hod
-
-    CHECKLIST_RESPONSE {
-        int id
-        string status
-        int submitted_by_id
-        int hod_id
-        datetime submitted_at
-        datetime updated_at
-    }
-
-    WORKFLOW_DECISION {
-        int id
-        int response_id
-        string from_status
-        string to_status
-        string action
-        int actor_id
-        string actor_role
-        text comment
-        datetime created_at
-    }
-```
-
-## 11. Backward Compatibility Plan
-
-| Existing Status | Recommended Handling |
+| Existing Status | Handling |
 | --- | --- |
 | WIP | Keep unchanged. |
-| Pending for Approval | Migrate to `Pending HOD Review` if HOD review is required. |
-| Pending | Treat as legacy. Migrate to `Pending HOD Review` or `Pending Management Review` based on business rules. |
+| Pending for Approval | Treat as Pending HOD Approval under current storage. |
+| Pending | Treat as legacy pending HOD approval until cleanup. |
 | Approved | Keep unchanged. |
-| Rejected | Keep unchanged, but route resubmission through WIP -> Pending HOD Review. |
+| Rejected | Keep unchanged and allow owner rework. |
 
-If the organization wants a one-step approval process, keep `Pending for Approval` and remove the legacy `Pending` status from active UI filters and dashboards.
+No `Pending Management Review` status is recommended under the confirmed business rule.
 
-## 12. Final Recommendation
+## 11. Final Recommendation
 
-QCMS should adopt the staged HOD -> Management approval model because the current data model already stores an assigned HOD and the product has separate HOD and Management roles. The redesign should make that business process explicit instead of allowing both roles to approve the same pending state directly to final approval.
+QCMS should use a HOD-mandatory approval workflow with Management override authority.
 
-Minimum near-term fix:
+The recommended normal path is:
 
-- Count `Pending for Approval` in all pending dashboard cards.
-- Show WIP separately.
-- Hide invalid row actions using per-response workflow actions.
-- Enable rejected owner rework consistently.
+```mermaid
+flowchart TD
+    U["User submits response"] --> H["Assigned HOD reviews"]
+    H -->|Approve| A["Approved"]
+    H -->|Reject| R["Rejected"]
+    R --> W["User reworks"]
+    W --> H
+    M["Management oversight"] -. "Override approve/reject" .-> H
+```
 
-Best long-term fix:
-
-- Replace `Pending` and `Pending for Approval` with `Pending HOD Review` and `Pending Management Review`.
-- Add workflow decision history.
-- Add role-specific dashboards for HOD and Management review queues.
+Management should not be modeled as a required approval stage. It should be modeled as escalation, oversight, and exceptional override authority.
