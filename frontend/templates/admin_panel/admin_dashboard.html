@@ -37,6 +37,16 @@
     <span class="card-title">Submitted Checklists</span>
     <span class="card-value">{{ total_submitted_checklists }}</span>
   </button>
+
+  <button class="dashboard-mini-card card card-submissions" data-chart-key="submittedChecklists" type="button">
+    <span class="card-title">Pending Approval</span>
+    <span class="card-value">{{ pending }}</span>
+  </button>
+
+  <button class="dashboard-mini-card card card-submissions" data-chart-key="submittedChecklists" type="button">
+    <span class="card-title">WIP Drafts</span>
+    <span class="card-value">{{ wip }}</span>
+  </button>
 </section>
 
 <!-- ================= RECENT ACTIVITY TABLE ================= -->
@@ -62,8 +72,14 @@
             <span class="active-text">Approved</span>
             {% elif txn.status == "Rejected" %}
             <span class="inactive-text">Rejected</span>
+            {% elif txn.status == "WIP" %}
+            <span class="pending-text">WIP</span>
+            {% elif txn.status == "Pending for Approval" %}
+            <span class="pending-text">Pending for Approval</span>
+            {% elif txn.status == "Pending" %}
+            <span class="pending-text">Pending (Legacy)</span>
             {% else %}
-            <span class="pending-text">Pending</span>
+            <span class="pending-text">{{ txn.status }}</span>
             {% endif %}
           </td>
           <td>{{ txn.submitted_at }}</td>

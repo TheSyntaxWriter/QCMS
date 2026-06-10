@@ -66,7 +66,7 @@
   </select>
   <select id="responseStatusFilter" name="status" class="form-control">
     <option value="">All Status</option>
-    <option value="Pending" {% if request.GET.status == 'Pending' %}selected{% endif %}>Pending</option>
+    <option value="Pending" {% if request.GET.status == 'Pending' %}selected{% endif %}>Pending (Legacy)</option>
     <option value="WIP" {% if request.GET.status == 'WIP' %}selected{% endif %}>WIP</option>
     <option value="Pending for Approval" {% if request.GET.status == 'Pending for Approval' %}selected{% endif %}>Pending for Approval</option>
     <option value="Approved" {% if request.GET.status == 'Approved' %}selected{% endif %}>Approved</option>
@@ -81,7 +81,8 @@
 
 <div class="stats-grid">
   <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Total Submitted</span><strong>{{ stats.total }}</strong></button>
-  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Pending</span><strong>{{ stats.pending }}</strong></button>
+  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Pending Approval</span><strong>{{ stats.pending }}</strong></button>
+  <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>WIP Drafts</span><strong>{{ stats.wip }}</strong></button>
   <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Approved</span><strong>{{ stats.approved }}</strong></button>
   <button class="dashboard-mini-card card" data-stat-chart="status-popup"><span>Rejected</span><strong>{{ stats.rejected }}</strong></button>
 </div>

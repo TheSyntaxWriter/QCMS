@@ -241,6 +241,102 @@ class ChecklistBuilderTests(TestCase):
         self.assertGreater(len(pdf_response.content), 500)
 
 
+class WorkflowPhase1Tests(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(username="workflow_admin", password="pass12345")
+        UserProfile.objects.create(user=self.admin_user, role="Admin")
+        self.owner = User.objects.create_user(username="workflow_owner", password="pass12345")
+        self.department = Department.objects.create(code="WF", name="Workflow")
+        self.project = Project.objects.create(code="PWF", name="Workflow Project", domain="Corporate")
+        UserProfile.objects.create(user=self.owner, role="User", department=self.department, project=self.project)
+        self.checklist_type = ChecklistType.objects.create(name="Workflow Type")
+        self.checklist = ChecklistDefinition.objects.create(
+            checklist_id="CLWF",
+            name="Workflow Checklist",
+            checklist_type=self.checklist_type,
+        )
+        self.checklist.projects.add(self.project)
+        self.checklist.departments.add(self.department)
+        self.question = ChecklistQuestion.objects.create(
+            checklist=self.checklist,
+            question_text="Workflow answer",
+            type=ChecklistQuestion.TYPE_SHORT_TEXT,
+            section="Workflow",
+            order=1,
+        )
+
+    def create_response(self, status):
+        return ChecklistResponse.objects.create(
+            checklist=self.checklist,
+            submitted_by=self.owner,
+            department=self.department,
+            project=self.project,
+            status=status,
+        )
+
+    def test_admin_dashboard_counts_pending_for_approval_and_wip(self):
+        self.create_response(ResponseStatus.PENDING)
+        self.create_response(ResponseStatus.PENDING_APPROVAL)
+        self.create_response(ResponseStatus.WIP)
+        self.create_response(ResponseStatus.APPROVED)
+        self.create_response(ResponseStatus.REJECTED)
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("admin_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["pending"], 2)
+        self.assertEqual(response.context["pending_approval"], 1)
+        self.assertEqual(response.context["legacy_pending"], 1)
+        self.assertEqual(response.context["wip"], 1)
+        chart_data = response.context["admin_dashboard_config"]["charts"]["submittedChecklists"]
+        self.assertEqual(chart_data["pending"], 2)
+        self.assertEqual(chart_data["pendingApproval"], 1)
+        self.assertEqual(chart_data["legacyPending"], 1)
+        self.assertEqual(chart_data["wip"], 1)
+
+    def test_admin_response_table_hides_invalid_wip_actions(self):
+        self.create_response(ResponseStatus.WIP)
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("admin_responses"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "WIP Drafts")
+        self.assertContains(response, 'data-action="view"')
+        self.assertContains(response, 'data-action="edit"')
+        self.assertNotContains(response, 'data-action="approve"')
+        self.assertNotContains(response, 'data-action="reject"')
+        self.assertNotContains(response, 'data-action="toggle"')
+
+    def test_legacy_pending_label_is_visible(self):
+        self.create_response(ResponseStatus.PENDING)
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("admin_responses"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pending (Legacy)")
+
+    def test_rejected_response_owner_can_open_for_editing(self):
+        rejected_response = self.create_response(ResponseStatus.REJECTED)
+        ChecklistAnswer.objects.create(
+            response=rejected_response,
+            question=self.question,
+            answer_text="Needs correction",
+        )
+        self.client.force_login(self.owner)
+
+        response = self.client.get(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {"response_id": rejected_response.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="Needs correction"')
+        self.assertContains(response, f'value="{rejected_response.id}"')
+
+
 class SecurityHardeningTests(TestCase):
     def _pdf_upload(self, name="evidence.pdf"):
         buffer = BytesIO()

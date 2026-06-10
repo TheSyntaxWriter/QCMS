@@ -264,7 +264,7 @@ def user_checklist_fill(request, checklist_id):
             id=editing_response_id,
             checklist=checklist,
             submitted_by=request.user,
-            status=ResponseStatus.WIP,
+            status__in=(ResponseStatus.WIP, ResponseStatus.REJECTED),
         ).prefetch_related('answers__question').first()
 
     existing_answers = {}
@@ -295,7 +295,7 @@ def user_checklist_fill(request, checklist_id):
                         id=post_response_id,
                         checklist=checklist,
                         submitted_by=request.user,
-                        status=ResponseStatus.WIP,
+                        status__in=(ResponseStatus.WIP, ResponseStatus.REJECTED),
                     ).first()
 
                 if response is None:

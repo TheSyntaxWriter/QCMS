@@ -38,6 +38,7 @@ from ..upload_validation import validate_branding_upload
 from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
+ACTIVE_PENDING_STATUSES = (ResponseStatus.PENDING, ResponseStatus.PENDING_APPROVAL)
 
 
 
@@ -96,7 +97,10 @@ def admin_dashboard(request):
     checklists_inactive = ChecklistDefinition.objects.filter(is_active=False).count()
 
     approved = txns.filter(status=ResponseStatus.APPROVED).count()
-    pending = txns.filter(status=ResponseStatus.PENDING).count()
+    legacy_pending = txns.filter(status=ResponseStatus.PENDING).count()
+    pending_approval = txns.filter(status=ResponseStatus.PENDING_APPROVAL).count()
+    pending = legacy_pending + pending_approval
+    wip = txns.filter(status=ResponseStatus.WIP).count()
     rejected = txns.filter(status=ResponseStatus.REJECTED).count()
 
     # ---------------------------------------------
@@ -155,6 +159,9 @@ def admin_dashboard(request):
             'submittedChecklists': {
                 'approved': approved,
                 'pending': pending,
+                'pendingApproval': pending_approval,
+                'legacyPending': legacy_pending,
+                'wip': wip,
                 'rejected': rejected,
             },
         },
@@ -169,6 +176,9 @@ def admin_dashboard(request):
         'total_projects': total_projects,
         'total_submitted_checklists': total_submitted,
         'pending': pending,
+        'pending_approval': pending_approval,
+        'legacy_pending': legacy_pending,
+        'wip': wip,
         'approved': approved,
         'rejected': rejected,
         'admin_dashboard_config': dashboard_config,
@@ -631,7 +641,10 @@ def admin_responses(request):
 
     stats = responses.aggregate(
         total=Count('id'),
-        pending=Count('id', filter=Q(status=ResponseStatus.PENDING)),
+        pending=Count('id', filter=Q(status__in=ACTIVE_PENDING_STATUSES)),
+        pending_approval=Count('id', filter=Q(status=ResponseStatus.PENDING_APPROVAL)),
+        legacy_pending=Count('id', filter=Q(status=ResponseStatus.PENDING)),
+        wip=Count('id', filter=Q(status=ResponseStatus.WIP)),
         approved=Count('id', filter=Q(status=ResponseStatus.APPROVED)),
         rejected=Count('id', filter=Q(status=ResponseStatus.REJECTED)),
     )

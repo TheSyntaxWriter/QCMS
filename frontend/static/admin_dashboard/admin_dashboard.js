@@ -102,15 +102,17 @@
       title: 'Submitted Checklists Status Split',
       type: 'pie',
       data: {
-        labels: ['Approved', 'Pending', 'Rejected'],
+        labels: ['Approved', 'Pending for Approval', 'Pending (Legacy)', 'WIP', 'Rejected'],
         datasets: [
           withBorder({
             data: [
               dashboardConfig.charts.submittedChecklists.approved,
-              dashboardConfig.charts.submittedChecklists.pending,
+              dashboardConfig.charts.submittedChecklists.pendingApproval,
+              dashboardConfig.charts.submittedChecklists.legacyPending,
+              dashboardConfig.charts.submittedChecklists.wip,
               dashboardConfig.charts.submittedChecklists.rejected,
             ],
-            backgroundColor: ['#16a34a', '#f59e0b', '#dc2626'],
+            backgroundColor: ['#16a34a', '#f59e0b', '#64748b', '#0ea5e9', '#dc2626'],
           }),
         ],
       },
