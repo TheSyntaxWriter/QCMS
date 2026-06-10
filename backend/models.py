@@ -79,6 +79,15 @@ class UserProfile(models.Model):
         blank=True
     )
 
+    assigned_hod = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_user_profiles',
+        help_text='Primary HOD responsible for approving this user checklist responses.',
+    )
+
     is_active = models.BooleanField(default=True)
     employee_id = models.CharField(max_length=64, blank=True, default='')
     phone_number = models.CharField(

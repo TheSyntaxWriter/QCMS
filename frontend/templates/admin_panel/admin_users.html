@@ -83,6 +83,7 @@
           <th><a class="sort-link" href="?{{ sort_links.role }}">Role{% if sort_by == 'role' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.department }}">Department{% if sort_by == 'department' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th><a class="sort-link" href="?{{ sort_links.project }}">Project{% if sort_by == 'project' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
+          <th>Assigned HOD</th>
           <th><a class="sort-link" href="?{{ sort_links.status }}">Status{% if sort_by == 'status' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th>Action</th>
         </tr>
@@ -96,6 +97,7 @@
           <td>{{ user.role }}</td>
           <td>{{ user.department.name|default:"-" }}</td>
           <td>{{ user.project.name|default:"-" }}</td>
+          <td>{% if user.assigned_hod %}{{ user.assigned_hod.get_full_name|default:user.assigned_hod.username }}{% else %}-{% endif %}</td>
           <td>
             {% if user.is_active %}
               <span class="active-text">Active</span>
@@ -112,6 +114,7 @@
                     data-role="{{ user.role }}"
                     data-dept="{{ user.department.name|default:'-' }}"
                     data-project="{{ user.project.name|default:'-' }}"
+                    data-assigned-hod="{% if user.assigned_hod %}{{ user.assigned_hod.get_full_name|default:user.assigned_hod.username }}{% else %}-{% endif %}"
                     data-status="{{ user.is_active }}">View</button>
 
             <button class="btn table-action-btn btn-edit edit-btn"
@@ -122,7 +125,8 @@
                     data-email="{{ user.user.email }}"
                     data-role="{{ user.role }}"
                     data-dept-id="{{ user.department.id }}"
-                    data-project-id="{{ user.project.id }}">Edit</button>
+                    data-project-id="{{ user.project.id }}"
+                    data-assigned-hod-id="{{ user.assigned_hod_id|default:'' }}">Edit</button>
 
             <form method="POST" action="{% url 'admin_user_action' %}" class="inline-action-form">
               {% csrf_token %}
@@ -135,7 +139,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="8" class="users-empty-row">No users found.</td></tr>
+        <tr><td colspan="9" class="users-empty-row">No users found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

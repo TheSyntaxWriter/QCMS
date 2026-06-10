@@ -92,9 +92,21 @@ def can_submit_response(response, user, role: str) -> bool:
     return getattr(response, 'status', '') in {ResponseStatus.WIP, ResponseStatus.REJECTED}
 
 
-def can_approve_response(response, role: str) -> bool:
-    return role in {'Admin', 'Management', 'HOD'} and evaluate_status_action(response.status, 'approve').allowed
+def _can_hod_decide_response(response, user) -> bool:
+    return getattr(response, 'hod_id', None) == getattr(user, 'id', None)
 
 
-def can_reject_response(response, role: str) -> bool:
-    return role in {'Admin', 'Management', 'HOD'} and evaluate_status_action(response.status, 'reject').allowed
+def can_approve_response(response, role: str, user=None) -> bool:
+    if not evaluate_status_action(response.status, 'approve').allowed:
+        return False
+    if role in {'Admin', 'Management'}:
+        return True
+    return role == 'HOD' and _can_hod_decide_response(response, user)
+
+
+def can_reject_response(response, role: str, user=None) -> bool:
+    if not evaluate_status_action(response.status, 'reject').allowed:
+        return False
+    if role in {'Admin', 'Management'}:
+        return True
+    return role == 'HOD' and _can_hod_decide_response(response, user)

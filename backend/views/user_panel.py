@@ -27,7 +27,14 @@ from ..workflow_service import ResponseStatus, evaluate_status_action
 
 
 
-def _resolve_hod_user(department):
+def _resolve_hod_user(profile):
+    assigned_hod = getattr(profile, 'assigned_hod', None)
+    if assigned_hod and assigned_hod.is_active:
+        assigned_hod_profile = getattr(assigned_hod, 'userprofile', None)
+        if assigned_hod_profile and assigned_hod_profile.role == 'HOD' and assigned_hod_profile.is_active:
+            return assigned_hod.id
+
+    department = getattr(profile, 'department', None)
     if not department:
         return None
     return UserProfile.objects.select_related('user').filter(
@@ -97,6 +104,7 @@ def my_submissions(request):
         'responses': responses,
         'visible_columns': visible_columns,
         'allowed_actions': allowed_actions,
+        'current_role': profile.role,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
     })
 
@@ -287,7 +295,7 @@ def user_checklist_fill(request, checklist_id):
                 messages.error(request, err)
         else:
             with transaction.atomic():
-                hod_user_id = _resolve_hod_user(profile.department)
+                hod_user_id = _resolve_hod_user(profile)
                 response = None
                 post_response_id = request.POST.get('response_id')
                 if post_response_id:

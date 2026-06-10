@@ -59,13 +59,7 @@ def responses_for_profile(profile, user):
             query &= Q(project__domain=profile.project.domain)
         return qs.filter(query)
     if profile.role == 'Management':
-        query = Q()
-        if profile.department:
-            query &= Q(department=profile.department)
-        if profile.project:
-            query &= Q(project=profile.project)
-            query &= Q(project__domain=profile.project.domain)
-        return qs.filter(query) if query else qs.none()
+        return qs
     return qs.none()
 
 
@@ -94,9 +88,9 @@ def is_action_permitted_for_response(action, response, profile, user):
     if action == 'edit':
         return can_edit_response(response, user, profile.role)
     if action == 'approve':
-        return can_approve_response(response, profile.role)
+        return can_approve_response(response, profile.role, user)
     if action == 'reject':
-        return can_reject_response(response, profile.role)
+        return can_reject_response(response, profile.role, user)
     return False
 
 

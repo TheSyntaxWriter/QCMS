@@ -19,6 +19,7 @@ from .models import (
     Department,
     Project,
     Question,
+    RolePermission,
     Section,
     UserProfile,
 )
@@ -335,6 +336,78 @@ class WorkflowPhase1Tests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'value="Needs correction"')
         self.assertContains(response, f'value="{rejected_response.id}"')
+
+    def test_response_submission_uses_user_assigned_hod(self):
+        fallback_hod = User.objects.create_user(username="fallback_hod", password="pass12345")
+        assigned_hod = User.objects.create_user(username="assigned_hod", password="pass12345")
+        UserProfile.objects.create(user=fallback_hod, role="HOD", department=self.department)
+        UserProfile.objects.create(user=assigned_hod, role="HOD", department=self.department)
+        owner_profile = self.owner.userprofile
+        owner_profile.assigned_hod = assigned_hod
+        owner_profile.save(update_fields=["assigned_hod"])
+        self.client.force_login(self.owner)
+
+        response = self.client.post(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {
+                "workflow_action": "submit",
+                f"q_{self.question.id}": "Submitted answer",
+            },
+        )
+
+        self.assertRedirects(response, reverse("my_submissions"))
+        checklist_response = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.assertEqual(checklist_response.hod, assigned_hod)
+        self.assertNotEqual(checklist_response.hod, fallback_hod)
+
+    def test_only_assigned_hod_can_approve_response(self):
+        assigned_hod = User.objects.create_user(username="approval_hod", password="pass12345")
+        other_hod = User.objects.create_user(username="other_hod", password="pass12345")
+        UserProfile.objects.create(user=assigned_hod, role="HOD", department=self.department)
+        UserProfile.objects.create(user=other_hod, role="HOD", department=self.department)
+        RolePermission.objects.create(role="HOD", visible_columns=["actions"], allowed_actions=["view", "approve", "reject"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        response_obj.hod = assigned_hod
+        response_obj.save(update_fields=["hod"])
+        url = reverse("user_submission_action")
+
+        self.client.force_login(other_hod)
+        denied = self.client.post(url, {"action": "approve", "response_id": response_obj.id})
+        self.assertEqual(denied.status_code, 403)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.PENDING_APPROVAL)
+
+        self.client.force_login(assigned_hod)
+        approved = self.client.post(url, {"action": "approve", "response_id": response_obj.id})
+        self.assertEqual(approved.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.APPROVED)
+
+    def test_management_can_override_any_response(self):
+        management = User.objects.create_user(username="management_override", password="pass12345")
+        UserProfile.objects.create(user=management, role="Management")
+        RolePermission.objects.create(role="Management", visible_columns=["actions"], allowed_actions=["view", "approve", "reject"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+
+        self.client.force_login(management)
+        result = self.client.post(
+            reverse("user_submission_action"),
+            {"action": "reject", "response_id": response_obj.id},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.REJECTED)
+
+    def test_admin_response_table_labels_override_actions(self):
+        self.create_response(ResponseStatus.PENDING_APPROVAL)
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("admin_responses"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Override Approve")
+        self.assertContains(response, "Override Reject")
 
 
 class SecurityHardeningTests(TestCase):

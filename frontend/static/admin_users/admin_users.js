@@ -54,6 +54,18 @@ document.addEventListener("DOMContentLoaded", function () {
     return `<option value="">Select Project</option>${projectOptions}`;
   }
 
+  function renderHodOptions(selectedHodId) {
+    const selected = String(selectedHodId || "");
+    const hodOptions = (config.hodUsers || [])
+      .map((hod) => {
+        const isSelected = selected === String(hod.id);
+        return `<option value="${hod.id}" ${isSelected ? "selected" : ""}>${escapeHtml(hod.name)}</option>`;
+      })
+      .join("");
+
+    return `<option value="">Select HOD</option>${hodOptions}`;
+  }
+
   function renderUserForm({
     mode,
     action,
@@ -65,6 +77,7 @@ document.addEventListener("DOMContentLoaded", function () {
     role,
     departmentId,
     projectId,
+    assignedHodId,
   }) {
     const isAdd = mode === "add";
 
@@ -103,6 +116,10 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="form-field">
           <label>Project</label>
           <select name="project" class="form-control">${renderProjectOptions(projectId)}</select>
+        </div>
+        <div class="form-field">
+          <label>Assigned HOD</label>
+          <select name="assigned_hod" class="form-control">${renderHodOptions(assignedHodId)}</select>
         </div>
       </form>
     `;
@@ -197,6 +214,7 @@ document.addEventListener("DOMContentLoaded", function () {
         role: this.dataset.role,
         departmentId: this.dataset.deptId,
         projectId: this.dataset.projectId,
+        assignedHodId: this.dataset.assignedHodId,
       });
     };
   });
@@ -215,6 +233,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <p><b>Role:</b> ${escapeHtml(this.dataset.role)}</p>
           <p><b>Department:</b> ${escapeHtml(this.dataset.dept)}</p>
           <p><b>Project:</b> ${escapeHtml(this.dataset.project)}</p>
+          <p><b>Assigned HOD:</b> ${escapeHtml(this.dataset.assignedHod || "-")}</p>
           <p><b>Status:</b> ${statusText}</p>
         </div>`;
     };

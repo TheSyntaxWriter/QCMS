@@ -70,6 +70,19 @@ def _clean_email_or_error(request, raw_email):
     return email
 
 
+def _clean_assigned_hod_id_or_error(request, raw_hod_id):
+    hod_id = (raw_hod_id or '').strip()
+    if not hod_id:
+        return None
+    if not hod_id.isdigit():
+        messages.error(request, "Assigned HOD is invalid.")
+        return False
+    if not UserProfile.objects.filter(user_id=hod_id, role='HOD', is_active=True, user__is_active=True).exists():
+        messages.error(request, "Assigned HOD must be an active HOD user.")
+        return False
+    return int(hod_id)
+
+
 def admin_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -200,7 +213,7 @@ def admin_users(request):
     sort_by = request.GET.get('sort', 'username')
     sort_dir = request.GET.get('dir', 'asc')
 
-    user_list = UserProfile.objects.select_related('user', 'department', 'project')
+    user_list = UserProfile.objects.select_related('user', 'department', 'project', 'assigned_hod')
 
     if search_query:
         user_list = user_list.filter(
@@ -281,6 +294,7 @@ def admin_users(request):
         'users': users_page,
         'departments': Department.objects.all(),
         'projects': Project.objects.all(),
+        'hod_users': UserProfile.objects.select_related('user').filter(role='HOD', is_active=True, user__is_active=True).order_by('user__first_name', 'user__username'),
         'role_counts': role_counts,
         'active_users': total_active,
         'inactive_users': total_inactive,
@@ -308,6 +322,13 @@ def admin_users(request):
             ],
             'projects': [
                 {'id': p.id, 'name': p.name, 'domain': p.domain} for p in Project.objects.all()
+            ],
+            'hodUsers': [
+                {
+                    'id': profile.user_id,
+                    'name': profile.user.get_full_name() or profile.user.username,
+                }
+                for profile in UserProfile.objects.select_related('user').filter(role='HOD', is_active=True, user__is_active=True).order_by('user__first_name', 'user__username')
             ],
             'charts': {
                 'active': total_active,
@@ -686,6 +707,7 @@ def admin_responses(request):
         'sidebar_menu': _admin_sidebar_menu(),
         'visible_columns': get_role_permission_config('Admin')[0],
         'allowed_actions': admin_allowed_actions,
+        'current_role': profile.role,
         'responses': page_obj,
         'projects': active_projects,
         'departments': Department.objects.filter(is_active=True).order_by('name'),
@@ -1096,6 +1118,9 @@ def admin_master_create(request):
             if User.objects.filter(username=username).exists():
                 messages.error(request, "Username already exists. Please choose another.")
                 return redirect('admin_users')
+            assigned_hod_id = _clean_assigned_hod_id_or_error(request, request.POST.get('assigned_hod'))
+            if assigned_hod_id is False:
+                return redirect('admin_users')
 
             user = User.objects.create_user(
                 username=username,
@@ -1110,6 +1135,7 @@ def admin_master_create(request):
                 role=request.POST.get('role'),
                 department_id=request.POST.get('department') or None,
                 project_id=request.POST.get('project') or None,
+                assigned_hod_id=assigned_hod_id,
                 is_active=True,
             )
             write_activity_log(action_type='User Created', module_name='User', description=f'User created: {username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
@@ -1191,7 +1217,7 @@ def admin_user_action(request):
         user_id = request.GET.get('id')
 
         profile_obj = UserProfile.objects.select_related(
-            'user', 'department', 'project',
+            'user', 'department', 'project', 'assigned_hod',
         ).get(user__id=user_id)
 
         return JsonResponse({
@@ -1201,6 +1227,8 @@ def admin_user_action(request):
             "role": profile_obj.role,
             "department_id": profile_obj.department.id if profile_obj.department else "",
             "project_id": profile_obj.project.id if profile_obj.project else "",
+            "assigned_hod_id": profile_obj.assigned_hod_id or "",
+            "assigned_hod_name": (profile_obj.assigned_hod.get_full_name() or profile_obj.assigned_hod.username) if profile_obj.assigned_hod else "",
             "status": profile_obj.is_active,
         })
 
@@ -1226,6 +1254,9 @@ def admin_user_action(request):
             email = _clean_email_or_error(request, request.POST.get('email'))
             if email is None:
                 return redirect('admin_users')
+            assigned_hod_id = _clean_assigned_hod_id_or_error(request, request.POST.get('assigned_hod'))
+            if assigned_hod_id is False:
+                return redirect('admin_users')
 
             user.first_name = request.POST.get('first_name')
             user.last_name = request.POST.get('last_name')
@@ -1238,6 +1269,7 @@ def admin_user_action(request):
             profile_obj.role = request.POST.get('role')
             profile_obj.department_id = request.POST.get('department') or None
             profile_obj.project_id = request.POST.get('project') or None
+            profile_obj.assigned_hod_id = assigned_hod_id
             profile_obj.save()
             write_activity_log(action_type='User Updated', module_name='User', description=f'User updated: {user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
 
