@@ -21,6 +21,7 @@ from ..models import AppSettings, ChecklistDefinition, ChecklistQuestion, Checkl
 from .common import get_user_profile, redirect_for_profile
 from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
+from ..notification_service import assigned_hod_is_valid, notify_on_commit, record_permission_denied, users_for_role
 from ..models import ActivityLog
 from ..permission_service import get_role_permission_config, responses_for_profile, is_action_permitted_for_response, effective_allowed_actions_for_response
 from ..upload_validation import validate_checklist_upload, validate_profile_image_bytes
@@ -325,7 +326,18 @@ def user_checklist_fill(request, checklist_id):
         if validation_errors:
             for err in validation_errors:
                 messages.error(request, err)
+            if upload_errors:
+                notify_on_commit(
+                    'suspicious_upload_rejected',
+                    [request.user, *users_for_role('Admin')],
+                    message=f'An attachment was rejected for checklist {checklist.checklist_id}.',
+                    related_type='ChecklistDefinition',
+                    related_id=checklist.id,
+                    related_url=reverse('user_checklist_fill', args=[checklist.id]),
+                    action_required=True,
+                )
         else:
+            was_rejected = bool(editing_response and editing_response.status == ResponseStatus.REJECTED)
             with transaction.atomic():
                 hod_user_id = _resolve_hod_user(profile)
                 response = None
@@ -379,6 +391,37 @@ def user_checklist_fill(request, checklist_id):
             else:
                 write_activity_log(action_type='Checklist Submitted', module_name='Checklist', description=f'Checklist submitted: {checklist.checklist_id} by {request.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
                 messages.success(request, f'Checklist {checklist.checklist_id} submitted for approval.')
+                notify_on_commit(
+                    'checklist_resubmitted' if was_rejected else 'checklist_submitted',
+                    request.user,
+                    message=f'{checklist.checklist_id} - {checklist.name} was {"resubmitted" if was_rejected else "submitted"} successfully.',
+                    related_type='ChecklistResponse',
+                    related_id=response.id,
+                    related_url=reverse('my_submissions'),
+                )
+                if response.hod_id:
+                    notify_on_commit(
+                        'rejected_response_resubmitted' if was_rejected else 'new_approval_request',
+                        response.hod,
+                        message=f'{request.user.get_full_name() or request.user.username} submitted {checklist.checklist_id} for your review.',
+                        related_type='ChecklistResponse',
+                        related_id=response.id,
+                        related_url=reverse('my_submissions'),
+                        action_required=True,
+                    )
+                if not assigned_hod_is_valid(profile):
+                    missing_message = f'{request.user.username} submitted {checklist.checklist_id} without a valid assigned HOD.'
+                    notify_on_commit('missing_assigned_hod_alert', users_for_role('Management'), message=missing_message, related_type='ChecklistResponse', related_id=response.id, related_url=reverse('my_submissions'), action_required=True)
+                    notify_on_commit('missing_hod_assignment_detected', users_for_role('Admin'), message=missing_message, related_type='UserProfile', related_id=profile.id, related_url=reverse('admin_users'), action_required=True)
+                if geolocation_enabled and submission_location['latitude'] is None:
+                    notify_on_commit(
+                        'geolocation_capture_failed',
+                        request.user,
+                        message=f'Location was unavailable for {checklist.checklist_id}; submission still succeeded.',
+                        related_type='ChecklistResponse',
+                        related_id=response.id,
+                        related_url=reverse('my_submissions'),
+                    )
             return redirect('my_submissions')
 
     sectioned = {}
@@ -408,11 +451,13 @@ def user_submission_action(request):
         response_id = request.POST.get('response_id')
         allowed_actions = set(get_role_permission_config(profile.role)[1])
         if action not in allowed_actions:
+            record_permission_denied(request.user, f'Unauthorized response action requested: {action}.')
             return JsonResponse({'ok': False, 'error': 'Unauthorized action'}, status=403)
         response = responses_for_profile(profile, request.user).filter(id=response_id).first()
         if not response:
             return JsonResponse({'ok': False, 'error': 'Response not found'}, status=404)
         if not is_action_permitted_for_response(action, response, profile, request.user):
+            record_permission_denied(request.user, f'Workflow policy blocked response action: {action}.')
             return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action in {'approve', 'reject'}:
             comment = (request.POST.get('comment') or '').strip()
@@ -432,6 +477,36 @@ def user_submission_action(request):
                     actor=request.user,
                     actor_role=profile.role,
                     is_override=profile.role == 'Management',
+                )
+            if response.submitted_by:
+                decision_label = 'approved' if action == 'approve' else 'rejected'
+                notify_on_commit(
+                    'checklist_approved' if action == 'approve' else 'checklist_rejected',
+                    response.submitted_by,
+                    message=f'{response.checklist.checklist_id} was {decision_label} by {request.user.get_full_name() or request.user.username}.',
+                    related_type='ChecklistResponse',
+                    related_id=response.id,
+                    related_url=reverse('my_submissions'),
+                    action_required=action == 'reject',
+                )
+                if action == 'reject':
+                    notify_on_commit(
+                        'rejection_comment_available',
+                        response.submitted_by,
+                        message=f'A rejection comment is available for {response.checklist.checklist_id}.',
+                        related_type='ChecklistResponse',
+                        related_id=response.id,
+                        related_url=reverse('my_submissions'),
+                        action_required=True,
+                    )
+            if profile.role == 'Management':
+                notify_on_commit(
+                    'override_approval_performed' if action == 'approve' else 'override_rejection_performed',
+                    request.user,
+                    message=f'Your override {action} action for {response.checklist.checklist_id} was recorded.',
+                    related_type='ChecklistResponse',
+                    related_id=response.id,
+                    related_url=reverse('my_submissions'),
                 )
             return JsonResponse({'ok': True, 'status': response.status})
         return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)

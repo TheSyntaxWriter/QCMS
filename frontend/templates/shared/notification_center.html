@@ -1,0 +1,32 @@
+{% load static %}
+{% if request.user.is_authenticated %}
+<link rel="stylesheet" href="{% static 'shared/notification_center.css' %}">
+<div class="notification-center" id="notificationCenter"
+     data-list-url="{% url 'notification_list' %}"
+     data-poll-url="{% url 'notification_poll' %}"
+     data-read-all-url="{% url 'notification_mark_all_read' %}"
+     data-read-url-template="{% url 'notification_mark_read' 0 %}"
+     data-delete-url-template="{% url 'notification_delete' 0 %}">
+  <button type="button" class="notification-bell" id="notificationBell" aria-label="Notifications" aria-expanded="false" title="Notifications">
+    <span class="notification-bell__icon" aria-hidden="true">&#128276;</span>
+    <span class="notification-bell__count" id="notificationCount" hidden>0</span>
+  </button>
+  <aside class="notification-drawer" id="notificationDrawer" aria-hidden="true" aria-label="Notification Center">
+    <header class="notification-drawer__header">
+      <div><strong>Notifications</strong><span id="notificationDrawerCount">0 unread</span></div>
+      <div class="notification-drawer__header-actions">
+        <button type="button" id="notificationMarkAll">Mark all read</button>
+        <button type="button" id="notificationClose" aria-label="Close notifications">&times;</button>
+      </div>
+    </header>
+    <nav class="notification-tabs" aria-label="Notification filters">
+      <button type="button" class="is-active" data-notification-tab="all">All</button>
+      <button type="button" data-notification-tab="unread">Unread</button>
+      <button type="button" data-notification-tab="action">Action Required</button>
+    </nav>
+    <div class="notification-list" id="notificationList"></div>
+  </aside>
+  <div class="notification-popups" id="notificationPopups" aria-live="polite"></div>
+</div>
+<script src="{% static 'shared/notification_center.js' %}"></script>
+{% endif %}

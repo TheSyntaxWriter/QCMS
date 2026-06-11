@@ -5,7 +5,7 @@
     <title>{{ PROJECT_DISPLAY_NAME }} - Admin Panel</title>
     <link rel="icon" href="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" />
     <link rel="stylesheet" href="{% static 'shared/table_system.css' %}" />
-    <link rel="stylesheet" href="{% static 'shared/sidebar.css' %}" />
+    <link rel="stylesheet" href="{% static 'shared/sidebar.css' %}?v=2" />
     <link rel="stylesheet" href="{% static 'shared/ui_system.css' %}" />
 
     <link
@@ -79,7 +79,7 @@
         color: red;
       }
           .content { min-width: 0; }
-      @media (max-width: 920px){ .content{ padding:16px; width:100%; margin-left:0 !important; } .topbar{ border-radius:12px; } }
+      @media (max-width: 920px){ .content{ padding:0; width:100%; max-width:100%; margin-left:0 !important; } .topbar{ border-radius:12px; } }
     </style>
   </head>
 
@@ -92,7 +92,7 @@
       <div class="page-container responsive-content-area">
       <div class="topbar">
         <div>{% block topbar_title %}Admin Dashboard{% endblock %}</div>
-        <div>{% block topbar_welcome %}Welcome, Admin{% endblock %}</div>
+        <div style="display:flex;align-items:center;gap:10px"><span>{% block topbar_welcome %}Welcome, Admin{% endblock %}</span>{% include 'shared/notification_center.html' %}</div>
       </div>
 
       {% block content %}{% endblock %} {% block extra_js %}{% endblock %}

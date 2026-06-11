@@ -30,6 +30,7 @@ urlpatterns = [
     path('admin-panel/checklists/<int:checklist_id>/pdf/', views.admin_checklist_pdf, name='admin_checklist_pdf'),
     path('admin-panel/responses/', views.admin_responses, name='admin_responses'),
     path('admin-panel/control-panel/', views.admin_control_panel, name='admin_control_panel'),
+    path('admin-panel/control-panel/notifications/', views.admin_notification_settings, name='admin_notification_settings'),
     path('admin-panel/logs/', views.admin_logs, name='admin_logs'),
 
     path('admin-create/', views.admin_master_create, name='admin_master_create'),
@@ -39,4 +40,9 @@ urlpatterns = [
     path('admin-project-action/', views.admin_project_action, name='admin_project_action'),
     path('admin-checklist-action/', views.admin_checklist_action, name='admin_checklist_action'),
     path('admin-response-action/', views.admin_response_action, name='admin_response_action'),
+    path('notifications/', views.notification_list, name='notification_list'),
+    path('notifications/poll/', views.notification_poll, name='notification_poll'),
+    path('notifications/read-all/', views.notification_mark_all_read, name='notification_mark_all_read'),
+    path('notifications/<int:notification_id>/read/', views.notification_mark_read, name='notification_mark_read'),
+    path('notifications/<int:notification_id>/delete/', views.notification_delete, name='notification_delete'),
 ]

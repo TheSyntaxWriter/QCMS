@@ -21,6 +21,7 @@ from .admin import (
 )
 from .auth import home, user_login, user_logout
 from .management import management_dashboard
+from .notifications import admin_notification_settings, notification_delete, notification_list, notification_mark_all_read, notification_mark_read, notification_poll
 from .user_panel import dashboard, my_checklists, my_submissions, user_profile, admin_profile, user_checklist_preview, user_checklist_pdf, user_checklist_fill, user_submission_action, checklist_answer_download
 
 __all__ = [
@@ -57,4 +58,10 @@ __all__ = [
     'user_submission_action',
     'checklist_answer_download',
     'management_dashboard',
+    'admin_notification_settings',
+    'notification_list',
+    'notification_poll',
+    'notification_mark_read',
+    'notification_mark_all_read',
+    'notification_delete',
 ]

@@ -10,6 +10,7 @@ admin.site.register(ChecklistQuestion)
 admin.site.register(ChecklistResponse)
 admin.site.register(ChecklistAnswer)
 admin.site.register(RolePermission)
+admin.site.register(Notification)
 
 
 @admin.register(ResponseDecision)

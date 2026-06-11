@@ -496,3 +496,69 @@ class AppSettings(models.Model):
             },
         )
         return obj
+
+
+class NotificationSetting(models.Model):
+    enable_notifications = models.BooleanField(default=True)
+    enable_bell = models.BooleanField(default=True)
+    enable_popups = models.BooleanField(default=True)
+    enable_sound = models.BooleanField(default=False)
+    retention_days = models.PositiveIntegerField(default=365)
+    low_color = models.CharField(max_length=7, default='#6B7280')
+    medium_color = models.CharField(max_length=7, default='#2563EB')
+    high_color = models.CharField(max_length=7, default='#EA580C')
+    critical_color = models.CharField(max_length=7, default='#DC2626')
+    event_settings = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notification_setting_updates',
+    )
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return 'Notification Settings'
+
+
+class Notification(models.Model):
+    PRIORITY_LOW = 'Low'
+    PRIORITY_MEDIUM = 'Medium'
+    PRIORITY_HIGH = 'High'
+    PRIORITY_CRITICAL = 'Critical'
+    PRIORITY_CHOICES = (
+        (PRIORITY_LOW, PRIORITY_LOW),
+        (PRIORITY_MEDIUM, PRIORITY_MEDIUM),
+        (PRIORITY_HIGH, PRIORITY_HIGH),
+        (PRIORITY_CRITICAL, PRIORITY_CRITICAL),
+    )
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    event_key = models.CharField(max_length=80, db_index=True)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    priority = models.CharField(max_length=16, choices=PRIORITY_CHOICES, default=PRIORITY_MEDIUM, db_index=True)
+    is_read = models.BooleanField(default=False, db_index=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    action_required = models.BooleanField(default=False, db_index=True)
+    related_type = models.CharField(max_length=80, blank=True, default='')
+    related_id = models.CharField(max_length=64, blank=True, default='')
+    related_url = models.CharField(max_length=500, blank=True, default='')
+    popup_shown_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at', '-id']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read', 'created_at']),
+            models.Index(fields=['recipient', 'action_required', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.recipient} - {self.title}'

@@ -20,6 +20,8 @@ from .models import (
     ChecklistResponse,
     ChecklistType,
     Department,
+    Notification,
+    NotificationSetting,
     Project,
     Question,
     ResponseDecision,
@@ -28,6 +30,7 @@ from .models import (
     UserProfile,
 )
 from .workflow_service import ResponseStatus
+from .notification_service import create_notifications
 
 
 class AccessControlTests(TestCase):
@@ -1006,3 +1009,237 @@ class SecurityHardeningTests(TestCase):
         self.client.force_login(admin)
         admin_response = self.client.get(url)
         self.assertEqual(admin_response.status_code, 200)
+
+
+class NotificationCenterTests(TestCase):
+    def setUp(self):
+        self.department = Department.objects.create(code='NTF', name='Notifications')
+        self.project = Project.objects.create(code='N001', name='Notification Project', domain='Corporate')
+        self.checklist_type = ChecklistType.objects.create(name='Notification Checklist')
+        self.checklist = ChecklistDefinition.objects.create(
+            checklist_id='CL-N1',
+            name='Notification Workflow',
+            checklist_type=self.checklist_type,
+        )
+        self.checklist.departments.add(self.department)
+        self.checklist.projects.add(self.project)
+        self.question = ChecklistQuestion.objects.create(
+            checklist=self.checklist,
+            question_text='Confirm completion',
+            type=ChecklistQuestion.TYPE_SHORT_TEXT,
+            required=True,
+        )
+        self.admin_user = User.objects.create_user(username='notification_admin', password='pass12345')
+        self.management = User.objects.create_user(username='notification_management', password='pass12345')
+        self.hod = User.objects.create_user(username='notification_hod', password='pass12345')
+        self.owner = User.objects.create_user(username='notification_owner', password='pass12345')
+        UserProfile.objects.create(user=self.admin_user, role='Admin')
+        UserProfile.objects.create(user=self.management, role='Management')
+        UserProfile.objects.create(user=self.hod, role='HOD', department=self.department, project=self.project)
+        UserProfile.objects.create(
+            user=self.owner,
+            role='User',
+            department=self.department,
+            project=self.project,
+            assigned_hod=self.hod,
+        )
+        RolePermission.objects.create(role='HOD', visible_columns=['actions'], allowed_actions=['view', 'approve', 'reject'])
+        RolePermission.objects.create(role='Management', visible_columns=['actions'], allowed_actions=['view', 'approve', 'reject'])
+
+    def submit_checklist(self, workflow_action='submit'):
+        self.client.force_login(self.owner)
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.post(
+                reverse('user_checklist_fill', args=[self.checklist.id]),
+                {
+                    'workflow_action': workflow_action,
+                    f'q_{self.question.id}': 'Complete',
+                },
+            )
+
+    def test_notification_service_stores_required_fields_and_respects_priority(self):
+        settings = NotificationSetting.get_solo()
+        settings.event_settings = {
+            'checklist_submitted': {'enabled': True, 'priority': 'High', 'popup': True},
+        }
+        settings.save()
+
+        create_notifications(
+            'checklist_submitted',
+            self.owner,
+            message='Checklist stored.',
+            related_type='ChecklistResponse',
+            related_id='42',
+            related_url='/my-submissions/',
+        )
+
+        notification = Notification.objects.get(recipient=self.owner)
+        self.assertEqual(notification.title, 'Checklist Submitted Successfully')
+        self.assertEqual(notification.message, 'Checklist stored.')
+        self.assertEqual(notification.priority, Notification.PRIORITY_HIGH)
+        self.assertFalse(notification.is_read)
+        self.assertEqual(notification.related_id, '42')
+
+    def test_global_disable_prevents_notification_creation(self):
+        settings = NotificationSetting.get_solo()
+        settings.enable_notifications = False
+        settings.save()
+
+        create_notifications('checklist_submitted', self.owner, message='Should not exist.')
+
+        self.assertFalse(Notification.objects.exists())
+
+    def test_notification_api_is_recipient_scoped_and_supports_read_delete(self):
+        first = create_notifications('checklist_submitted', self.owner, message='Owner only.')[0]
+        create_notifications('checklist_submitted', self.hod, message='HOD only.')
+        self.client.force_login(self.owner)
+
+        listing = self.client.get(reverse('notification_list'))
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual([item['id'] for item in listing.json()['notifications']], [first.id])
+
+        marked = self.client.post(reverse('notification_mark_read', args=[first.id]))
+        self.assertEqual(marked.status_code, 200)
+        first.refresh_from_db()
+        self.assertTrue(first.is_read)
+        self.assertIsNotNone(first.read_at)
+
+        deleted = self.client.post(reverse('notification_delete', args=[first.id]))
+        self.assertEqual(deleted.status_code, 200)
+        self.assertFalse(Notification.objects.filter(id=first.id).exists())
+
+    def test_poll_returns_unread_count_and_only_default_high_popup(self):
+        create_notifications('checklist_submitted', self.owner, message='Medium information.')
+        high = create_notifications('checklist_rejected', self.owner, message='High action.', action_required=True)[0]
+        self.client.force_login(self.owner)
+
+        result = self.client.get(reverse('notification_poll'))
+
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.json()['unread_count'], 2)
+        self.assertEqual([item['id'] for item in result.json()['popups']], [high.id])
+        high.refresh_from_db()
+        self.assertIsNotNone(high.popup_shown_at)
+
+    def test_submit_notifies_owner_and_assigned_hod_but_wip_does_not(self):
+        wip_result = self.submit_checklist('save_wip')
+        self.assertRedirects(wip_result, reverse('my_submissions'))
+        self.assertFalse(Notification.objects.exists())
+
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.client.force_login(self.owner)
+        with self.captureOnCommitCallbacks(execute=True):
+            submit_result = self.client.post(
+                reverse('user_checklist_fill', args=[self.checklist.id]),
+                {'workflow_action': 'submit', 'response_id': response_obj.id, f'q_{self.question.id}': 'Complete'},
+            )
+
+        self.assertRedirects(submit_result, reverse('my_submissions'))
+        self.assertTrue(Notification.objects.filter(recipient=self.owner, event_key='checklist_submitted').exists())
+        self.assertTrue(Notification.objects.filter(recipient=self.hod, event_key='new_approval_request').exists())
+
+    def test_hod_rejection_notifies_owner_and_exposes_comment_event(self):
+        self.submit_checklist()
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        Notification.objects.all().delete()
+        self.client.force_login(self.hod)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            result = self.client.post(
+                reverse('user_submission_action'),
+                {'action': 'reject', 'response_id': response_obj.id, 'comment': 'Please correct the evidence.'},
+            )
+
+        self.assertEqual(result.status_code, 200)
+        self.assertTrue(Notification.objects.filter(recipient=self.owner, event_key='checklist_rejected').exists())
+        self.assertTrue(Notification.objects.filter(recipient=self.owner, event_key='rejection_comment_available').exists())
+
+    def test_management_override_creates_confirmation_and_owner_notification(self):
+        self.submit_checklist()
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        Notification.objects.all().delete()
+        self.client.force_login(self.management)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            result = self.client.post(
+                reverse('user_submission_action'),
+                {'action': 'approve', 'response_id': response_obj.id, 'comment': 'Oversight approval.'},
+            )
+
+        self.assertEqual(result.status_code, 200)
+        self.assertTrue(Notification.objects.filter(recipient=self.owner, event_key='checklist_approved').exists())
+        self.assertTrue(Notification.objects.filter(recipient=self.management, event_key='override_approval_performed').exists())
+
+    def test_missing_hod_submission_notifies_management_and_admin(self):
+        profile = self.owner.userprofile
+        profile.assigned_hod = None
+        profile.save(update_fields=['assigned_hod'])
+
+        self.submit_checklist()
+
+        self.assertTrue(Notification.objects.filter(recipient=self.management, event_key='missing_assigned_hod_alert').exists())
+        self.assertTrue(Notification.objects.filter(recipient=self.admin_user, event_key='missing_hod_assignment_detected').exists())
+
+    def test_permission_denied_threshold_notifies_admin_once(self):
+        self.client.force_login(self.owner)
+        for _ in range(5):
+            result = self.client.post(reverse('user_submission_action'), {'action': 'approve', 'response_id': '999'})
+            self.assertEqual(result.status_code, 403)
+
+        self.assertEqual(Notification.objects.filter(recipient=self.admin_user, event_key='permission_denied_threshold').count(), 1)
+
+    def test_protected_audit_delete_notifies_admin(self):
+        response_obj = ChecklistResponse.objects.create(
+            checklist=self.checklist,
+            submitted_by=self.owner,
+            hod=self.hod,
+            status=ResponseStatus.APPROVED,
+        )
+        ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            actor=self.hod,
+            actor_role='HOD',
+        )
+        self.client.force_login(self.admin_user)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            result = self.client.post(
+                reverse('admin_response_action'),
+                {'action': 'delete', 'response_id': response_obj.id},
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+            )
+
+        self.assertEqual(result.status_code, 400)
+        self.assertTrue(Notification.objects.filter(recipient=self.admin_user, event_key='protected_audit_action_blocked').exists())
+
+    def test_notification_settings_page_is_admin_only_and_persists_events(self):
+        self.client.force_login(self.owner)
+        denied = self.client.get(reverse('admin_notification_settings'))
+        self.assertRedirects(denied, reverse('home'), fetch_redirect_response=False)
+
+        self.client.force_login(self.admin_user)
+        result = self.client.post(reverse('admin_notification_settings'), {
+            'enable_notifications': 'on',
+            'enable_bell': 'on',
+            'enable_popups': 'on',
+            'retention_days': '180',
+            'low_color': '#6B7280',
+            'medium_color': '#2563EB',
+            'high_color': '#EA580C',
+            'critical_color': '#DC2626',
+            'event_notification_settings_changed_enabled': 'on',
+            'event_notification_settings_changed_priority': 'Critical',
+            'event_notification_settings_changed_popup': 'on',
+        })
+
+        self.assertRedirects(result, reverse('admin_notification_settings'))
+        settings = NotificationSetting.get_solo()
+        self.assertEqual(settings.retention_days, 180)
+        self.assertEqual(settings.event_settings['notification_settings_changed']['priority'], 'Critical')
+        self.assertTrue(Notification.objects.filter(recipient=self.admin_user, event_key='notification_settings_changed').exists())
+
+    def test_authenticated_header_contains_notification_bell(self):
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse('my_checklists'))
+        self.assertContains(response, 'id="notificationBell"')

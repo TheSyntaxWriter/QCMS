@@ -34,6 +34,7 @@ from ..models import (
 )
 from .common import get_user_profile
 from ..logging_service import write_activity_log
+from ..notification_service import notify_on_commit, users_for_role
 from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response, effective_allowed_actions_for_response
 from ..upload_validation import validate_branding_upload
 from ..workflow_service import ResponseStatus, evaluate_status_action
@@ -53,6 +54,7 @@ def _admin_sidebar_menu():
         {'url': reverse('admin_departments'), 'label': 'Department', 'icon': 'department'},
         {'url': reverse('admin_projects'), 'label': 'Project', 'icon': 'project'},
         {'url': reverse('admin_control_panel'), 'label': 'Control Panel', 'icon': 'control'},
+        {'url': reverse('admin_notification_settings'), 'label': 'Notifications', 'icon': 'control'},
         {'url': reverse('admin_logs'), 'label': 'Logs', 'icon': 'logs'},
         {'url': reverse('admin_profile'), 'label': 'Profile', 'icon': 'profile'},
     ]
@@ -1059,6 +1061,15 @@ def admin_response_action(request):
             return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action == 'delete':
             if response.decisions.exists():
+                notify_on_commit(
+                    'protected_audit_action_blocked',
+                    users_for_role('Admin'),
+                    message=f'{request.user.username} attempted to delete response {response.id} with protected decision history.',
+                    related_type='ChecklistResponse',
+                    related_id=response.id,
+                    related_url=reverse('admin_responses'),
+                    action_required=True,
+                )
                 return JsonResponse({
                     'ok': False,
                     'error': 'Responses with approval history cannot be deleted.',
@@ -1090,6 +1101,19 @@ def admin_response_action(request):
                     is_override=True,
                 )
             write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            if response.submitted_by:
+                decision_label = 'approved' if action == 'approve' else 'rejected'
+                notify_on_commit(
+                    'checklist_approved' if action == 'approve' else 'checklist_rejected',
+                    response.submitted_by,
+                    message=f'{response.checklist.checklist_id} was {decision_label} by Admin {request.user.username}.',
+                    related_type='ChecklistResponse',
+                    related_id=response.id,
+                    related_url=reverse('my_submissions'),
+                    action_required=action == 'reject',
+                )
+                if action == 'reject':
+                    notify_on_commit('rejection_comment_available', response.submitted_by, message=f'A rejection comment is available for {response.checklist.checklist_id}.', related_type='ChecklistResponse', related_id=response.id, related_url=reverse('my_submissions'), action_required=True)
             return JsonResponse({'ok': True, 'status': response.status})
         return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)
 
@@ -1162,7 +1186,7 @@ def admin_master_create(request):
                 email=email,
             )
 
-            UserProfile.objects.create(
+            created_profile = UserProfile.objects.create(
                 user=user,
                 role=request.POST.get('role'),
                 department_id=request.POST.get('department') or None,
@@ -1171,6 +1195,13 @@ def admin_master_create(request):
                 is_active=True,
             )
             write_activity_log(action_type='User Created', module_name='User', description=f'User created: {username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            notify_on_commit('user_created', users_for_role('Admin'), message=f'User {username} was created by {request.user.username}.', related_type='User', related_id=user.id, related_url=reverse('admin_users'))
+            if created_profile.assigned_hod_id:
+                notify_on_commit('user_assigned_to_hod', created_profile.assigned_hod, message=f'{user.get_full_name() or username} was assigned to you.', related_type='UserProfile', related_id=created_profile.id, related_url=reverse('admin_users'))
+            elif created_profile.role == 'User':
+                message = f'User {username} was created without an assigned HOD.'
+                notify_on_commit('missing_assigned_hod_alert', users_for_role('Management'), message=message, related_type='UserProfile', related_id=created_profile.id, related_url=reverse('admin_users'), action_required=True)
+                notify_on_commit('missing_hod_assignment_detected', users_for_role('Admin'), message=message, related_type='UserProfile', related_id=created_profile.id, related_url=reverse('admin_users'), action_required=True)
         elif request.POST.get("form_type") == "department":
             code = (request.POST.get('code') or '').strip()
             name = (request.POST.get('name') or '').strip()
@@ -1238,9 +1269,12 @@ def admin_user_action(request):
             else:
                 try:
                     profile_obj = UserProfile.objects.get(user_id=user_id)
+                    was_active = profile_obj.is_active
                     profile_obj.is_active = not profile_obj.is_active
                     profile_obj.save()
                     write_activity_log(action_type='User Updated', module_name='User', description=f'User activation toggled: {profile_obj.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                    if was_active and not profile_obj.is_active:
+                        notify_on_commit('user_deactivated', users_for_role('Admin'), message=f'User {profile_obj.user.username} was deactivated by {request.user.username}.', related_type='User', related_id=profile_obj.user_id, related_url=reverse('admin_users'), action_required=True)
                 except UserProfile.DoesNotExist:
                     messages.error(request, "User profile not found.")
             return redirect('admin_users')
@@ -1274,6 +1308,7 @@ def admin_user_action(request):
                 return redirect('admin_users')
 
             user = profile_obj.user
+            previous_hod_id = profile_obj.assigned_hod_id
             username = (request.POST.get('username') or '').strip()
             if not username:
                 messages.error(request, "Username is required.")
@@ -1304,6 +1339,15 @@ def admin_user_action(request):
             profile_obj.assigned_hod_id = assigned_hod_id
             profile_obj.save()
             write_activity_log(action_type='User Updated', module_name='User', description=f'User updated: {user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            if previous_hod_id != profile_obj.assigned_hod_id:
+                if previous_hod_id:
+                    notify_on_commit('user_removed_from_hod', [previous_hod_id], message=f'{user.get_full_name() or user.username} is no longer assigned to you.', related_type='UserProfile', related_id=profile_obj.id, related_url=reverse('admin_users'))
+                if profile_obj.assigned_hod_id:
+                    notify_on_commit('user_assigned_to_hod', profile_obj.assigned_hod, message=f'{user.get_full_name() or user.username} was assigned to you.', related_type='UserProfile', related_id=profile_obj.id, related_url=reverse('admin_users'))
+                elif profile_obj.role == 'User':
+                    message = f'User {user.username} has no assigned HOD.'
+                    notify_on_commit('missing_assigned_hod_alert', users_for_role('Management'), message=message, related_type='UserProfile', related_id=profile_obj.id, related_url=reverse('admin_users'), action_required=True)
+                    notify_on_commit('missing_hod_assignment_detected', users_for_role('Admin'), message=message, related_type='UserProfile', related_id=profile_obj.id, related_url=reverse('admin_users'), action_required=True)
 
             return redirect('admin_users')
 

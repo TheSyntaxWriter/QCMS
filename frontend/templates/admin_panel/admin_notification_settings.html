@@ -1,0 +1,34 @@
+{% extends 'admin_panel/admin_base.html' %}
+{% block topbar_title %}Notification Center{% endblock %}
+{% block topbar_welcome %}Control Panel{% endblock %}
+{% block content %}
+<style>
+.ns-layout{display:grid;gap:18px}.ns-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:22px;box-shadow:0 4px 15px rgba(15,23,42,.06)}.ns-card h2{font-size:17px;margin:0 0 6px}.ns-card>p{color:#64748b;margin:0 0 18px;font-size:13px}.ns-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.ns-toggle{display:flex;align-items:center;gap:9px}.ns-field{display:grid;gap:7px}.ns-field label{font-size:12px;font-weight:700;color:#334155}.ns-field input,.ns-field select{height:38px;padding:0 10px}.ns-colors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.ns-color{display:flex;align-items:center;gap:9px}.ns-color input{width:44px;height:38px;padding:2px}.ns-events{width:100%;border-collapse:collapse}.ns-events th,.ns-events td{padding:11px 9px;text-align:left;border-bottom:1px solid #e5e7eb;font-size:12px}.ns-events th{background:#f8fafc;color:#334155}.ns-actions{display:flex;justify-content:flex-end;position:sticky;bottom:12px}.ns-save{height:40px;border:0;border-radius:8px;padding:0 18px;background:var(--color-button-primary);color:#fff;font-weight:700;cursor:pointer}@media(max-width:800px){.ns-grid,.ns-colors{grid-template-columns:1fr}.ns-card{overflow-x:auto}.ns-actions{position:static}.ns-save{width:100%}}
+</style>
+{% if messages %}{% for message in messages %}<div class="alert-inline">{{ message }}</div>{% endfor %}{% endif %}
+<form method="post" class="ns-layout">{% csrf_token %}
+  <section class="ns-card"><h2>General Settings</h2><p>Configure the in-app bell, popups, sound, and retention policy.</p>
+    <div class="ns-grid">
+      <label class="ns-toggle"><input type="checkbox" name="enable_notifications" {% if settings.enable_notifications %}checked{% endif %}> Enable Notifications</label>
+      <label class="ns-toggle"><input type="checkbox" name="enable_bell" {% if settings.enable_bell %}checked{% endif %}> Enable Bell</label>
+      <label class="ns-toggle"><input type="checkbox" name="enable_popups" {% if settings.enable_popups %}checked{% endif %}> Enable Popup Notifications</label>
+      <label class="ns-toggle"><input type="checkbox" name="enable_sound" {% if settings.enable_sound %}checked{% endif %}> Enable Sound</label>
+      <div class="ns-field"><label for="retentionDays">Notification Retention Days</label><input id="retentionDays" type="number" min="1" max="3650" name="retention_days" value="{{ settings.retention_days }}"></div>
+    </div>
+  </section>
+  <section class="ns-card"><h2>Priority Settings</h2><p>Colors are applied consistently to the drawer and popup notifications.</p>
+    <div class="ns-colors">
+      <div class="ns-field"><label>Low Color</label><div class="ns-color"><input type="color" name="low_color" value="{{ settings.low_color }}"><span>{{ settings.low_color }}</span></div></div>
+      <div class="ns-field"><label>Medium Color</label><div class="ns-color"><input type="color" name="medium_color" value="{{ settings.medium_color }}"><span>{{ settings.medium_color }}</span></div></div>
+      <div class="ns-field"><label>High Color</label><div class="ns-color"><input type="color" name="high_color" value="{{ settings.high_color }}"><span>{{ settings.high_color }}</span></div></div>
+      <div class="ns-field"><label>Critical Color</label><div class="ns-color"><input type="color" name="critical_color" value="{{ settings.critical_color }}"><span>{{ settings.critical_color }}</span></div></div>
+    </div>
+  </section>
+  <section class="ns-card"><h2>Event Settings</h2><p>Control the availability, priority, and popup behavior of each Phase 1 event.</p>
+    <table class="ns-events"><thead><tr><th>Event</th><th>Enabled</th><th>Priority</th><th>Popup</th></tr></thead><tbody>
+    {% for key, event in event_settings.items %}<tr><td><strong>{{ event.name }}</strong><br><small>{{ key }}</small></td><td><input type="checkbox" name="event_{{ key }}_enabled" {% if event.enabled %}checked{% endif %}></td><td><select name="event_{{ key }}_priority">{% for value, label in priority_choices %}<option value="{{ value }}" {% if event.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td><td><input type="checkbox" name="event_{{ key }}_popup" {% if event.popup %}checked{% endif %}></td></tr>{% endfor %}
+    </tbody></table>
+  </section>
+  <div class="ns-actions"><button type="submit" class="ns-save">Save Notification Settings</button></div>
+</form>
+{% endblock %}
