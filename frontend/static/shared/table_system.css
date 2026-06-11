@@ -54,11 +54,16 @@ table.standard-table {
 }
 .actions-column {
   white-space: nowrap;
+  text-align: left;
+}
+.response-actions-cell {
+  text-align: left;
 }
 .action-buttons,
 .response-action-group {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   flex-wrap: nowrap;
   white-space: nowrap;
@@ -127,6 +132,7 @@ table.standard-table {
 .action-buttons,
 .response-action-group {
   align-items: center;
+  justify-content: flex-start;
 }
 .btn {
   display: inline-flex;

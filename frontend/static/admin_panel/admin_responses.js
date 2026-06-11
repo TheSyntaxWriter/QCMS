@@ -7,6 +7,14 @@
 
   const deletePopup = document.getElementById('deletePopup');
   const deleteResponseIdInput = document.getElementById('deleteResponseId');
+  const decisionModal = document.getElementById('responseDecisionModal');
+  const decisionTitle = document.getElementById('responseDecisionTitle');
+  const decisionLabel = document.getElementById('responseDecisionLabel');
+  const decisionComment = document.getElementById('responseDecisionComment');
+  const decisionError = document.getElementById('responseDecisionError');
+  const decisionConfirm = document.getElementById('confirmResponseDecision');
+  const decisionClose = document.getElementById('closeResponseDecision');
+  const decisionCancel = document.getElementById('cancelResponseDecision');
 
   const permissionEditPopup = document.getElementById('permissionEditPopup');
   const permissionPopupTitle = document.getElementById('permissionPopupTitle');
@@ -37,10 +45,10 @@
     { key: 'approve', label: 'Approve' },
     { key: 'reject', label: 'Reject' },
     { key: 'delete', label: 'Delete' },
-    { key: 'toggle', label: 'Toggle' },
   ];
 
   let editingRole = null;
+  let pendingDecision = null;
 
   function parseArraySafe(value, fallback = []) {
     if (Array.isArray(value)) return value;
@@ -143,6 +151,92 @@
 
       container.appendChild(item);
     });
+
+    const history = document.createElement('section');
+    history.className = 'response-review-history';
+    const historyTitle = document.createElement('h4');
+    historyTitle.textContent = 'Approval and Rejection History';
+    history.appendChild(historyTitle);
+
+    if (!(data.decisions || []).length) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No approval or rejection comments recorded.';
+      history.appendChild(empty);
+    }
+
+    (data.decisions || []).forEach((decision) => {
+      const item = document.createElement('div');
+      item.className = `response-review-item ${decision.action === 'approve' ? 'is-approved' : 'is-rejected'}`;
+
+      const heading = document.createElement('strong');
+      heading.textContent = `${decision.is_override ? 'Override ' : ''}${decision.action_label || decision.action || 'Decision'}`;
+      item.appendChild(heading);
+
+      const meta = document.createElement('p');
+      meta.className = 'response-review-meta';
+      meta.textContent = `${decision.actor || 'Unknown'} (${decision.actor_role || 'Unknown role'}) - ${decision.created_at || ''}`;
+      item.appendChild(meta);
+
+      const comment = document.createElement('p');
+      comment.className = 'response-review-comment';
+      comment.textContent = decision.comment || 'No comment provided.';
+      item.appendChild(comment);
+      history.appendChild(item);
+    });
+
+    container.appendChild(history);
+  }
+
+  function closeDecisionModal() {
+    decisionModal?.classList.remove('is-open');
+    pendingDecision = null;
+    if (decisionComment) decisionComment.value = '';
+    if (decisionError) decisionError.textContent = '';
+  }
+
+  function openDecisionModal(action, responseId, label) {
+    pendingDecision = { action, responseId };
+    const isReject = action === 'reject';
+    if (decisionTitle) decisionTitle.textContent = label || (isReject ? 'Reject Response' : 'Approve Response');
+    if (decisionLabel) decisionLabel.textContent = isReject ? 'Rejection reason (required)' : 'Approval comment (optional)';
+    if (decisionComment) {
+      decisionComment.value = '';
+      decisionComment.required = isReject;
+      decisionComment.placeholder = isReject ? 'Explain why this response is being rejected.' : 'Add an optional approval comment.';
+    }
+    if (decisionError) decisionError.textContent = '';
+    decisionModal?.classList.add('is-open');
+    decisionComment?.focus();
+  }
+
+  async function submitDecision() {
+    if (!pendingDecision) return;
+    const comment = decisionComment?.value.trim() || '';
+    if (pendingDecision.action === 'reject' && !comment) {
+      decisionError.textContent = 'Rejection reason is required.';
+      decisionComment?.focus();
+      return;
+    }
+
+    decisionConfirm.disabled = true;
+    const fd = new FormData();
+    fd.append('action', pendingDecision.action);
+    fd.append('response_id', pendingDecision.responseId);
+    fd.append('comment', comment);
+    fd.append('csrfmiddlewaretoken', cfg.csrfToken);
+    try {
+      const res = await fetch(cfg.actionUrl, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        decisionError.textContent = data.error || 'Unable to update this response.';
+        return;
+      }
+      location.reload();
+    } catch (_error) {
+      decisionError.textContent = 'Unable to update this response.';
+    } finally {
+      decisionConfirm.disabled = false;
+    }
   }
 
   function openPermissionPopup(role) {
@@ -226,6 +320,9 @@
   permissionPopupClose?.addEventListener('click', closePermissionPopup);
   permissionPopupCancel?.addEventListener('click', closePermissionPopup);
   permissionPopupSave?.addEventListener('click', saveRolePermissions);
+  decisionClose?.addEventListener('click', closeDecisionModal);
+  decisionCancel?.addEventListener('click', closeDecisionModal);
+  decisionConfirm?.addEventListener('click', submitDecision);
 
   function closeDeletePopup() {
     if (deletePopup) {
@@ -260,13 +357,8 @@
         }
         return;
       }
-      if (['approve','reject','toggle'].includes(action)) {
-        const fd = new FormData();
-        fd.append('action', action);
-        fd.append('response_id', responseId);
-        fd.append('csrfmiddlewaretoken', cfg.csrfToken);
-        await fetch(cfg.actionUrl, { method: 'POST', body: fd });
-        location.reload();
+      if (['approve','reject'].includes(action)) {
+        openDecisionModal(action, responseId, btn.textContent.trim());
       }
     };
   });
@@ -289,12 +381,16 @@
     if (event.target === permissionEditPopup) {
       closePermissionPopup();
     }
+    if (event.target === decisionModal) {
+      closeDecisionModal();
+    }
   };
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       closeDeletePopup();
       closePermissionPopup();
+      closeDecisionModal();
     }
   });
 

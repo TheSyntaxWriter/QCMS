@@ -16,7 +16,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse
 from PIL import Image
 
-from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, UserProfile
+from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, ResponseDecision, UserProfile
 from .common import get_user_profile, redirect_for_profile
 from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
@@ -95,6 +95,8 @@ def my_submissions(request):
         return redirect_for_profile(profile)
 
     visible_columns, allowed_actions = get_role_permission_config(profile.role)
+    if profile.role == 'User' and 'view' not in allowed_actions:
+        allowed_actions = [*allowed_actions, 'view']
     responses = Paginator(responses_for_profile(profile, request.user).order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
     for response in responses.object_list:
         response.workflow_allowed_actions = effective_allowed_actions_for_response(allowed_actions, response, profile, request.user)
@@ -374,12 +376,24 @@ def user_submission_action(request):
         if not is_action_permitted_for_response(action, response, profile, request.user):
             return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action in {'approve', 'reject'}:
+            comment = (request.POST.get('comment') or '').strip()
+            if action == 'reject' and not comment:
+                return JsonResponse({'ok': False, 'error': 'Rejection reason is required.'}, status=400)
             decision = evaluate_status_action(response.status, action)
             if not decision.allowed:
                 return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
-            response.status = decision.next_status
-            response.updated_by = request.user
-            response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            with transaction.atomic():
+                response.status = decision.next_status
+                response.updated_by = request.user
+                response.save(update_fields=['status', 'updated_by', 'updated_at'])
+                ResponseDecision.objects.create(
+                    response=response,
+                    action=action,
+                    comment=comment,
+                    actor=request.user,
+                    actor_role=profile.role,
+                    is_override=profile.role == 'Management',
+                )
             return JsonResponse({'ok': True, 'status': response.status})
         return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)
 
@@ -390,7 +404,7 @@ def user_submission_action(request):
 
     response = responses_for_profile(profile, request.user).select_related(
         'checklist', 'project', 'department', 'submitted_by',
-    ).prefetch_related('answers__question').filter(id=response_id).first()
+    ).prefetch_related('answers__question', 'decisions__actor').filter(id=response_id).first()
     if not response:
         return JsonResponse({'ok': False}, status=404)
 
@@ -404,6 +418,15 @@ def user_submission_action(request):
             'answer_text': answer.answer_text,
             'file_url': reverse('checklist_answer_download', args=[answer.id]) if answer.file else '',
         } for answer in response.answers.all()],
+        'decisions': [{
+            'action': item.action,
+            'action_label': item.get_action_display(),
+            'comment': item.comment,
+            'actor': item.actor.get_full_name() or item.actor.username if item.actor else 'Deleted user',
+            'actor_role': item.actor_role,
+            'is_override': item.is_override,
+            'created_at': item.created_at.strftime('%d-%m-%Y %H:%M'),
+        } for item in response.decisions.all()],
     })
 
 

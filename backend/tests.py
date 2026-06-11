@@ -1,6 +1,7 @@
 import json
 from io import BytesIO
 
+from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import User
@@ -19,6 +20,7 @@ from .models import (
     Department,
     Project,
     Question,
+    ResponseDecision,
     RolePermission,
     Section,
     UserProfile,
@@ -392,12 +394,262 @@ class WorkflowPhase1Tests(TestCase):
         self.client.force_login(management)
         result = self.client.post(
             reverse("user_submission_action"),
-            {"action": "reject", "response_id": response_obj.id},
+            {"action": "reject", "response_id": response_obj.id, "comment": "Management escalation"},
         )
 
         self.assertEqual(result.status_code, 200)
         response_obj.refresh_from_db()
         self.assertEqual(response_obj.status, ResponseStatus.REJECTED)
+        decision = response_obj.decisions.get()
+        self.assertEqual(decision.comment, "Management escalation")
+        self.assertTrue(decision.is_override)
+
+    def test_hod_rejection_requires_and_records_reason(self):
+        assigned_hod = User.objects.create_user(username="rejecting_hod", password="pass12345")
+        UserProfile.objects.create(user=assigned_hod, role="HOD", department=self.department)
+        RolePermission.objects.create(role="HOD", visible_columns=["actions"], allowed_actions=["view", "approve", "reject"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        response_obj.hod = assigned_hod
+        response_obj.save(update_fields=["hod"])
+        self.client.force_login(assigned_hod)
+
+        result = self.client.post(
+            reverse("user_submission_action"),
+            {"action": "reject", "response_id": response_obj.id, "comment": "Evidence is incomplete."},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.REJECTED)
+        decision = response_obj.decisions.get()
+        self.assertEqual(decision.action, ResponseDecision.ACTION_REJECT)
+        self.assertEqual(decision.comment, "Evidence is incomplete.")
+        self.assertEqual(decision.actor, assigned_hod)
+        self.assertFalse(decision.is_override)
+
+    def test_hod_rejection_without_reason_fails(self):
+        assigned_hod = User.objects.create_user(username="blank_reason_hod", password="pass12345")
+        UserProfile.objects.create(user=assigned_hod, role="HOD", department=self.department)
+        RolePermission.objects.create(role="HOD", visible_columns=["actions"], allowed_actions=["view", "approve", "reject"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        response_obj.hod = assigned_hod
+        response_obj.save(update_fields=["hod"])
+        self.client.force_login(assigned_hod)
+
+        result = self.client.post(
+            reverse("user_submission_action"),
+            {"action": "reject", "response_id": response_obj.id, "comment": "   "},
+        )
+
+        self.assertEqual(result.status_code, 400)
+        self.assertEqual(result.json()["error"], "Rejection reason is required.")
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.PENDING_APPROVAL)
+        self.assertFalse(response_obj.decisions.exists())
+
+    def test_reject_without_reason_fails_model_validation(self):
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+
+        with self.assertRaises(ValidationError):
+            ResponseDecision.objects.create(
+                response=response_obj,
+                action=ResponseDecision.ACTION_REJECT,
+                comment="   ",
+                actor=self.admin_user,
+                actor_role="Admin",
+                is_override=True,
+            )
+
+        self.assertFalse(response_obj.decisions.exists())
+
+    def test_response_decision_cannot_be_modified_after_creation(self):
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        decision = ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            comment="Original comment",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+
+        decision.comment = "Changed comment"
+        with self.assertRaises(ValidationError):
+            decision.save()
+        with self.assertRaises(ValidationError):
+            ResponseDecision.objects.filter(id=decision.id).update(comment="Bulk change")
+
+        decision.refresh_from_db()
+        self.assertEqual(decision.comment, "Original comment")
+
+    def test_bulk_create_conflict_update_cannot_overwrite_decision(self):
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        existing = ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            comment="Original audit record",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+        attempted_overwrite = ResponseDecision(
+            id=existing.id,
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            comment="Overwritten audit record",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+
+        with self.assertRaises(ValidationError):
+            ResponseDecision.objects.bulk_create(
+                [attempted_overwrite],
+                update_conflicts=True,
+                update_fields=["comment"],
+                unique_fields=["id"],
+            )
+
+        existing.refresh_from_db()
+        self.assertEqual(existing.comment, "Original audit record")
+
+        created = ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            comment="New audit record",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+        self.assertNotEqual(created.id, existing.id)
+        self.assertEqual(ResponseDecision.objects.filter(response=response_obj).count(), 2)
+
+    def test_response_decision_cannot_be_deleted_through_application_paths(self):
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        decision = ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            comment="Permanent history",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+
+        with self.assertRaises(ValidationError):
+            decision.delete()
+        with self.assertRaises(ValidationError):
+            ResponseDecision.objects.filter(id=decision.id).delete()
+
+        self.client.force_login(self.admin_user)
+        result = self.client.post(
+            reverse("admin_response_action"),
+            {"action": "delete", "response_id": response_obj.id},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(result.status_code, 400)
+        self.assertTrue(ResponseDecision.objects.filter(id=decision.id).exists())
+        self.assertTrue(ChecklistResponse.objects.filter(id=response_obj.id).exists())
+
+    def test_response_decision_admin_is_read_only(self):
+        model_admin = admin.site._registry[ResponseDecision]
+
+        self.assertFalse(model_admin.has_add_permission(None))
+        self.assertFalse(model_admin.has_change_permission(None))
+        self.assertFalse(model_admin.has_delete_permission(None))
+
+    def test_hod_approval_records_optional_comment(self):
+        assigned_hod = User.objects.create_user(username="commenting_hod", password="pass12345")
+        UserProfile.objects.create(user=assigned_hod, role="HOD", department=self.department)
+        RolePermission.objects.create(role="HOD", visible_columns=["actions"], allowed_actions=["view", "approve", "reject"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        response_obj.hod = assigned_hod
+        response_obj.save(update_fields=["hod"])
+        self.client.force_login(assigned_hod)
+
+        result = self.client.post(
+            reverse("user_submission_action"),
+            {"action": "approve", "response_id": response_obj.id, "comment": "Reviewed and complete."},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.APPROVED)
+        decision = response_obj.decisions.get()
+        self.assertEqual(decision.action, ResponseDecision.ACTION_APPROVE)
+        self.assertEqual(decision.comment, "Reviewed and complete.")
+
+    def test_admin_override_records_comment(self):
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        self.client.force_login(self.admin_user)
+
+        result = self.client.post(
+            reverse("admin_response_action"),
+            {"action": "approve", "response_id": response_obj.id, "comment": "Administrative override."},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.APPROVED)
+        decision = response_obj.decisions.get()
+        self.assertEqual(decision.comment, "Administrative override.")
+        self.assertEqual(decision.actor_role, "Admin")
+        self.assertTrue(decision.is_override)
+
+    def test_owner_can_view_all_decision_comments(self):
+        RolePermission.objects.create(role="User", visible_columns=["actions"], allowed_actions=[])
+        response_obj = self.create_response(ResponseStatus.REJECTED)
+        ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_REJECT,
+            comment="Please correct the date.",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+        ResponseDecision.objects.create(
+            response=response_obj,
+            action=ResponseDecision.ACTION_APPROVE,
+            comment="Correction verified.",
+            actor=self.admin_user,
+            actor_role="Admin",
+            is_override=True,
+        )
+        self.client.force_login(self.owner)
+
+        result = self.client.get(
+            reverse("user_submission_action"),
+            {"action": "view", "response_id": response_obj.id},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        comments = [item["comment"] for item in result.json()["decisions"]]
+        self.assertEqual(comments, ["Please correct the date.", "Correction verified."])
+
+        page = self.client.get(reverse("my_submissions"))
+        self.assertContains(page, 'data-action="view"')
+
+    def test_toggle_action_is_removed_from_response_ui_and_backend(self):
+        RolePermission.objects.create(
+            role="Management",
+            visible_columns=["actions"],
+            allowed_actions=["view", "toggle"],
+        )
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        self.client.force_login(self.admin_user)
+
+        page = self.client.get(reverse("admin_responses"))
+        action_result = self.client.post(
+            reverse("admin_response_action"),
+            {"action": "toggle", "response_id": response_obj.id},
+        )
+
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, 'data-action="toggle"')
+        self.assertNotContains(page, '"toggle"')
+        self.assertEqual(action_result.status_code, 403)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.PENDING_APPROVAL)
 
     def test_admin_response_table_labels_override_actions(self):
         self.create_response(ResponseStatus.PENDING_APPROVAL)

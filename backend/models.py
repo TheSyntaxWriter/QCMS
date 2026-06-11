@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import RegexValidator
 from .workflow_service import ResponseStatus
@@ -214,6 +215,62 @@ class ChecklistResponse(models.Model):
 
     def __str__(self):
         return f"{self.checklist.checklist_id} - {self.submitted_by}"
+
+
+class ImmutableDecisionQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValidationError('Response decisions are append-only and cannot be modified.')
+
+    def delete(self):
+        raise ValidationError('Response decisions are append-only and cannot be deleted.')
+
+
+class ResponseDecisionManager(models.Manager.from_queryset(ImmutableDecisionQuerySet)):
+    def bulk_create(self, objs, **kwargs):
+        if kwargs.get('update_conflicts'):
+            raise ValidationError('Response decisions are append-only and cannot use conflict updates.')
+        for obj in objs:
+            obj.full_clean()
+        return super().bulk_create(objs, **kwargs)
+
+
+class ResponseDecision(models.Model):
+    ACTION_APPROVE = 'approve'
+    ACTION_REJECT = 'reject'
+    ACTION_CHOICES = (
+        (ACTION_APPROVE, 'Approve'),
+        (ACTION_REJECT, 'Reject'),
+    )
+
+    response = models.ForeignKey(ChecklistResponse, on_delete=models.PROTECT, related_name='decisions')
+    action = models.CharField(max_length=16, choices=ACTION_CHOICES)
+    comment = models.TextField(blank=True, default='')
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='response_decisions')
+    actor_role = models.CharField(max_length=32, blank=True, default='')
+    is_override = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    objects = ResponseDecisionManager()
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f"{self.response_id} - {self.get_action_display()}"
+
+    def clean(self):
+        super().clean()
+        if self.action == self.ACTION_REJECT and not (self.comment or '').strip():
+            raise ValidationError({'comment': 'Rejection reason is required.'})
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValidationError('Response decisions are append-only and cannot be modified.')
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError('Response decisions are append-only and cannot be deleted.')
 
 
 class ChecklistAnswer(models.Model):

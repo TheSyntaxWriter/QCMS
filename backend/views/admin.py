@@ -24,6 +24,7 @@ from ..models import (
     ChecklistDefinition,
     ChecklistQuestion,
     ChecklistResponse,
+    ResponseDecision,
     ChecklistType,
     Department,
     Project,
@@ -695,13 +696,14 @@ def admin_responses(request):
 
     active_projects = Project.objects.filter(is_active=True).order_by('name')
 
-    role_permissions = {
-        permission.role: {
-            'visible_columns': permission.visible_columns,
+    role_permissions = {}
+    for permission in RolePermission.objects.all():
+        normalized_columns, normalized_actions = get_role_permission_config(permission.role)
+        role_permissions[permission.role] = {
+            'visible_columns': normalized_columns,
             'selected_projects': permission.selected_projects,
-            'allowed_actions': permission.allowed_actions,
-        } for permission in RolePermission.objects.all()
-    }
+            'allowed_actions': normalized_actions,
+        }
 
     return render(request, 'admin_panel/admin_responses.html', {
         'sidebar_menu': _admin_sidebar_menu(),
@@ -1048,38 +1050,45 @@ def admin_response_action(request):
         if action not in {'save_permissions'} and not is_action_permitted_for_response(action, response, profile, request.user):
             return JsonResponse({'ok': False, 'error': 'Action blocked by workflow policy'}, status=403)
         if action == 'delete':
+            if response.decisions.exists():
+                return JsonResponse({
+                    'ok': False,
+                    'error': 'Responses with approval history cannot be deleted.',
+                }, status=400)
             write_activity_log(action_type='Response Deleted', module_name='Response', description=f'Response deleted: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
             response.delete()
             if is_ajax:
                 return JsonResponse({'ok': True})
             return redirect('admin_responses')
-        if action == 'toggle':
-            decision = evaluate_status_action(response.status, action)
-            if not decision.allowed:
-                return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
-            response.status = decision.next_status
-            response.updated_by = request.user
-            response.save(update_fields=['status', 'updated_by', 'updated_at'])
-            write_activity_log(action_type='Response Reopened' if response.status == ResponseStatus.PENDING else 'Response Rejected', module_name='Response', description=f'Response status toggled: {response.id} -> {response.status}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
-            if is_ajax:
-                return JsonResponse({'ok': True, 'status': response.status})
-            return redirect('admin_responses')
         if action == 'edit':
             return JsonResponse({'ok': True})
         if action in {'approve', 'reject'}:
+            comment = (request.POST.get('comment') or '').strip()
+            if action == 'reject' and not comment:
+                return JsonResponse({'ok': False, 'error': 'Rejection reason is required.'}, status=400)
             decision = evaluate_status_action(response.status, action)
             if not decision.allowed:
                 return JsonResponse({'ok': False, 'error': decision.reason}, status=400)
-            response.status = decision.next_status
-            response.updated_by = request.user
-            response.save(update_fields=['status', 'updated_by', 'updated_at'])
+            with transaction.atomic():
+                response.status = decision.next_status
+                response.updated_by = request.user
+                response.save(update_fields=['status', 'updated_by', 'updated_at'])
+                ResponseDecision.objects.create(
+                    response=response,
+                    action=action,
+                    comment=comment,
+                    actor=request.user,
+                    actor_role=profile.role,
+                    is_override=True,
+                )
             write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
-            return JsonResponse({'ok': True})
+            return JsonResponse({'ok': True, 'status': response.status})
         return JsonResponse({'ok': False, 'error': 'Invalid action'}, status=400)
 
     if request.GET.get('action') == 'view':
         response = ChecklistResponse.objects.select_related('checklist', 'project', 'department', 'submitted_by').prefetch_related(
             'answers__question',
+            'decisions__actor',
         ).filter(id=request.GET.get('response_id')).first()
         if not response:
             return JsonResponse({'ok': False}, status=404)
@@ -1092,6 +1101,15 @@ def admin_response_action(request):
                 'answer_text': answer.answer_text,
                 'file_url': reverse('checklist_answer_download', args=[answer.id]) if answer.file else '',
             } for answer in response.answers.all()],
+            'decisions': [{
+                'action': item.action,
+                'action_label': item.get_action_display(),
+                'comment': item.comment,
+                'actor': item.actor.get_full_name() or item.actor.username if item.actor else 'Deleted user',
+                'actor_role': item.actor_role,
+                'is_override': item.is_override,
+                'created_at': item.created_at.strftime('%d-%m-%Y %H:%M'),
+            } for item in response.decisions.all()],
         })
 
     return JsonResponse({'ok': False}, status=400)

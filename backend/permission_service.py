@@ -8,7 +8,7 @@ VALID_COLUMNS = [
     'project', 'department', 'hod_name', 'submission_datetime', 'status',
     'last_updated_by', 'last_updated', 'actions',
 ]
-VALID_ACTIONS = ['view', 'edit', 'approve', 'reject', 'delete', 'toggle']
+VALID_ACTIONS = ['view', 'edit', 'approve', 'reject', 'delete']
 
 ROLE_SCOPED_ACTIONS = {
     'Admin': set(VALID_ACTIONS),
@@ -83,8 +83,6 @@ def is_action_permitted_for_response(action, response, profile, user):
         return True
     if action == 'delete':
         return profile.role == 'Admin'
-    if action == 'toggle':
-        return profile.role == 'Admin' and evaluate_status_action(response.status, 'toggle').allowed
     if action == 'edit':
         return can_edit_response(response, user, profile.role)
     if action == 'approve':

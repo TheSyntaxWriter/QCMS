@@ -32,13 +32,12 @@
           {% if 'last_updated_by' in visible_columns %}<td>{% if response.updated_by %}{{ response.updated_by.username }}{% else %}-{% endif %}</td>{% endif %}
           {% if 'last_updated' in visible_columns %}<td>{{ response.updated_at|date:'d-m-Y H:i' }}</td>{% endif %}
           {% if 'actions' in visible_columns %}
-          <td>
+          <td class="actions-column response-actions-cell">
             <div class="response-action-group">
               {% if 'view' in response.workflow_allowed_actions %}<button class="btn table-action-btn btn-view response-action" data-action="view" data-id="{{ response.id }}">View</button>{% endif %}
               {% if 'edit' in response.workflow_allowed_actions %}<button class="btn table-action-btn btn-edit response-action" data-action="edit" data-id="{{ response.id }}" data-checklist-id="{{ response.checklist.id }}">Edit</button>{% endif %}
               {% if 'approve' in response.workflow_allowed_actions %}<button class="btn table-action-btn btn-add response-action" data-action="approve" data-id="{{ response.id }}">{% if current_role == 'Management' or current_role == 'Admin' %}Override Approve{% else %}Approve{% endif %}</button>{% endif %}
               {% if 'reject' in response.workflow_allowed_actions %}<button class="btn table-action-btn btn-delete response-action" data-action="reject" data-id="{{ response.id }}">{% if current_role == 'Management' or current_role == 'Admin' %}Override Reject{% else %}Reject{% endif %}</button>{% endif %}
-              {% if 'toggle' in response.workflow_allowed_actions %}<button class="btn table-action-btn btn-view response-action" data-action="toggle" data-id="{{ response.id }}">Toggle</button>{% endif %}
               {% if 'delete' in response.workflow_allowed_actions %}<button class="btn table-action-btn btn-delete delete-btn" data-response-id="{{ response.id }}">Delete</button>{% endif %}
               {% if response.workflow_allowed_actions|length == 0 %}<span>-</span>{% endif %}
             </div>

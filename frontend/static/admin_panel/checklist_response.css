@@ -137,6 +137,60 @@
   padding: 16px;
   overflow: auto;
 }
+.response-decision-modal-content {
+  width: min(92vw, 520px);
+}
+.response-decision-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.response-decision-comment {
+  width: 100%;
+  min-height: 120px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+}
+.response-decision-error {
+  min-height: 20px;
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+.response-decision-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.response-review-history {
+  margin-top: 20px;
+}
+.response-review-history h4 {
+  margin-bottom: 10px;
+}
+.response-review-item {
+  border-left: 4px solid #64748b;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+}
+.response-review-item.is-approved {
+  border-left-color: #15803d;
+}
+.response-review-item.is-rejected {
+  border-left-color: #b91c1c;
+}
+.response-review-meta,
+.response-review-comment {
+  margin: 4px 0 0;
+}
 .builder-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

@@ -35,7 +35,6 @@ STATUS_TRANSITIONS = {
 ACTION_TO_TARGET_STATUS = {
     'approve': ResponseStatus.APPROVED,
     'reject': ResponseStatus.REJECTED,
-    'toggle': None,  # computed dynamically
 }
 
 
@@ -50,20 +49,11 @@ def can_transition_response(current_status: str, target_status: str) -> bool:
     return target_status in STATUS_TRANSITIONS.get(current_status, set())
 
 
-def resolve_toggle_target(current_status: str) -> str | None:
-    # Preserve existing behavior while centralizing it.
-    if current_status == ResponseStatus.REJECTED:
-        return ResponseStatus.PENDING
-    return ResponseStatus.REJECTED
-
-
 def evaluate_status_action(current_status: str, action: str) -> WorkflowDecision:
     if action not in ACTION_TO_TARGET_STATUS:
         return WorkflowDecision(False, reason='Unsupported status action')
 
     target = ACTION_TO_TARGET_STATUS[action]
-    if action == 'toggle':
-        target = resolve_toggle_target(current_status)
 
     if not target:
         return WorkflowDecision(False, reason='Unable to resolve target status')
