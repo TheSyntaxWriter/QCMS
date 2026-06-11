@@ -20,9 +20,12 @@
     </div>
   </div>
 
-  <form method="post" enctype="multipart/form-data" class="premium-form">
+  <form method="post" enctype="multipart/form-data" class="premium-form" id="checklistFillForm" data-geolocation-enabled="{% if geolocation_enabled %}true{% else %}false{% endif %}">
     {% csrf_token %}
     {% if editing_response %}<input type="hidden" name="response_id" value="{{ editing_response.id }}" />{% endif %}
+    <input type="hidden" name="latitude" id="submissionLatitude" />
+    <input type="hidden" name="longitude" id="submissionLongitude" />
+    <input type="hidden" name="accuracy" id="submissionAccuracy" />
 
     {% for section_name, section_questions in sectioned_questions %}
       <section class="q-section">
@@ -78,6 +81,11 @@
       <button class="btn wip" type="submit" name="workflow_action" value="save_wip">Save as WIP</button>
       <button class="btn submit" type="submit" name="workflow_action" value="submit">Submit for Approval</button>
     </div>
+    <p id="geolocationStatus" class="geolocation-status" aria-live="polite"></p>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'user_panel/checklist_fill.js' %}"></script>
 {% endblock %}

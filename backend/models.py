@@ -1,9 +1,71 @@
+import math
+from decimal import Decimal, InvalidOperation
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import RegexValidator
 from .workflow_service import ResponseStatus
+
+
+def validate_geolocation_values(latitude=None, longitude=None, accuracy=None):
+    errors = {}
+
+    for field_name, value, minimum, maximum in (
+        ('latitude', latitude, Decimal('-90'), Decimal('90')),
+        ('longitude', longitude, Decimal('-180'), Decimal('180')),
+    ):
+        if value is None:
+            continue
+        try:
+            numeric_value = value if isinstance(value, Decimal) else Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            errors[field_name] = 'Enter a valid finite coordinate.'
+            continue
+        if not numeric_value.is_finite() or not minimum <= numeric_value <= maximum:
+            errors[field_name] = f'Ensure this value is between {minimum} and {maximum}.'
+
+    if accuracy is not None:
+        try:
+            numeric_accuracy = float(accuracy)
+        except (TypeError, ValueError, OverflowError):
+            errors['accuracy'] = 'Enter a valid finite accuracy.'
+        else:
+            if not math.isfinite(numeric_accuracy) or numeric_accuracy < 0:
+                errors['accuracy'] = 'Ensure accuracy is a finite value greater than or equal to 0.'
+
+    if errors:
+        raise ValidationError(errors)
+
+
+class GeolocationValidatedQuerySet(models.QuerySet):
+    GEOLOCATION_FIELDS = {'latitude', 'longitude', 'accuracy'}
+
+    @staticmethod
+    def _validate_object(obj):
+        validate_geolocation_values(obj.latitude, obj.longitude, obj.accuracy)
+
+    def update(self, **kwargs):
+        geolocation_values = {
+            field: kwargs[field]
+            for field in self.GEOLOCATION_FIELDS
+            if field in kwargs
+        }
+        if geolocation_values:
+            validate_geolocation_values(**geolocation_values)
+        return super().update(**kwargs)
+
+    def bulk_create(self, objs, **kwargs):
+        for obj in objs:
+            self._validate_object(obj)
+        return super().bulk_create(objs, **kwargs)
+
+    def bulk_update(self, objs, fields, **kwargs):
+        if self.GEOLOCATION_FIELDS.intersection(fields):
+            for obj in objs:
+                self._validate_object(obj)
+        return super().bulk_update(objs, fields, **kwargs)
 
 
 # =========================================================
@@ -203,6 +265,12 @@ class ChecklistResponse(models.Model):
     submitted_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='response_updates')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    accuracy = models.FloatField(null=True, blank=True)
+    submission_ip = models.GenericIPAddressField(null=True, blank=True)
+
+    objects = GeolocationValidatedQuerySet.as_manager()
 
     class Meta:
         indexes = [
@@ -215,6 +283,14 @@ class ChecklistResponse(models.Model):
 
     def __str__(self):
         return f"{self.checklist.checklist_id} - {self.submitted_by}"
+
+    def clean(self):
+        super().clean()
+        validate_geolocation_values(self.latitude, self.longitude, self.accuracy)
+
+    def save(self, *args, **kwargs):
+        validate_geolocation_values(self.latitude, self.longitude, self.accuracy)
+        return super().save(*args, **kwargs)
 
 
 class ImmutableDecisionQuerySet(models.QuerySet):
@@ -411,7 +487,11 @@ class AppSettings(models.Model):
                     'layout_width': 'boxed',
                 },
                 'system_preferences': {'timezone': 'UTC', 'date_format': 'YYYY-MM-DD'},
-                'security_settings': {'session_timeout': 30, 'password_rotation_days': 90},
+                'security_settings': {
+                    'session_timeout': 30,
+                    'password_rotation_days': 90,
+                    'geolocation_tracking_enabled': False,
+                },
                 'notification_settings': {'email_alerts': True, 'in_app_alerts': True},
             },
         )

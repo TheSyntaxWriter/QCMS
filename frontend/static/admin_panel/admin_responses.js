@@ -117,6 +117,31 @@
     title.textContent = `${data.checklist_id || ''} - ${data.checklist_name || ''}`;
     container.appendChild(title);
 
+    const location = data.location || {};
+    const locationItem = document.createElement('div');
+    locationItem.className = 'question-item response-location';
+    const locationTitle = document.createElement('strong');
+    locationTitle.textContent = 'Submission Location';
+    locationItem.appendChild(locationTitle);
+    const locationText = document.createElement('p');
+    const hasCoordinates = Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
+    locationText.textContent = hasCoordinates
+      ? `${location.latitude}, ${location.longitude}${Number.isFinite(location.accuracy) ? ` (accuracy ${Math.round(location.accuracy)} m)` : ''}`
+      : 'Coordinates not captured.';
+    locationItem.appendChild(locationText);
+    const ipText = document.createElement('p');
+    ipText.textContent = `Submission IP: ${location.submission_ip || 'Not recorded'}`;
+    locationItem.appendChild(ipText);
+    if (hasCoordinates) {
+      const mapsLink = document.createElement('a');
+      mapsLink.href = `https://www.google.com/maps?q=${encodeURIComponent(`${location.latitude},${location.longitude}`)}`;
+      mapsLink.target = '_blank';
+      mapsLink.rel = 'noopener noreferrer';
+      mapsLink.textContent = 'Open in Google Maps';
+      locationItem.appendChild(mapsLink);
+    }
+    container.appendChild(locationItem);
+
     (data.answers || []).forEach((answer) => {
       const item = document.createElement('div');
       item.className = 'question-item';

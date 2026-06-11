@@ -754,6 +754,10 @@ def admin_control_panel(request):
             app_settings.theme_settings = default_theme
             app_settings.web_app_name = 'QCMS'
             app_settings.general_settings = {}
+            app_settings.security_settings = {
+                **(app_settings.security_settings or {}),
+                'geolocation_tracking_enabled': False,
+            }
             app_settings.logo = None
             app_settings.favicon = None
             app_settings.save()
@@ -762,6 +766,10 @@ def admin_control_panel(request):
 
         app_settings.web_app_name = (request.POST.get('web_app_name') or '').strip() or 'QCMS'
         app_settings.general_settings = {}
+        app_settings.security_settings = {
+            **(app_settings.security_settings or {}),
+            'geolocation_tracking_enabled': request.POST.get('geolocation_tracking_enabled') == 'on',
+        }
         theme_color = request.POST.get('global_theme_color', '#0b1b68')
         app_settings.theme_settings = {
             'mode': request.POST.get('mode', 'light'),
@@ -1096,6 +1104,12 @@ def admin_response_action(request):
             'checklist_id': response.checklist.checklist_id,
             'checklist_name': response.checklist.name,
             'submitted_by': response.submitted_by.username if response.submitted_by else '',
+            'location': {
+                'latitude': float(response.latitude) if response.latitude is not None else None,
+                'longitude': float(response.longitude) if response.longitude is not None else None,
+                'accuracy': response.accuracy,
+                'submission_ip': response.submission_ip,
+            },
             'answers': [{
                 'question': answer.question.question_text,
                 'answer_text': answer.answer_text,

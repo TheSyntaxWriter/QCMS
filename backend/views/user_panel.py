@@ -1,6 +1,7 @@
 from io import BytesIO
 import base64
 import binascii
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.contrib import messages
@@ -16,7 +17,7 @@ from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse
 from PIL import Image
 
-from ..models import ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, ResponseDecision, UserProfile
+from ..models import AppSettings, ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, ResponseDecision, UserProfile, validate_geolocation_values
 from .common import get_user_profile, redirect_for_profile
 from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
@@ -252,6 +253,28 @@ def _validate_uploaded_files(request, questions):
     return errors
 
 
+def _submission_location(request, enabled):
+    if not enabled:
+        return {'latitude': None, 'longitude': None, 'accuracy': None, 'submission_ip': None}
+
+    location = {
+        'latitude': None,
+        'longitude': None,
+        'accuracy': None,
+        'submission_ip': request.META.get('REMOTE_ADDR'),
+    }
+    try:
+        latitude = Decimal((request.POST.get('latitude') or '').strip())
+        longitude = Decimal((request.POST.get('longitude') or '').strip())
+        accuracy = float((request.POST.get('accuracy') or '').strip())
+        validate_geolocation_values(latitude, longitude, accuracy)
+    except (InvalidOperation, TypeError, ValueError, OverflowError, ValidationError):
+        return location
+
+    location.update(latitude=latitude, longitude=longitude, accuracy=accuracy)
+    return location
+
+
 def user_checklist_fill(request, checklist_id):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -266,6 +289,9 @@ def user_checklist_fill(request, checklist_id):
     )
 
     questions = list(checklist.questions.all().order_by('order', 'id'))
+    geolocation_enabled = bool(
+        (AppSettings.get_solo().security_settings or {}).get('geolocation_tracking_enabled', False)
+    )
 
     editing_response = None
     editing_response_id = request.GET.get('response_id') if request.method == 'GET' else request.POST.get('response_id')
@@ -289,6 +315,10 @@ def user_checklist_fill(request, checklist_id):
     if request.method == 'POST':
         workflow_action = request.POST.get('workflow_action', 'submit')
         target_status = ResponseStatus.WIP if workflow_action == 'save_wip' else ResponseStatus.PENDING_APPROVAL
+        submission_location = _submission_location(
+            request,
+            enabled=geolocation_enabled and target_status == ResponseStatus.PENDING_APPROVAL,
+        )
         upload_errors = _validate_uploaded_files(request, questions)
         required_errors = [] if target_status == ResponseStatus.WIP else _validate_required_questions(request, questions)
         validation_errors = [*upload_errors, *required_errors]
@@ -317,6 +347,7 @@ def user_checklist_fill(request, checklist_id):
                         hod_id=hod_user_id,
                         status=target_status,
                         updated_by=request.user,
+                        **submission_location,
                     )
                 else:
                     response.project = profile.project
@@ -324,7 +355,14 @@ def user_checklist_fill(request, checklist_id):
                     response.hod_id = hod_user_id
                     response.status = target_status
                     response.updated_by = request.user
-                    response.save(update_fields=['project', 'department', 'hod', 'status', 'updated_by', 'updated_at'])
+                    update_fields = ['project', 'department', 'hod', 'status', 'updated_by', 'updated_at']
+                    if target_status == ResponseStatus.PENDING_APPROVAL and geolocation_enabled:
+                        response.latitude = submission_location['latitude']
+                        response.longitude = submission_location['longitude']
+                        response.accuracy = submission_location['accuracy']
+                        response.submission_ip = submission_location['submission_ip']
+                        update_fields.extend(['latitude', 'longitude', 'accuracy', 'submission_ip'])
+                    response.save(update_fields=update_fields)
                 for question in questions:
                     value = _extract_answer(request, question)
                     answer = ChecklistAnswer.objects.filter(response=response, question=question).first() or ChecklistAnswer(response=response, question=question)
@@ -351,6 +389,7 @@ def user_checklist_fill(request, checklist_id):
         'checklist': checklist,
         'sectioned_questions': list(sectioned.items()),
         'editing_response': editing_response,
+        'geolocation_enabled': geolocation_enabled,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
     })
 
@@ -413,6 +452,12 @@ def user_submission_action(request):
         'checklist_id': response.checklist.checklist_id,
         'checklist_name': response.checklist.name,
         'submitted_by': response.submitted_by.username if response.submitted_by else '',
+        'location': {
+            'latitude': float(response.latitude) if response.latitude is not None else None,
+            'longitude': float(response.longitude) if response.longitude is not None else None,
+            'accuracy': response.accuracy,
+            'submission_ip': response.submission_ip,
+        },
         'answers': [{
             'question': answer.question.question_text,
             'answer_text': answer.answer_text,

@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal
 from io import BytesIO
 
 from django.contrib import admin
@@ -11,6 +12,7 @@ from pypdf import PdfWriter
 
 from .upload_validation import MAX_CHECKLIST_UPLOAD_SIZE, validate_branding_upload, validate_checklist_upload
 from .models import (
+    AppSettings,
     Checklist,
     ChecklistAnswer,
     ChecklistDefinition,
@@ -361,6 +363,234 @@ class WorkflowPhase1Tests(TestCase):
         checklist_response = ChecklistResponse.objects.get(submitted_by=self.owner)
         self.assertEqual(checklist_response.hod, assigned_hod)
         self.assertNotEqual(checklist_response.hod, fallback_hod)
+
+    def test_geolocation_tracking_is_disabled_by_default_and_admin_can_enable_it(self):
+        settings_obj = AppSettings.get_solo()
+        self.assertFalse(settings_obj.security_settings.get("geolocation_tracking_enabled", False))
+        self.client.force_login(self.admin_user)
+
+        page = self.client.get(reverse("admin_control_panel"))
+        result = self.client.post(
+            reverse("admin_control_panel"),
+            {
+                "action": "save",
+                "confirm_password": "pass12345",
+                "web_app_name": "QCMS",
+                "global_theme_color": "#0b1b68",
+                "geolocation_tracking_enabled": "on",
+            },
+        )
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Enable Geolocation Tracking")
+        self.assertRedirects(result, reverse("admin_control_panel"))
+        settings_obj.refresh_from_db()
+        self.assertTrue(settings_obj.security_settings["geolocation_tracking_enabled"])
+
+    def test_submit_captures_coordinates_accuracy_and_ip_when_enabled(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.security_settings = {"geolocation_tracking_enabled": True}
+        settings_obj.save(update_fields=["security_settings", "updated_at"])
+        self.client.force_login(self.owner)
+
+        result = self.client.post(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {
+                "workflow_action": "submit",
+                f"q_{self.question.id}": "Located submission",
+                "latitude": "19.076090",
+                "longitude": "72.877426",
+                "accuracy": "24.5",
+            },
+            REMOTE_ADDR="203.0.113.24",
+        )
+
+        self.assertRedirects(result, reverse("my_submissions"))
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.assertEqual(str(response_obj.latitude), "19.076090")
+        self.assertEqual(str(response_obj.longitude), "72.877426")
+        self.assertEqual(response_obj.accuracy, 24.5)
+        self.assertEqual(response_obj.submission_ip, "203.0.113.24")
+
+    def test_submit_succeeds_without_coordinates_when_permission_is_denied(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.security_settings = {"geolocation_tracking_enabled": True}
+        settings_obj.save(update_fields=["security_settings", "updated_at"])
+        self.client.force_login(self.owner)
+
+        result = self.client.post(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {
+                "workflow_action": "submit",
+                f"q_{self.question.id}": "Permission denied submission",
+            },
+            REMOTE_ADDR="203.0.113.25",
+        )
+
+        self.assertRedirects(result, reverse("my_submissions"))
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.assertIsNone(response_obj.latitude)
+        self.assertIsNone(response_obj.longitude)
+        self.assertIsNone(response_obj.accuracy)
+        self.assertEqual(response_obj.submission_ip, "203.0.113.25")
+
+    def test_wip_never_captures_geolocation(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.security_settings = {"geolocation_tracking_enabled": True}
+        settings_obj.save(update_fields=["security_settings", "updated_at"])
+        self.client.force_login(self.owner)
+
+        result = self.client.post(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {
+                "workflow_action": "save_wip",
+                f"q_{self.question.id}": "Draft answer",
+                "latitude": "19.076090",
+                "longitude": "72.877426",
+                "accuracy": "10",
+            },
+            REMOTE_ADDR="203.0.113.26",
+        )
+
+        self.assertRedirects(result, reverse("my_submissions"))
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.assertEqual(response_obj.status, ResponseStatus.WIP)
+        self.assertIsNone(response_obj.latitude)
+        self.assertIsNone(response_obj.longitude)
+        self.assertIsNone(response_obj.accuracy)
+        self.assertIsNone(response_obj.submission_ip)
+
+    def test_invalid_coordinates_are_not_stored(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.security_settings = {"geolocation_tracking_enabled": True}
+        settings_obj.save(update_fields=["security_settings", "updated_at"])
+        self.client.force_login(self.owner)
+
+        result = self.client.post(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {
+                "workflow_action": "submit",
+                f"q_{self.question.id}": "Invalid coordinates",
+                "latitude": "999",
+                "longitude": "not-a-number",
+                "accuracy": "-1",
+            },
+            REMOTE_ADDR="203.0.113.27",
+        )
+
+        self.assertRedirects(result, reverse("my_submissions"))
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.assertIsNone(response_obj.latitude)
+        self.assertIsNone(response_obj.longitude)
+        self.assertIsNone(response_obj.accuracy)
+        self.assertEqual(response_obj.submission_ip, "203.0.113.27")
+
+    def geolocation_response(self, **location):
+        return ChecklistResponse(
+            checklist=self.checklist,
+            submitted_by=self.owner,
+            project=self.project,
+            department=self.department,
+            status=ResponseStatus.PENDING_APPROVAL,
+            **location,
+        )
+
+    def test_model_rejects_invalid_latitude(self):
+        with self.assertRaises(ValidationError):
+            self.geolocation_response(latitude=Decimal("90.000001")).save()
+
+    def test_model_rejects_invalid_longitude(self):
+        with self.assertRaises(ValidationError):
+            self.geolocation_response(longitude=Decimal("-180.000001")).save()
+
+    def test_model_rejects_negative_accuracy(self):
+        with self.assertRaises(ValidationError):
+            self.geolocation_response(accuracy=-0.1).save()
+
+    def test_model_rejects_nan_latitude(self):
+        with self.assertRaises(ValidationError):
+            self.geolocation_response(latitude=Decimal("NaN")).save()
+
+    def test_model_rejects_nan_longitude(self):
+        with self.assertRaises(ValidationError):
+            self.geolocation_response(longitude=Decimal("NaN")).save()
+
+    def test_model_rejects_infinite_accuracy(self):
+        with self.assertRaises(ValidationError):
+            self.geolocation_response(accuracy=float("inf")).save()
+
+    def test_model_accepts_valid_coordinates(self):
+        response_obj = self.geolocation_response(
+            latitude=Decimal("19.076090"),
+            longitude=Decimal("72.877426"),
+            accuracy=0,
+        )
+
+        response_obj.save()
+
+        self.assertIsNotNone(response_obj.pk)
+
+    def test_malformed_non_finite_submission_does_not_return_server_error(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.security_settings = {"geolocation_tracking_enabled": True}
+        settings_obj.save(update_fields=["security_settings", "updated_at"])
+        self.client.force_login(self.owner)
+
+        result = self.client.post(
+            reverse("user_checklist_fill", args=[self.checklist.id]),
+            {
+                "workflow_action": "submit",
+                f"q_{self.question.id}": "Malformed location submission",
+                "latitude": "NaN",
+                "longitude": "NaN",
+                "accuracy": "Infinity",
+            },
+            REMOTE_ADDR="203.0.113.29",
+        )
+
+        self.assertRedirects(result, reverse("my_submissions"))
+        response_obj = ChecklistResponse.objects.get(submitted_by=self.owner)
+        self.assertIsNone(response_obj.latitude)
+        self.assertIsNone(response_obj.longitude)
+        self.assertIsNone(response_obj.accuracy)
+
+    def test_queryset_update_cannot_bypass_geolocation_validation(self):
+        response_obj = self.geolocation_response()
+        response_obj.save()
+
+        with self.assertRaises(ValidationError):
+            ChecklistResponse.objects.filter(pk=response_obj.pk).update(latitude=Decimal("NaN"))
+
+        response_obj.refresh_from_db()
+        self.assertIsNone(response_obj.latitude)
+
+    def test_location_is_visible_in_user_hod_and_admin_response_details(self):
+        hod = User.objects.create_user(username="location_hod", password="pass12345")
+        UserProfile.objects.create(user=hod, role="HOD", department=self.department)
+        RolePermission.objects.create(role="HOD", visible_columns=["actions"], allowed_actions=["view"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        response_obj.hod = hod
+        response_obj.latitude = "19.076090"
+        response_obj.longitude = "72.877426"
+        response_obj.accuracy = 15.0
+        response_obj.submission_ip = "203.0.113.28"
+        response_obj.save(update_fields=["hod", "latitude", "longitude", "accuracy", "submission_ip"])
+
+        for user, url_name in (
+            (self.owner, "user_submission_action"),
+            (hod, "user_submission_action"),
+            (self.admin_user, "admin_response_action"),
+        ):
+            self.client.force_login(user)
+            result = self.client.get(
+                reverse(url_name),
+                {"action": "view", "response_id": response_obj.id},
+            )
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(result.json()["location"]["latitude"], 19.07609)
+            self.assertEqual(result.json()["location"]["longitude"], 72.877426)
+            self.assertEqual(result.json()["location"]["accuracy"], 15.0)
+            self.assertEqual(result.json()["location"]["submission_ip"], "203.0.113.28")
 
     def test_only_assigned_hod_can_approve_response(self):
         assigned_hod = User.objects.create_user(username="approval_hod", password="pass12345")

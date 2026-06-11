@@ -19,6 +19,7 @@
 .cp-field{display:grid;gap:8px}
 .cp-field label{display:block;font-size:.83rem;font-weight:700;color:#334155;letter-spacing:.02em}
 .cp-field input,.cp-field select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;transition:.2s;background:#fff;color:#0f172a}
+.cp-check{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #cbd5e1;border-radius:10px}.cp-check input{width:auto}.cp-check label{margin:0}
 .cp-field input:focus,.cp-field select:focus{outline:none;border-color:var(--theme-primary);box-shadow:0 0 0 3px rgba(15,23,42,.08)}
 .cp-stack{display:grid;gap:18px}
 .cp-stack .cp-field{gap:10px}
@@ -44,10 +45,11 @@
   <input type="hidden" name="confirm_password" id="confirmPasswordInput">
   <div class="cp-shell">
     <aside class="cp-nav">
-      <a href="#general">General</a><a href="#branding">Branding</a><a href="#theme">Theme</a>
+      <a href="#general">General</a><a href="#security">Security</a><a href="#branding">Branding</a><a href="#theme">Theme</a>
     </aside>
     <main class="cp-main">
       <section id="general" class="cp-card"><h3>General Settings</h3><p class="cp-sub">Global product identity used across titles, headers, and navigation.</p><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name|default:'QCMS' }}" placeholder="QCMS"></div></div></section>
+      <section id="security" class="cp-card"><h3>Security Settings</h3><p class="cp-sub">Location is requested once when a checklist is submitted. Draft saves never request or store location.</p><div class="cp-check"><input type="checkbox" name="geolocation_tracking_enabled" id="geolocation_tracking_enabled" {% if app_settings.security_settings.geolocation_tracking_enabled %}checked{% endif %}><label for="geolocation_tracking_enabled">Enable Geolocation Tracking</label></div></section>
       <section id="branding" class="cp-card"><h3>Branding Settings</h3><p class="cp-sub">Single-source branding assets applied globally.</p><div class="cp-grid"><div class="cp-field"><label>Application Logo</label><input type="file" name="logo" accept="image/*"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current logo"><span>Used in sidebar, header, login, and reports.</span></div></div><div class="cp-field"><label>Favicon</label><input type="file" name="favicon" accept="image/*"></div></div></section>
       <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><p class="cp-sub">Unified enterprise theme controls.</p><div class="cp-grid"><div class="cp-field"><label>Global Theme Color</label><input type="color" name="global_theme_color" id="global_theme_color" value="{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Font Family</label><select name="font_family">{% for font in font_options %}<option value="{{ font }}" {% if GLOBAL_THEME.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select></div></div></section>
       <div class="cp-actions"><p class="cp-actions__meta">Changes require admin password confirmation.</p><div class="cp-actions__buttons"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
@@ -63,11 +65,11 @@
 
   const syncColor=()=>{
     const value=colorInput.value||'#0b1b68';
-    colorSwatch.style.backgroundColor=value;
-    colorValue.textContent=value;
+    if(colorSwatch)colorSwatch.style.backgroundColor=value;
+    if(colorValue)colorValue.textContent=value;
   };
   syncColor();
-  colorInput.addEventListener('input',syncColor);
+  colorInput?.addEventListener('input',syncColor);
 
   form.addEventListener('submit',e=>{if(hidden.value)return; e.preventDefault(); pendingSubmitter=e.submitter; modal.classList.add('is-open'); pwdInput.value=''; pwdInput.focus();});
   cancel.addEventListener('click',()=>modal.classList.remove('is-open'));
