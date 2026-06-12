@@ -28,6 +28,7 @@
 </form>
 
 {% include 'admin_panel/partials/checklist_table.html' %}
+{% include 'shared/tables/pagination.html' with page_obj=checklists %}
 
 <div id="deletePopup" class="popup">
   <div class="popup-content delete-popup-content">

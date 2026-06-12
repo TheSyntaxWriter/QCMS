@@ -90,6 +90,7 @@
 <div class="card-lite"><canvas id="responseLineChart" height="110"></canvas></div>
 
 {% include 'admin_panel/partials/response_table.html' %}
+{% include 'shared/tables/pagination.html' with page_obj=responses %}
 
 <div id="responseViewModal" class="dashboard-modal" aria-hidden="true">
   <div class="dashboard-modal-content">

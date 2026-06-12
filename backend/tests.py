@@ -12,6 +12,7 @@ from pypdf import PdfWriter
 
 from .upload_validation import MAX_CHECKLIST_UPLOAD_SIZE, validate_branding_upload, validate_checklist_upload
 from .models import (
+    ActivityLog,
     AppSettings,
     Checklist,
     ChecklistAnswer,
@@ -106,6 +107,99 @@ class AccessControlTests(TestCase):
             response = self.client.get(reverse('home'))
             self.assertRedirects(response, reverse(expected))
             self.client.logout()
+
+
+class TableFrameworkPhase0Tests(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(username="table_admin", password="pass12345")
+        UserProfile.objects.create(user=self.admin_user, role="Admin")
+        self.owner = User.objects.create_user(username="table_owner", password="pass12345")
+        self.department = Department.objects.create(code="TBL", name="Table Department")
+        self.project = Project.objects.create(code="TBP", name="Table Project", domain="Corporate")
+        UserProfile.objects.create(
+            user=self.owner,
+            role="User",
+            department=self.department,
+            project=self.project,
+        )
+        self.checklist_type = ChecklistType.objects.create(name="Table Type")
+
+        for index in range(21):
+            checklist = ChecklistDefinition.objects.create(
+                checklist_id=f"CL-TBL-{index:02d}",
+                name=f"Table Checklist {index:02d}",
+                checklist_type=self.checklist_type,
+            )
+            checklist.departments.add(self.department)
+            checklist.projects.add(self.project)
+            ChecklistResponse.objects.create(
+                checklist=checklist,
+                submitted_by=self.owner,
+                department=self.department,
+                project=self.project,
+                status=ResponseStatus.APPROVED,
+            )
+            ActivityLog.objects.create(
+                user=self.owner,
+                role="User",
+                department=self.department,
+                project=self.project,
+                action_type="Table Test",
+                module_name="Table Framework",
+                description=f"Pagination record {index:02d}",
+                status=ActivityLog.STATUS_INFO,
+            )
+
+    def assert_page_two_reachable(self, url_name, context_name, expected_pages, query=None):
+        self.client.force_login(self.admin_user if url_name.startswith("admin_") else self.owner)
+        query = query or {}
+        first_page = self.client.get(reverse(url_name), query)
+        second_page = self.client.get(reverse(url_name), {**query, "page": 2})
+
+        self.assertEqual(first_page.status_code, 200)
+        self.assertEqual(second_page.status_code, 200)
+        self.assertContains(first_page, "Showing 1-")
+        self.assertContains(first_page, f"of 21 results")
+        self.assertContains(first_page, f"Page 1 of {expected_pages}")
+        self.assertContains(first_page, "Go to next page")
+        self.assertEqual(second_page.context[context_name].number, 2)
+        self.assertContains(second_page, f"Page 2 of {expected_pages}")
+        self.assertGreater(len(second_page.context[context_name].object_list), 0)
+
+    def test_admin_checklists_page_two_is_reachable(self):
+        self.assert_page_two_reachable("admin_checklists", "checklists", 3)
+
+    def test_admin_responses_page_two_is_reachable_and_preserves_filters(self):
+        self.client.force_login(self.admin_user)
+        first_page = self.client.get(reverse("admin_responses"), {"status": ResponseStatus.APPROVED})
+
+        self.assertContains(first_page, "?status=Approved&amp;page=2")
+        self.assert_page_two_reachable(
+            "admin_responses",
+            "responses",
+            3,
+            {"status": ResponseStatus.APPROVED},
+        )
+
+    def test_activity_logs_page_two_is_reachable(self):
+        self.assert_page_two_reachable("admin_logs", "logs", 2)
+
+    def test_my_checklists_page_two_is_reachable(self):
+        self.assert_page_two_reachable("my_checklists", "checklists", 3)
+
+    def test_my_submissions_page_two_is_reachable(self):
+        self.assert_page_two_reachable("my_submissions", "responses", 3)
+
+    def test_empty_search_results_show_count_and_page_indicator(self):
+        self.client.force_login(self.admin_user)
+
+        response = self.client.get(reverse("admin_checklists"), {"search": "no-such-checklist"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["checklists"].paginator.count, 0)
+        self.assertContains(response, "Showing 0 of 0 results")
+        self.assertContains(response, "Page 1 of 1")
+        self.assertNotContains(response, "Go to next page")
 
 
 class ChecklistBuilderTests(TestCase):
