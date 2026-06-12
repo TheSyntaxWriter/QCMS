@@ -54,7 +54,7 @@ def _admin_sidebar_menu():
         {'url': reverse('admin_departments'), 'label': 'Department', 'icon': 'department'},
         {'url': reverse('admin_projects'), 'label': 'Project', 'icon': 'project'},
         {'url': reverse('admin_control_panel'), 'label': 'Control Panel', 'icon': 'control'},
-        {'url': reverse('admin_notification_settings'), 'label': 'Notifications', 'icon': 'control'},
+        {'url': reverse('admin_notification_settings'), 'label': 'Notification Control', 'icon': 'control'},
         {'url': reverse('admin_logs'), 'label': 'Logs', 'icon': 'logs'},
         {'url': reverse('admin_profile'), 'label': 'Profile', 'icon': 'profile'},
     ]

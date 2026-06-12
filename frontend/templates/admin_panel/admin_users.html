@@ -85,7 +85,7 @@
           <th><a class="sort-link" href="?{{ sort_links.project }}">Project{% if sort_by == 'project' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
           <th>Assigned HOD</th>
           <th><a class="sort-link" href="?{{ sort_links.status }}">Status{% if sort_by == 'status' %} <span class="sort-indicator">{{ sort_dir|upper }}</span>{% endif %}</a></th>
-          <th>Action</th>
+          <th class="actions-column">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -98,7 +98,8 @@
           <td>{{ user.department.name|default:"-" }}</td>
           <td>{{ user.project.name|default:"-" }}</td>
           <td>{% if user.assigned_hod %}{{ user.assigned_hod.get_full_name|default:user.assigned_hod.username }}{% else %}-{% endif %}</td>
-          <td>
+          <td class="actions-column">
+            <div class="action-buttons">
             {% if user.is_active %}
               <span class="active-text">Active</span>
             {% else %}
@@ -136,6 +137,7 @@
             </form>
 
             <button class="btn table-action-btn btn-delete delete-btn" data-user-id="{{ user.user.id }}">Delete</button>
+            </div>
           </td>
         </tr>
         {% empty %}

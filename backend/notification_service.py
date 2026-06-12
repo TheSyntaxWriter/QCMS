@@ -22,7 +22,7 @@ EVENT_DEFINITIONS = {
     'override_rejection_performed': ('Override Rejection Performed', Notification.PRIORITY_HIGH, True),
     'user_created': ('User Created', Notification.PRIORITY_LOW, False),
     'user_deactivated': ('User Deactivated', Notification.PRIORITY_HIGH, True),
-    'notification_settings_changed': ('Notification Settings Changed', Notification.PRIORITY_HIGH, True),
+    'notification_settings_changed': ('Notification Control Settings Changed', Notification.PRIORITY_HIGH, True),
     'missing_hod_assignment_detected': ('Missing HOD Assignment Detected', Notification.PRIORITY_CRITICAL, True),
     'suspicious_upload_rejected': ('Suspicious Upload Rejected', Notification.PRIORITY_HIGH, True),
     'permission_denied_threshold': ('Permission Denied Threshold Reached', Notification.PRIORITY_CRITICAL, True),

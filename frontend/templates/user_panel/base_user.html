@@ -29,7 +29,7 @@
       }
       * { box-sizing: border-box; }
       body { margin:0; font-family:'{{ GLOBAL_THEME.font_family|default:"Inter" }}',sans-serif; background:var(--bg); color:#111827; }
-      .topbar { background:var(--color-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; margin-bottom:18px; }
+      .topbar { background:var(--color-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
       .content { min-width:0; }
     </style>
   </head>
@@ -39,7 +39,11 @@
       <div class="page-container responsive-content-area">
       <div class="topbar">
         <div>{% block topbar_title %}User Panel{% endblock %}</div>
-        <div style="display:flex;align-items:center;gap:10px"><span>{% block topbar_welcome %}Welcome{% endblock %}</span>{% include 'shared/notification_center.html' %}</div>
+        <div class="topbar-account-group">
+          {% include 'shared/header_identity.html' %}
+          <span class="topbar-welcome-text">{% block topbar_welcome %}Welcome{% endblock %}</span>
+          {% include 'shared/notification_center.html' %}
+        </div>
       </div>
       {% if messages %}
         {% for message in messages %}<div class="alert-inline">{{ message }}</div>{% endfor %}

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ PROJECT_SHORT_NAME }} Login</title>
     <link rel="icon" href="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" />
+    <link rel="stylesheet" href="{% static 'shared/ui_system.css' %}" />
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
       rel="stylesheet"
@@ -70,7 +71,6 @@
         color: #fff;
         padding: 10px;
         font-weight: 600;
-        cursor: pointer;
       }
       .error {
         margin-top: 12px;

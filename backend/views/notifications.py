@@ -168,7 +168,7 @@ def admin_notification_settings(request):
         create_notifications(
             'notification_settings_changed',
             users_for_role('Admin'),
-            message=f'Notification Center settings were updated by {request.user.username}.',
+            message=f'Notification Control settings were updated by {request.user.username}.',
             related_type='NotificationSetting',
             related_id=settings.pk,
             related_url=request.path,
@@ -176,11 +176,11 @@ def admin_notification_settings(request):
         write_activity_log(
             action_type='Notification Settings Changed',
             module_name='Notifications',
-            description=f'Notification settings updated by {request.user.username}.',
+            description=f'Notification Control settings updated by {request.user.username}.',
             status=ActivityLog.STATUS_SUCCESS,
             user=request.user,
         )
-        messages.success(request, 'Notification settings saved.')
+        messages.success(request, 'Notification Control settings saved.')
         return redirect('admin_notification_settings')
 
     return render(request, 'admin_panel/admin_notification_settings.html', {

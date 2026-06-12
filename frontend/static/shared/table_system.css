@@ -52,12 +52,13 @@ table.standard-table {
 .standard-table tbody tr:hover {
   background: var(--tbl-row-hover);
 }
-.actions-column {
+.actions-column,
+.action-column {
   white-space: nowrap;
-  text-align: left;
+  text-align: left !important;
 }
 .response-actions-cell {
-  text-align: left;
+  text-align: left !important;
 }
 .action-buttons,
 .response-action-group {
@@ -67,6 +68,7 @@ table.standard-table {
   gap: 8px;
   flex-wrap: nowrap;
   white-space: nowrap;
+  text-align: left;
 }
 .btn {
   height: 32px;

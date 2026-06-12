@@ -21,7 +21,7 @@
 .app-sidebar__brand { min-width: 0; display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; flex: 1; }
 .app-sidebar__brand-logo { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; opacity: .9; }
 .app-sidebar__brand-text { font-weight: 600; white-space: nowrap; }
-.app-sidebar__toggle { border: 1px solid var(--sidebar-border); background: transparent; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.app-sidebar__toggle { border: 1px solid var(--sidebar-border); background: transparent; width: 32px; height: 32px; border-radius: 8px; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
 .app-sidebar__menu { display:grid; grid-template-rows:minmax(0,1fr) auto; min-height:0; flex:1; overflow:hidden; }
 .app-sidebar__menu-main { overflow-y: auto; overflow-x: hidden; min-height: 0; padding-right: 2px; padding-bottom: 10px; scroll-behavior:smooth; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.28) transparent; -ms-overflow-style:auto; }
 .app-sidebar__menu-main::-webkit-scrollbar { width: 6px; height: 6px; }

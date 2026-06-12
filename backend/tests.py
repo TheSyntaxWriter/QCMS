@@ -1243,3 +1243,12 @@ class NotificationCenterTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(reverse('my_checklists'))
         self.assertContains(response, 'id="notificationBell"')
+        self.assertContains(response, 'class="topbar-avatar topbar-avatar--initials"')
+        self.assertContains(response, 'Open profile for notification_owner')
+
+    def test_admin_ui_uses_notification_control_name(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.get(reverse('admin_notification_settings'))
+        self.assertContains(response, '<span class="app-sidebar__label">Notification Control</span>', html=True)
+        self.assertContains(response, '<div>Notification Control</div>', html=True)
+        self.assertContains(response, 'Save Notification Control Settings')
