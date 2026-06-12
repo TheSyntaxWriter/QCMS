@@ -423,6 +423,24 @@ class RolePermission(models.Model):
         return self.role
 
 
+class ImmutableActivityLogQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise ValidationError('Activity logs are append-only and cannot be modified.')
+
+    def delete(self):
+        raise ValidationError('Activity logs are append-only and cannot be deleted.')
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        raise ValidationError('Activity logs are append-only and cannot be modified.')
+
+
+class ActivityLogManager(models.Manager.from_queryset(ImmutableActivityLogQuerySet)):
+    def bulk_create(self, objs, **kwargs):
+        if kwargs.get('update_conflicts'):
+            raise ValidationError('Activity logs are append-only and cannot use conflict updates.')
+        return super().bulk_create(objs, **kwargs)
+
+
 class ActivityLog(models.Model):
     STATUS_SUCCESS = 'Success'
     STATUS_FAILED = 'Failed'
@@ -432,11 +450,38 @@ class ActivityLog(models.Model):
         (STATUS_FAILED, 'Failed'),
         (STATUS_INFO, 'Info'),
     )
+    SEVERITY_LOW = 'Low'
+    SEVERITY_MEDIUM = 'Medium'
+    SEVERITY_HIGH = 'High'
+    SEVERITY_CRITICAL = 'Critical'
+    SEVERITY_CHOICES = (
+        (SEVERITY_LOW, 'Low'),
+        (SEVERITY_MEDIUM, 'Medium'),
+        (SEVERITY_HIGH, 'High'),
+        (SEVERITY_CRITICAL, 'Critical'),
+    )
+    SOURCE_UI = 'UI'
+    SOURCE_ADMIN = 'Admin'
+    SOURCE_SYSTEM = 'System'
+    SOURCE_SCRIPT = 'Script'
+    SOURCE_API = 'API'
+    SOURCE_CHOICES = (
+        (SOURCE_UI, 'UI'),
+        (SOURCE_ADMIN, 'Admin'),
+        (SOURCE_SYSTEM, 'System'),
+        (SOURCE_SCRIPT, 'Script'),
+        (SOURCE_API, 'API'),
+    )
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='activity_logs')
     role = models.CharField(max_length=50, blank=True, default='')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True)
+    event_key = models.CharField(max_length=160, blank=True, default='', db_index=True)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default=SEVERITY_MEDIUM, db_index=True)
+    target_type = models.CharField(max_length=120, blank=True, default='', db_index=True)
+    target_id = models.CharField(max_length=120, blank=True, default='', db_index=True)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_UI, db_index=True)
     action_type = models.CharField(max_length=120, db_index=True)
     module_name = models.CharField(max_length=80, db_index=True)
     description = models.TextField()
@@ -447,16 +492,29 @@ class ActivityLog(models.Model):
     new_data = models.JSONField(null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    objects = ActivityLogManager()
+
     class Meta:
         ordering = ['-timestamp']
         indexes = [
             models.Index(fields=['module_name', 'action_type']),
             models.Index(fields=['user', 'timestamp']),
             models.Index(fields=['department', 'project', 'timestamp']),
+            models.Index(fields=['event_key', 'timestamp']),
+            models.Index(fields=['target_type', 'target_id']),
+            models.Index(fields=['severity', 'timestamp']),
         ]
 
     def __str__(self):
         return f"{self.timestamp:%Y-%m-%d %H:%M:%S} - {self.module_name} - {self.action_type}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValidationError('Activity logs are append-only and cannot be modified.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError('Activity logs are append-only and cannot be deleted.')
 
 
 class AppSettings(models.Model):

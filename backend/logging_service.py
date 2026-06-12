@@ -22,7 +22,9 @@ def get_request_ip(request):
 
 
 def write_activity_log(*, action_type: str, module_name: str, description: str, status: str = ActivityLog.STATUS_INFO,
-                       user=None, old_data: dict[str, Any] | None = None, new_data: dict[str, Any] | None = None):
+                       user=None, old_data: dict[str, Any] | None = None, new_data: dict[str, Any] | None = None,
+                       event_key: str = '', severity: str = ActivityLog.SEVERITY_MEDIUM,
+                       target_type: str = '', target_id: str = '', source: str = ActivityLog.SOURCE_UI):
     request = get_current_request()
     profile = None
 
@@ -34,6 +36,11 @@ def write_activity_log(*, action_type: str, module_name: str, description: str, 
         role=profile.role if profile else '',
         department=profile.department if profile else None,
         project=profile.project if profile else None,
+        event_key=event_key,
+        severity=severity,
+        target_type=target_type,
+        target_id=str(target_id or ''),
+        source=source,
         action_type=action_type,
         module_name=module_name,
         description=description,

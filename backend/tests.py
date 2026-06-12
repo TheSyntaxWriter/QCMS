@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from pypdf import PdfWriter
 
@@ -200,6 +200,141 @@ class TableFrameworkPhase0Tests(TestCase):
         self.assertContains(response, "Showing 0 of 0 results")
         self.assertContains(response, "Page 1 of 1")
         self.assertNotContains(response, "Go to next page")
+
+
+class ActivityLogIntegrityPhase0Tests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="audit_user", password="pass12345")
+        UserProfile.objects.create(user=self.user, role="Admin")
+
+    def create_log(self):
+        return ActivityLog.objects.create(
+            user=self.user,
+            role="Admin",
+            action_type="Integrity Test",
+            module_name="Audit",
+            description="ActivityLog append-only regression test.",
+            status=ActivityLog.STATUS_SUCCESS,
+        )
+
+    def test_existing_log_creation_contract_remains_compatible(self):
+        log = self.create_log()
+
+        self.assertEqual(log.event_key, "")
+        self.assertEqual(log.severity, ActivityLog.SEVERITY_MEDIUM)
+        self.assertEqual(log.target_type, "")
+        self.assertEqual(log.target_id, "")
+        self.assertEqual(log.source, ActivityLog.SOURCE_UI)
+
+    def test_activity_log_instance_cannot_be_modified_after_creation(self):
+        log = self.create_log()
+        log.description = "Edited description"
+
+        with self.assertRaises(ValidationError):
+            log.save()
+
+        log.refresh_from_db()
+        self.assertEqual(log.description, "ActivityLog append-only regression test.")
+
+    def test_activity_log_queryset_update_is_blocked(self):
+        log = self.create_log()
+
+        with self.assertRaises(ValidationError):
+            ActivityLog.objects.filter(pk=log.pk).update(description="Edited description")
+
+        log.refresh_from_db()
+        self.assertEqual(log.description, "ActivityLog append-only regression test.")
+
+    def test_activity_log_instance_delete_is_blocked(self):
+        log = self.create_log()
+
+        with self.assertRaises(ValidationError):
+            log.delete()
+
+        self.assertTrue(ActivityLog.objects.filter(pk=log.pk).exists())
+
+    def test_activity_log_queryset_delete_is_blocked(self):
+        log = self.create_log()
+
+        with self.assertRaises(ValidationError):
+            ActivityLog.objects.filter(pk=log.pk).delete()
+
+        self.assertTrue(ActivityLog.objects.filter(pk=log.pk).exists())
+
+    def test_activity_log_bulk_update_is_blocked(self):
+        log = self.create_log()
+        log.description = "Bulk edited description"
+
+        with self.assertRaises(ValidationError):
+            ActivityLog.objects.bulk_update([log], ["description"])
+
+        log.refresh_from_db()
+        self.assertEqual(log.description, "ActivityLog append-only regression test.")
+
+    def test_activity_log_normal_bulk_create_still_works(self):
+        created = ActivityLog.objects.bulk_create([
+            ActivityLog(
+                user=self.user,
+                role="Admin",
+                action_type="Bulk Create One",
+                module_name="Audit",
+                description="First normal bulk-created activity log.",
+                status=ActivityLog.STATUS_INFO,
+            ),
+            ActivityLog(
+                user=self.user,
+                role="Admin",
+                action_type="Bulk Create Two",
+                module_name="Audit",
+                description="Second normal bulk-created activity log.",
+                status=ActivityLog.STATUS_INFO,
+            ),
+        ])
+
+        self.assertEqual(len(created), 2)
+        self.assertEqual(ActivityLog.objects.filter(action_type__startswith="Bulk Create").count(), 2)
+
+    def test_activity_log_bulk_create_conflict_update_is_blocked(self):
+        log = self.create_log()
+
+        with self.assertRaises(ValidationError):
+            ActivityLog.objects.bulk_create(
+                [
+                    ActivityLog(
+                        id=log.id,
+                        user=self.user,
+                        role="Admin",
+                        action_type="Integrity Test",
+                        module_name="Audit",
+                        description="Conflict update attempted.",
+                        status=ActivityLog.STATUS_FAILED,
+                    )
+                ],
+                update_conflicts=True,
+                update_fields=["description", "status"],
+                unique_fields=["id"],
+            )
+
+        log.refresh_from_db()
+        self.assertEqual(log.description, "ActivityLog append-only regression test.")
+        self.assertEqual(log.status, ActivityLog.STATUS_SUCCESS)
+
+    def test_activity_log_admin_is_read_only(self):
+        admin_user = User.objects.create_superuser(
+            username="audit_superuser",
+            email="audit@example.com",
+            password="pass12345",
+        )
+        request = RequestFactory().get("/admin/backend/activitylog/")
+        request.user = admin_user
+        model_admin = admin.site._registry[ActivityLog]
+
+        self.assertFalse(model_admin.has_add_permission(request))
+        self.assertFalse(model_admin.has_change_permission(request, self.create_log()))
+        self.assertFalse(model_admin.has_delete_permission(request, self.create_log()))
+        self.assertTrue(model_admin.has_view_permission(request))
+        self.assertIn("event_key", model_admin.get_readonly_fields(request))
+        self.assertIn("severity", model_admin.get_readonly_fields(request))
 
 
 class ChecklistBuilderTests(TestCase):
