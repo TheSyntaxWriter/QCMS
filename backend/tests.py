@@ -511,6 +511,18 @@ class WorkflowPhase1Tests(TestCase):
             status=status,
         )
 
+    def assert_response_activity_log(self, *, actor, response_obj, event_key, severity, source):
+        log = ActivityLog.objects.get(
+            user=actor,
+            event_key=event_key,
+            target_type="ChecklistResponse",
+            target_id=str(response_obj.id),
+        )
+        self.assertEqual(log.module_name, "Response")
+        self.assertEqual(log.status, ActivityLog.STATUS_SUCCESS)
+        self.assertEqual(log.severity, severity)
+        self.assertEqual(log.source, source)
+
     def test_admin_dashboard_counts_pending_for_approval_and_wip(self):
         self.create_response(ResponseStatus.PENDING)
         self.create_response(ResponseStatus.PENDING_APPROVAL)
@@ -846,6 +858,13 @@ class WorkflowPhase1Tests(TestCase):
         self.assertEqual(approved.status_code, 200)
         response_obj.refresh_from_db()
         self.assertEqual(response_obj.status, ResponseStatus.APPROVED)
+        self.assert_response_activity_log(
+            actor=assigned_hod,
+            response_obj=response_obj,
+            event_key="response.approved",
+            severity=ActivityLog.SEVERITY_HIGH,
+            source=ActivityLog.SOURCE_UI,
+        )
 
     def test_management_can_override_any_response(self):
         management = User.objects.create_user(username="management_override", password="pass12345")
@@ -865,6 +884,36 @@ class WorkflowPhase1Tests(TestCase):
         decision = response_obj.decisions.get()
         self.assertEqual(decision.comment, "Management escalation")
         self.assertTrue(decision.is_override)
+        self.assert_response_activity_log(
+            actor=management,
+            response_obj=response_obj,
+            event_key="response.override_rejected",
+            severity=ActivityLog.SEVERITY_CRITICAL,
+            source=ActivityLog.SOURCE_UI,
+        )
+
+    def test_management_override_approve_writes_activity_log_metadata(self):
+        management = User.objects.create_user(username="management_override_approve", password="pass12345")
+        UserProfile.objects.create(user=management, role="Management")
+        RolePermission.objects.create(role="Management", visible_columns=["actions"], allowed_actions=["view", "approve", "reject"])
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+
+        self.client.force_login(management)
+        result = self.client.post(
+            reverse("user_submission_action"),
+            {"action": "approve", "response_id": response_obj.id, "comment": "Management approval override"},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.APPROVED)
+        self.assert_response_activity_log(
+            actor=management,
+            response_obj=response_obj,
+            event_key="response.override_approved",
+            severity=ActivityLog.SEVERITY_CRITICAL,
+            source=ActivityLog.SOURCE_UI,
+        )
 
     def test_hod_rejection_requires_and_records_reason(self):
         assigned_hod = User.objects.create_user(username="rejecting_hod", password="pass12345")
@@ -888,6 +937,13 @@ class WorkflowPhase1Tests(TestCase):
         self.assertEqual(decision.comment, "Evidence is incomplete.")
         self.assertEqual(decision.actor, assigned_hod)
         self.assertFalse(decision.is_override)
+        self.assert_response_activity_log(
+            actor=assigned_hod,
+            response_obj=response_obj,
+            event_key="response.rejected",
+            severity=ActivityLog.SEVERITY_HIGH,
+            source=ActivityLog.SOURCE_UI,
+        )
 
     def test_hod_rejection_without_reason_fails(self):
         assigned_hod = User.objects.create_user(username="blank_reason_hod", password="pass12345")
@@ -1057,6 +1113,33 @@ class WorkflowPhase1Tests(TestCase):
         self.assertEqual(decision.comment, "Administrative override.")
         self.assertEqual(decision.actor_role, "Admin")
         self.assertTrue(decision.is_override)
+        self.assert_response_activity_log(
+            actor=self.admin_user,
+            response_obj=response_obj,
+            event_key="response.override_approved",
+            severity=ActivityLog.SEVERITY_CRITICAL,
+            source=ActivityLog.SOURCE_ADMIN,
+        )
+
+    def test_admin_override_reject_writes_activity_log_metadata(self):
+        response_obj = self.create_response(ResponseStatus.PENDING_APPROVAL)
+        self.client.force_login(self.admin_user)
+
+        result = self.client.post(
+            reverse("admin_response_action"),
+            {"action": "reject", "response_id": response_obj.id, "comment": "Administrative rejection override."},
+        )
+
+        self.assertEqual(result.status_code, 200)
+        response_obj.refresh_from_db()
+        self.assertEqual(response_obj.status, ResponseStatus.REJECTED)
+        self.assert_response_activity_log(
+            actor=self.admin_user,
+            response_obj=response_obj,
+            event_key="response.override_rejected",
+            severity=ActivityLog.SEVERITY_CRITICAL,
+            source=ActivityLog.SOURCE_ADMIN,
+        )
 
     def test_owner_can_view_all_decision_comments(self):
         RolePermission.objects.create(role="User", visible_columns=["actions"], allowed_actions=[])

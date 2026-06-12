@@ -478,6 +478,23 @@ def user_submission_action(request):
                     actor_role=profile.role,
                     is_override=profile.role == 'Management',
                 )
+            is_override = profile.role == 'Management'
+            write_activity_log(
+                action_type='Response Approved' if action == 'approve' else 'Response Rejected',
+                module_name='Response',
+                description=f'Response {action}: {response.id}',
+                status=ActivityLog.STATUS_SUCCESS,
+                user=request.user,
+                event_key=(
+                    'response.override_approved' if action == 'approve' else 'response.override_rejected'
+                ) if is_override else (
+                    'response.approved' if action == 'approve' else 'response.rejected'
+                ),
+                severity=ActivityLog.SEVERITY_CRITICAL if is_override else ActivityLog.SEVERITY_HIGH,
+                target_type='ChecklistResponse',
+                target_id=response.id,
+                source=ActivityLog.SOURCE_UI,
+            )
             if response.submitted_by:
                 decision_label = 'approved' if action == 'approve' else 'rejected'
                 notify_on_commit(

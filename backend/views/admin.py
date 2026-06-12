@@ -1100,7 +1100,18 @@ def admin_response_action(request):
                     actor_role=profile.role,
                     is_override=True,
                 )
-            write_activity_log(action_type='Response Approved' if action == 'approve' else 'Response Rejected', module_name='Response', description=f'Response {action}: {response.id}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            write_activity_log(
+                action_type='Response Approved' if action == 'approve' else 'Response Rejected',
+                module_name='Response',
+                description=f'Response {action}: {response.id}',
+                status=ActivityLog.STATUS_SUCCESS,
+                user=request.user,
+                event_key='response.override_approved' if action == 'approve' else 'response.override_rejected',
+                severity=ActivityLog.SEVERITY_CRITICAL,
+                target_type='ChecklistResponse',
+                target_id=response.id,
+                source=ActivityLog.SOURCE_ADMIN,
+            )
             if response.submitted_by:
                 decision_label = 'approved' if action == 'approve' else 'rejected'
                 notify_on_commit(
