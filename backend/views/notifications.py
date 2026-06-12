@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from ..logging_service import write_activity_log
+from ..table_framework import PAGE_SIZE_OPTIONS, excel_response, get_page_size, is_excel_export, paginate
 from ..models import ActivityLog, Notification, NotificationSetting
 from ..notification_service import EVENT_DEFINITIONS, create_notifications, effective_event_settings, purge_expired_notifications, users_for_role
 from .admin import _admin_sidebar_menu
@@ -144,9 +145,19 @@ def admin_notification_settings(request):
             value = request.POST.get(field, '').strip()
             colors[field] = value if HEX_COLOR.match(value) else getattr(settings, field)
 
+        existing_event_settings = effective_event_settings(settings)
+        partial_event_update = any(name.endswith('_present') for name in request.POST)
         event_settings = {}
         valid_priorities = {choice[0] for choice in Notification.PRIORITY_CHOICES}
         for key, (_, default_priority, default_popup) in EVENT_DEFINITIONS.items():
+            if partial_event_update and request.POST.get(f'event_{key}_present') != '1':
+                current = existing_event_settings[key]
+                event_settings[key] = {
+                    'enabled': current['enabled'],
+                    'priority': current['priority'],
+                    'popup': current['popup'],
+                }
+                continue
             priority = request.POST.get(f'event_{key}_priority', default_priority)
             event_settings[key] = {
                 'enabled': request.POST.get(f'event_{key}_enabled') == 'on',
@@ -179,13 +190,37 @@ def admin_notification_settings(request):
             description=f'Notification Control settings updated by {request.user.username}.',
             status=ActivityLog.STATUS_SUCCESS,
             user=request.user,
+            event_key='notification_settings.updated', severity=ActivityLog.SEVERITY_HIGH,
+            target_type='NotificationSetting', target_id=settings.pk, source=ActivityLog.SOURCE_UI,
         )
         messages.success(request, 'Notification Control settings saved.')
         return redirect('admin_notification_settings')
 
+    event_settings = effective_event_settings(settings)
+    search = (request.GET.get('search') or '').strip().lower()
+    priority = (request.GET.get('priority') or '').strip()
+    enabled = (request.GET.get('enabled') or '').strip()
+    filtered_events = []
+    for key, event in event_settings.items():
+        if search and search not in key.lower() and search not in event['name'].lower():
+            continue
+        if priority and event['priority'] != priority:
+            continue
+        if enabled in {'yes', 'no'} and event['enabled'] != (enabled == 'yes'):
+            continue
+        filtered_events.append({'key': key, **event})
+    if is_excel_export(request):
+        return excel_response('qcms-notification-control.xlsx', ['Event Key', 'Event', 'Enabled', 'Priority', 'Popup'], [
+            [event['key'], event['name'], 'Yes' if event['enabled'] else 'No', event['priority'], 'Yes' if event['popup'] else 'No']
+            for event in filtered_events
+        ], 'Notification Control')
+    event_page = paginate(request, filtered_events)
+
     return render(request, 'admin_panel/admin_notification_settings.html', {
         'settings': settings,
-        'event_settings': effective_event_settings(settings),
+        'event_settings': event_page,
         'priority_choices': Notification.PRIORITY_CHOICES,
         'sidebar_menu': _admin_sidebar_menu(),
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
     })

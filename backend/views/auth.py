@@ -53,6 +53,8 @@ def user_login(request):
                 description=f'User {user.username} logged in successfully.',
                 status=ActivityLog.STATUS_SUCCESS,
                 user=user,
+                event_key='login.success', severity=ActivityLog.SEVERITY_LOW,
+                target_type='User', target_id=user.id, source=ActivityLog.SOURCE_UI,
             )
 
             next_url = safe_next_url(request)
@@ -71,6 +73,8 @@ def user_login(request):
             description=f"Failed login attempt for username '{request.POST.get('username') or ''}'.",
             status=ActivityLog.STATUS_FAILED,
             user=request.user,
+            event_key='login.failed', severity=ActivityLog.SEVERITY_HIGH,
+            target_type='UserCredential', target_id=request.POST.get('username') or '', source=ActivityLog.SOURCE_UI,
         )
 
         return render(
@@ -92,6 +96,8 @@ def user_logout(request):
             description=f'User {request.user.username} logged out.',
             status=ActivityLog.STATUS_INFO,
             user=request.user,
+            event_key='logout', severity=ActivityLog.SEVERITY_LOW,
+            target_type='User', target_id=request.user.id, source=ActivityLog.SOURCE_UI,
         )
 
     logout(request)

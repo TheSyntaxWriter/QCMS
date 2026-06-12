@@ -10,7 +10,6 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.http import FileResponse, Http404, JsonResponse
-from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
@@ -21,6 +20,7 @@ from ..models import AppSettings, ChecklistDefinition, ChecklistQuestion, Checkl
 from .common import get_user_profile, redirect_for_profile
 from .admin import _admin_sidebar_menu, _checklist_preview_context, _checklist_pdf_filename, _render_checklist_pdf_response
 from ..logging_service import write_activity_log
+from ..table_framework import PAGE_SIZE_OPTIONS, excel_response, get_page_size, is_excel_export, paginate
 from ..notification_service import assigned_hod_is_valid, notify_on_commit, record_permission_denied, users_for_role
 from ..models import ActivityLog
 from ..permission_service import get_role_permission_config, responses_for_profile, is_action_permitted_for_response, effective_allowed_actions_for_response
@@ -80,11 +80,27 @@ def my_checklists(request):
     if not profile or profile.role not in {'User', 'HOD', 'Management'}:
         return redirect_for_profile(profile)
 
-    checklists = Paginator(_checklists_for_profile(profile).order_by('-updated_at'), 8).get_page(request.GET.get('page'))
+    search = (request.GET.get('search') or '').strip()
+    checklist_type = (request.GET.get('checklist_type') or '').strip()
+    checklists = _checklists_for_profile(profile)
+    if search:
+        checklists = checklists.filter(Q(checklist_id__icontains=search) | Q(name__icontains=search))
+    if checklist_type:
+        checklists = checklists.filter(checklist_type_id=checklist_type)
+    checklists = checklists.order_by('-updated_at')
+    if is_excel_export(request):
+        return excel_response('qcms-my-checklists.xlsx', ['Checklist ID', 'Name', 'Type', 'Status', 'Updated'], [
+            [item.checklist_id, item.name, item.checklist_type.name, 'Active' if item.is_active else 'Inactive', item.updated_at]
+            for item in checklists
+        ], 'My Checklists')
+    checklists = paginate(request, checklists)
 
     return render(request, 'user_panel/my_checklists.html', {
         'checklists': checklists,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
+        'checklist_types': ChecklistDefinition.objects.filter(pk__in=_checklists_for_profile(profile).values('pk')).values_list('checklist_type__id', 'checklist_type__name').distinct().order_by('checklist_type__name'),
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
     })
 
 
@@ -99,7 +115,26 @@ def my_submissions(request):
     visible_columns, allowed_actions = get_role_permission_config(profile.role)
     if profile.role == 'User' and 'view' not in allowed_actions:
         allowed_actions = [*allowed_actions, 'view']
-    responses = Paginator(responses_for_profile(profile, request.user).order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+    search = (request.GET.get('search') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+    response_queryset = responses_for_profile(profile, request.user).select_related('checklist', 'submitted_by', 'project', 'department')
+    if search:
+        response_queryset = response_queryset.filter(
+            Q(checklist__checklist_id__icontains=search)
+            | Q(checklist__name__icontains=search)
+            | Q(submitted_by__username__icontains=search)
+        )
+    if status:
+        response_queryset = response_queryset.filter(status=status)
+    response_queryset = response_queryset.order_by('-submitted_at')
+    if is_excel_export(request):
+        return excel_response('qcms-submissions.xlsx', ['Response ID', 'Checklist ID', 'Checklist', 'Submitted By', 'Project', 'Department', 'Status', 'Submitted'], [
+            [item.id, item.checklist.checklist_id, item.checklist.name,
+             item.submitted_by.username if item.submitted_by else '', item.project.name if item.project else '',
+             item.department.name if item.department else '', item.status, item.submitted_at]
+            for item in response_queryset
+        ], 'Submissions')
+    responses = paginate(request, response_queryset)
     for response in responses.object_list:
         response.workflow_allowed_actions = effective_allowed_actions_for_response(allowed_actions, response, profile, request.user)
         response.workflow_can_edit = 'edit' in response.workflow_allowed_actions
@@ -110,6 +145,9 @@ def my_submissions(request):
         'allowed_actions': allowed_actions,
         'current_role': profile.role,
         'sidebar_menu': _sidebar_menu_for_role(profile.role),
+        'status_choices': ResponseStatus.CHOICES,
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
     })
 
 
@@ -156,15 +194,15 @@ def _profile_view(request):
             cropped = request.POST.get('cropped_image')
             if not cropped or ';base64,' not in cropped:
                 messages.error(request, 'Unable to process image upload.')
-                write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to invalid image payload.', status=ActivityLog.STATUS_FAILED, user=request.user)
+                write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to invalid image payload.', status=ActivityLog.STATUS_FAILED, user=request.user, event_key='upload.rejected', severity=ActivityLog.SEVERITY_HIGH, target_type='UserProfile', target_id=profile_obj.id, source=ActivityLog.SOURCE_UI)
             else:
                 try:
                     _save_profile_image_from_data_url(profile_obj, cropped)
                     messages.success(request, 'Profile image updated successfully.')
-                    write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image updated successfully.', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                    write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image updated successfully.', status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='user.profile_updated', severity=ActivityLog.SEVERITY_MEDIUM, target_type='UserProfile', target_id=profile_obj.id, source=ActivityLog.SOURCE_UI)
                 except ValidationError as exc:
                     messages.error(request, ' '.join(exc.messages))
-                    write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to validation.', status=ActivityLog.STATUS_FAILED, user=request.user)
+                    write_activity_log(action_type='Profile Image Update', module_name='Profile', description='Profile image update failed due to validation.', status=ActivityLog.STATUS_FAILED, user=request.user, event_key='upload.rejected', severity=ActivityLog.SEVERITY_HIGH, target_type='UserProfile', target_id=profile_obj.id, source=ActivityLog.SOURCE_UI)
         elif action == 'change_password':
             current_password = request.POST.get('current_password', '')
             new_password = request.POST.get('new_password', '')
@@ -327,6 +365,14 @@ def user_checklist_fill(request, checklist_id):
             for err in validation_errors:
                 messages.error(request, err)
             if upload_errors:
+                write_activity_log(
+                    action_type='Upload Rejected', module_name='Security',
+                    description=f'Checklist attachment rejected for {checklist.checklist_id}.',
+                    status=ActivityLog.STATUS_FAILED, user=request.user,
+                    event_key='upload.rejected', severity=ActivityLog.SEVERITY_HIGH,
+                    target_type='ChecklistDefinition', target_id=checklist.id,
+                    source=ActivityLog.SOURCE_UI,
+                )
                 notify_on_commit(
                     'suspicious_upload_rejected',
                     [request.user, *users_for_role('Admin')],
@@ -584,7 +630,22 @@ def checklist_answer_download(request, answer_id):
     if profile.role != 'Admin':
         allowed = responses_for_profile(profile, request.user).filter(id=answer.response_id).exists()
         if not allowed:
+            write_activity_log(
+                action_type='Attachment Access Denied', module_name='Security',
+                description=f'Unauthorized attachment access blocked for answer {answer.id}.',
+                status=ActivityLog.STATUS_FAILED, user=request.user,
+                event_key='attachment.access_denied', severity=ActivityLog.SEVERITY_CRITICAL,
+                target_type='ChecklistAnswer', target_id=answer.id, source=ActivityLog.SOURCE_UI,
+            )
             raise Http404
+
+    write_activity_log(
+        action_type='Attachment Downloaded', module_name='Security',
+        description=f'Attachment downloaded for answer {answer.id}.',
+        status=ActivityLog.STATUS_SUCCESS, user=request.user,
+        event_key='attachment.downloaded', severity=ActivityLog.SEVERITY_MEDIUM,
+        target_type='ChecklistAnswer', target_id=answer.id, source=ActivityLog.SOURCE_UI,
+    )
 
     response = FileResponse(answer.file.open('rb'), as_attachment=False, filename=Path(answer.file.name).name)
     response['X-Content-Type-Options'] = 'nosniff'

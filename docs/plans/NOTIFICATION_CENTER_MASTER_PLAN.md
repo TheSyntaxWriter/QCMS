@@ -4,7 +4,7 @@
 
 QCMS should introduce a centralized, configurable Notification Center that converts workflow, security, audit, and system events into targeted messages for Users, assigned HODs, Management, and Admins.
 
-The current application already provides the foundations for reliable notifications:
+The current application already provides a working Phase 1 notification foundation:
 
 - `ChecklistResponse` records WIP, Pending, Pending for Approval, Approved, and Rejected states.
 - Every response belongs to a user and stores its responsible HOD.
@@ -12,10 +12,14 @@ The current application already provides the foundations for reliable notificati
 - Management and Admin may approve or reject as override authorities.
 - `ResponseDecision` provides immutable approval/rejection history and comments.
 - `ActivityLog` records operational and security activity.
-- `AppSettings.notification_settings` provides an initial global configuration location.
+- `NotificationSetting` stores global enablement, bell, popup, sound, retention, colors, and per-event settings.
+- `Notification` provides a durable per-recipient inbox with read state, action-required state, related-object navigation, and one-time popup tracking.
+- Notification APIs provide recipient-scoped list, poll, mark-read, mark-all-read, and delete operations.
+- The shared header provides a bell, unread badge, drawer, Action Required filter, polling every 45 seconds, and High/Critical popups.
+- The Admin Notification Control page manages the implemented Phase 1 event set.
 - Optional submit-time geolocation provides additional audit evidence.
 
-There is currently no durable notification inbox, delivery history, preference hierarchy, template system, SLA scheduler, or real-time notification channel. These should be introduced as a dedicated domain rather than implemented as scattered calls from individual views.
+The remaining enterprise gap is not the absence of notifications; it is the absence of categories, templates, role/user preference inheritance, acknowledgement, delivery history, asynchronous fan-out, email delivery, SLA scheduling, escalation state, full history/search, and operational telemetry. The target design should evolve the current implementation into a dedicated notification domain without breaking the existing event producers or inbox.
 
 ### Recommended Defaults
 
@@ -55,6 +59,52 @@ flowchart LR
 | Management | Oversight, escalation, and optional override authority | Aggregated exceptions, SLA breaches, escalations, high-risk activity, and override confirmations |
 | Admin | Configuration, master data, users, permissions, audit, and override authority | System configuration, security, audit, failures, data integrity, and administrative operations |
 
+### Current Implementation Baseline
+
+| Capability | Current state | Master-plan direction |
+|---|---|---|
+| Persistence | Implemented: one `Notification` row per recipient | Split immutable business event from recipient delivery/read state |
+| Global controls | Implemented: notifications, bell, popup, sound, retention | Add email, escalation, category controls, quiet hours, and mandatory-event policy |
+| Per-event controls | Implemented for 20 event keys: enabled, priority, popup | Add category, channel, role, user, template, and escalation controls |
+| Bell and drawer | Implemented with All, Unread, and Action Required views | Add Critical tab, categories, pagination, date groups, acknowledgement, and history link |
+| Real-time behavior | 45-second browser polling | Retain polling first; add SSE when operationally justified |
+| Popups | High/Critical only; 8 seconds High and 12 seconds Critical | Make duration configurable; Critical should support sticky acknowledgement |
+| Retention | Lazy purge during polling using global retention days | Move to scheduled retention jobs with archive/legal-hold support |
+| Email | Not implemented | Future provider-backed delivery with attempts, retry, bounce, and suppression tracking |
+| SLA/escalation | Not implemented | Future business-calendar scheduler and explicit escalation instances |
+| Templates | Titles are defined in code; messages are composed by callers | Versioned, channel-specific, safely rendered Admin templates |
+| Preferences | No role/user preference models | Inherited role defaults plus optional user overrides |
+| Audit | Settings changes and key workflow decisions are logged; coverage is incomplete | Audit configuration, templates, tests, retention, exports, and delivery failures |
+
+### Implemented Event-Key Mapping
+
+The following keys exist now and should be preserved through migration or mapped through aliases. Canonical dotted keys are recommended for the enterprise catalog.
+
+| Current event key | Canonical event key | Current producer / purpose |
+|---|---|---|
+| `checklist_submitted` | `checklist.submission_succeeded` | Owner confirmation after initial submission |
+| `checklist_resubmitted` | `checklist.resubmitted` | Owner confirmation after rejected-response resubmission |
+| `new_approval_request` | `approval.requested` | Assigned HOD receives a new review request |
+| `rejected_response_resubmitted` | `approval.resubmission_requested` | Assigned HOD receives a corrected response |
+| `checklist_approved` | `approval.completed` | Owner receives approval result |
+| `checklist_rejected` | `rejection.completed` | Owner receives rejection result |
+| `rejection_comment_available` | `rejection.reason_available` | Owner is told that correction guidance exists |
+| `user_assigned_to_hod` | `hod.user_assigned` | HOD receives a user assignment |
+| `user_removed_from_hod` | `hod.user_unassigned` | Previous HOD receives removal notice |
+| `missing_assigned_hod_alert` | `management.approver_missing` | Management oversight for an unassigned user/response |
+| `missing_hod_assignment_detected` | `admin.approver_missing` | Admin data-governance alert |
+| `override_approval_performed` | `approval.override_actor_confirmation` | Management actor confirmation |
+| `override_rejection_performed` | `rejection.override_actor_confirmation` | Management actor confirmation |
+| `user_created` | `admin.user_created` | Admin notification after user creation |
+| `user_deactivated` | `admin.user_deactivated` | Admin alert after deactivation |
+| `notification_settings_changed` | `admin.notification_config_changed` | Admin notification after Notification Control save |
+| `suspicious_upload_rejected` | `security.upload_rejected` | User and Admin warning for rejected checklist upload |
+| `permission_denied_threshold` | `security.permission_denied_repeated` | Admin alert after five denied actions in 15 minutes |
+| `geolocation_capture_failed` | `audit.location_unavailable` | Owner information when submission succeeds without location |
+| `protected_audit_action_blocked` | `audit.integrity_exception` | Admin alert when protected decision history blocks deletion |
+
+Migration rule: retain the current keys until all existing rows, settings JSON, tests, and producers have been migrated. A registry alias must prevent duplicate notifications while old and new producers coexist.
+
 ## 3. Design Principles
 
 1. **Event-driven:** business code emits stable event keys; delivery rules decide who receives what.
@@ -81,7 +131,7 @@ Admin may configure colors, but the UI must enforce WCAG-compatible contrast and
 
 ## 5. Complete Notification Event Catalog
 
-The following catalog covers current QCMS events and recommended future events. `Email` means future email eligibility, not that email should be implemented immediately.
+The following catalog covers current QCMS events and recommended future events. Every row supplies the requested name, trigger, recipients, default priority, default enabled state, popup requirement, in-app requirement, future email requirement, and escalation candidacy. `Email` means future email eligibility, not that email should be implemented immediately. Events in the Implemented Event-Key Mapping are available now; all other rows are target-state events unless explicitly described as current behavior.
 
 ### 5.1 Checklist Notifications
 
@@ -167,8 +217,13 @@ The following catalog covers current QCMS events and recommended future events. 
 | `admin.geolocation_enabled` / Geolocation Tracking Enabled | Global geolocation changes from off to on | All Admins; affected users through policy notice | High | Enabled | Yes | Yes | Yes | No |
 | `admin.geolocation_disabled` / Geolocation Tracking Disabled | Global geolocation changes from on to off | All Admins | Medium | Enabled | No | Yes | Yes | No |
 | `admin.notification_config_changed` / Notification Configuration Changed | Category, event, template, priority, retention, or channel setting changes | All Admins | High | Enabled | Yes | Yes | Yes | No |
-| `admin.test_notification` / Test Notification | Admin uses Test Notification action | Selected test recipient(s) | Low | Enabled | Yes | Yes | Optional | No |
+| `admin.notification_template_changed` / Notification Template Changed | Admin creates, activates, rolls back, or edits a channel template | All Admins; compliance role | High | Enabled | No | Yes | Yes | No |
+| `admin.notification_role_preference_changed` / Role Notification Defaults Changed | Admin changes inherited notification behavior for a role | Affected role users; all Admins | High | Enabled | No | Yes | Yes | No |
+| `admin.notification_retention_changed` / Notification Retention Policy Changed | Retention, archive, or legal-hold policy changes | All Admins; compliance role | Critical | Enabled | Yes | Yes | Yes | Yes |
+| `admin.test_notification` / Test Notification | Admin uses Test Notification action | Selected test recipient(s) | Low | Enabled | Yes | Yes | No | No |
 | `admin.protected_delete_blocked` / Protected Deletion Blocked | Response or record cannot be deleted because history must remain | Acting Admin | High | Enabled | Yes | Yes | No | No |
+| `admin.branding_upload_rejected` / Branding Upload Rejected | Logo, favicon, or sidebar-logo upload fails validation | Acting Admin; security role after repeated failures | High | Enabled | Yes | Yes | No | Yes |
+| `admin.configuration_reset` / Control Panel Configuration Reset | Admin resets branding, appearance, security, or notification settings | All Admins | Critical | Enabled | Yes | Yes | Yes | Yes |
 
 ### 5.7 Security Notifications
 
@@ -180,7 +235,9 @@ The following catalog covers current QCMS events and recommended future events. 
 | `security.password_change_failed` / Password Change Failed | Incorrect current password or validation failure | Acting user; Admin after threshold | Medium | Enabled | Yes | Yes | Yes | Yes |
 | `security.role_elevated` / Privileged Role Assigned | User gains HOD, Management, or Admin role | Affected user; all Admins | Critical | Enabled | Yes | Yes | Yes | Yes |
 | `security.permission_denied_repeated` / Repeated Unauthorized Actions | Multiple backend authorization failures occur | Admin/security role | Critical | Disabled | Yes | Yes | Yes | Yes |
+| `security.upload_rejected` / Suspicious Upload Rejected | Checklist attachment fails security validation | Acting user; Admin/security role | High | Enabled | Yes | Yes | Yes | Yes |
 | `security.upload_attack_suspected` / Suspicious Upload Rejected | Repeated spoofed, invalid, or malicious-looking uploads | Admin/security role | Critical | Enabled | Yes | Yes | Yes | Yes |
+| `security.profile_image_rejected` / Profile Image Rejected | Profile image payload fails type, content, size, or decode validation | Acting user; Admin after repeated failures | Medium | Enabled | Yes | Yes | No | Yes |
 | `security.session_expired` / Session Expired | Session timeout terminates authenticated session | Affected user | Low | Enabled | No | Yes | No | No |
 | `security.unusual_ip` / Unusual Submission Network | Future rule identifies materially unusual IP context | User; Admin/security role | High | Disabled | Yes | Yes | Yes | Yes |
 | `security.geolocation_mismatch` / Location Consistency Exception | Future GPS/IP/site rule identifies a large discrepancy | Owner; assigned HOD; security reviewer | High | Disabled | No | Yes | Yes | Yes |
@@ -198,6 +255,12 @@ The following catalog covers current QCMS events and recommended future events. 
 | `audit.location_recorded` / Submission Location Evidence Recorded | Submit stores valid coordinates and/or server IP | Owner; authorized reviewer only | Low | Disabled | No | Yes | No | No |
 | `audit.location_unavailable` / Location Not Captured | Tracking enabled but permission denied, unavailable, timed out, or invalid | Owner; Admin only if policy requires | Low | Disabled | No | Yes | No | No |
 | `audit.admin_action_summary` / Administrative Activity Summary | Scheduled digest of privileged changes | Admin/compliance role | Medium | Disabled | No | Yes | Yes | No |
+| `audit.notification_deleted` / Notification Deleted | Recipient deletes an inbox item | Recipient history; Admin/compliance only when policy requires | Low | Disabled | No | Yes | No | No |
+| `audit.notifications_bulk_read` / Notifications Marked Read in Bulk | Recipient uses Mark All Read | Recipient; operational audit | Low | Disabled | No | Yes | No | No |
+| `audit.notification_history_exported` / Notification History Exported | Authorized user exports notification or delivery history | Exporting user; Admin/compliance role | High | Enabled | Yes | Yes | Yes | Yes |
+| `audit.notification_test_sent` / Test Notification Sent | Admin sends an in-app or future email test | Acting Admin; selected test recipient | Medium | Enabled | No | Yes | No | No |
+| `audit.notification_retention_purged` / Notification Retention Purge Completed | Scheduled or manual retention removes/archives eligible records | Admin/compliance role | High | Enabled | No | Yes | Yes | Yes |
+| `audit.notification_delivery_suppressed` / Notification Delivery Suppressed | Mandatory/global/category/event/role/user policy suppresses a channel | Admin operations view; no routine recipient alert | Low | Disabled | No | Yes | No | No |
 
 ### 5.9 SLA Notifications (Future)
 
@@ -236,6 +299,9 @@ The following catalog covers current QCMS events and recommended future events. 
 | `system.service_unavailable` / Service Unavailable | Critical application dependency fails | Admin/operations role | Critical | Disabled | Yes | Yes | Yes | Yes |
 | `system.background_job_failed` / Background Job Failed | Notification, SLA, retention, or email worker fails | Admin/operations role | Critical | Disabled | Yes | Yes | Yes | Yes |
 | `system.email_delivery_failed` / Email Delivery Failed | Future email provider exhausts retries | Admin; original recipient through in-app status | High | Disabled | No | Yes | No | Yes |
+| `system.notification_generation_failed` / Notification Generation Failed | Event processing cannot resolve or persist recipient notifications | Admin/operations role | Critical | Enabled | Yes | Yes | Yes | Yes |
+| `system.notification_queue_delayed` / Notification Queue Delayed | Oldest unprocessed notification event exceeds latency threshold | Admin/operations role | High | Disabled | Yes | Yes | Yes | Yes |
+| `system.notification_dead_lettered` / Notification Event Dead-Lettered | Processing retries are exhausted | Admin/operations role | Critical | Disabled | Yes | Yes | Yes | Yes |
 | `system.storage_threshold` / Storage Capacity Warning | Database/media/log storage reaches threshold | Admin/operations role | High | Disabled | Yes | Yes | Yes | Yes |
 | `system.backup_failed` / Backup Failed | Scheduled backup fails verification | Admin/operations role | Critical | Disabled | Yes | Yes | Yes | Yes |
 | `system.release_deployed` / QCMS Updated | New application release is deployed | Admin; optionally all users for visible changes | Low | Disabled | No | Yes | Yes | No |
@@ -337,6 +403,7 @@ Use filters for category, priority, enabled state, channel, recipient role, and 
 ### 8.5 Popup and Sound
 
 - Duration by priority.
+- Recommended defaults: Low `0` seconds/no popup, Medium `5` seconds when explicitly enabled, High `8` seconds, Critical sticky until acknowledged with a configurable `12`-second fallback only for non-actionable Critical notices.
 - Critical notification behavior: sticky or timed.
 - Maximum simultaneous popups, recommended `3`.
 - Deduplication window, recommended `60` seconds.
@@ -352,7 +419,7 @@ Use filters for category, priority, enabled state, channel, recipient role, and 
 - Dry-run count and confirmation before retention execution.
 - Legal hold flag for protected records.
 
-### 8.7 Templates
+### 8.7 Notification Templates
 
 - Separate in-app title, in-app body, popup body, and future email subject/body.
 - Supported variables displayed beside the editor.
@@ -876,3 +943,30 @@ flowchart LR
 ```
 
 This preserves the confirmed QCMS business rule: assigned-HOD approval is the normal mandatory path, while Management and Admin remain optional override and escalation authorities.
+
+## 26. Decisions Required Before Implementation
+
+1. Confirm whether Critical mandatory notifications may bypass the global disable switch. Recommended: yes for account security, audit integrity, and service outage events, with a visible policy lock.
+2. Confirm backup-HOD policy and the recipient resolver used when the assigned HOD is inactive or unavailable.
+3. Choose the canonical submitted status and migration path for legacy `Pending` versus `Pending for Approval`.
+4. Define whether users may delete notifications or only dismiss them. Recommended: dismiss from the personal inbox while preserving immutable event/delivery history.
+5. Define the organization timezone, business calendar, and SLA owner before enabling SLA or escalation events.
+6. Define which rejection-comment excerpts, if any, may appear in email. Recommended: subject-safe summary only, with the full reason behind authenticated access.
+7. Define retention classes for routine, workflow, security, and compliance notifications rather than relying permanently on one global period.
+8. Decide whether Management recipient scope follows department, project/domain, configured escalation rules, or a dedicated oversight assignment model.
+
+## 27. Analysis Evidence Base
+
+This plan was derived from the current implementation and project documentation, including:
+
+- `backend/workflow_service.py`: response statuses, transition rules, owner editing/submission, assigned-HOD decisions, and Management/Admin overrides.
+- `backend/models.py`: `UserProfile`, `ChecklistResponse`, immutable `ResponseDecision`, immutable `ActivityLog`, `NotificationSetting`, and `Notification`.
+- `backend/views/user_panel.py`: WIP, submit, resubmit, geolocation capture behavior, approval, rejection, override, and current notification producers.
+- `backend/views/admin.py`: checklist/master-data administration, permissions, user/HOD assignment, Admin override, protected deletion, and configuration actions.
+- `backend/views/notifications.py` and `backend/notification_service.py`: current event registry, preferences, recipient filtering, polling, popup selection, retention, and denied-action threshold alerting.
+- `frontend/templates/shared/notification_center.html` and `frontend/static/shared/notification_center.js`: current bell, drawer, unread count, tabs, popup duration, sound, and polling behavior.
+- `frontend/templates/admin_panel/admin_notification_settings.html`: current Control Panel capability and limitations.
+- `docs/05_Checklist_Workflow.md`, `docs/04_User_Roles_and_Permissions.md`, `WORKFLOW_IMPLEMENTATION_PLAN.md`: role responsibilities and target HOD-mandatory workflow.
+- `GEOLOCATION_TRACKING_IMPLEMENTATION_REPORT.md` and `GEOLOCATION_RISK_ASSESSMENT.md`: one-shot submit-time location, non-blocking failure behavior, privacy, and risk constraints.
+- `QCMS_ACTIVITY_LOG_COVERAGE_AUDIT.md`: audit gaps, security-event separation, and recommended structured event keys.
+- `backend/tests.py`: verified expectations for workflow decisions, geolocation, notification persistence/scoping, popups, assignment, overrides, settings, and permission-denial thresholds.

@@ -17,6 +17,22 @@
   <button class="btn table-action-btn btn-add" id="addEntityBtn">+ Add Project</button>
 </div>
 
+<form method="GET" class="users-toolbar">
+  <input type="search" name="search" placeholder="Search projects" value="{{ request.GET.search }}" class="form-control toolbar-search">
+  <select name="domain" class="form-control">
+    <option value="">All Domains</option>
+    <option value="Corporate" {% if request.GET.domain == 'Corporate' %}selected{% endif %}>Corporate</option>
+    <option value="Non-Corporate" {% if request.GET.domain == 'Non-Corporate' %}selected{% endif %}>Non-Corporate</option>
+  </select>
+  <select name="status" class="form-control">
+    <option value="">All Status</option>
+    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+  </select>
+  <button type="submit" class="btn table-action-btn btn-view">Search</button>
+  {% include 'shared/tables/controls.html' with clear_url=request.path %}
+</form>
+
 <div class="card">
   <div class="table-container">
     <table>
@@ -61,6 +77,7 @@
     </table>
   </div>
 </div>
+{% include 'shared/tables/pagination.html' with page_obj=projects %}
 
 <div id="popup" class="popup">
   <div class="popup-content">

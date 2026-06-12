@@ -11,6 +11,16 @@
   <h2>My Checklists</h2>
 </div>
 
+<form method="GET" class="users-toolbar">
+  <input type="search" name="search" placeholder="Search checklists" value="{{ request.GET.search }}" class="form-control toolbar-search">
+  <select name="checklist_type" class="form-control">
+    <option value="">All Types</option>
+    {% for type_id, type_name in checklist_types %}<option value="{{ type_id }}" {% if request.GET.checklist_type == type_id|stringformat:'s' %}selected{% endif %}>{{ type_name }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="btn table-action-btn btn-view">Search</button>
+  {% include 'shared/tables/controls.html' with clear_url=request.path %}
+</form>
+
 {% include 'admin_panel/partials/checklist_table.html' with checklist_view_mode=True %}
 {% include 'shared/tables/pagination.html' with page_obj=checklists %}
 {% endblock %}

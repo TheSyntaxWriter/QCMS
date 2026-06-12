@@ -124,14 +124,7 @@ When the user clicks "Submit for Approval":
 
 ## HOD Resolution
 
-The system resolves an HOD by finding the first active `UserProfile` where:
-
-- `role='HOD'`
-- `is_active=True`
-- `department` matches submitter department.
-- Linked Django user is active.
-
-The matched HOD user ID is saved to `ChecklistResponse.hod`.
+The submitter's active `UserProfile.assigned_hod` is the mandatory primary approver and is copied to `ChecklistResponse.hod` at submission. Existing records remain compatible through a department-based legacy fallback when no assigned HOD exists. Management and Admin can approve or reject as explicit override authorities; Management is not a required approval stage.
 
 ## Response Statuses
 
@@ -159,7 +152,6 @@ Defined statuses:
 | --- | --- |
 | `approve` | `Approved` |
 | `reject` | `Rejected` |
-| `toggle` | `Pending` if current status is `Rejected`; otherwise `Rejected` |
 
 ## Edit Rules
 
@@ -179,14 +171,14 @@ Defined statuses:
 
 `can_approve_response` allows approval when:
 
-- Role is `Admin`, `Management`, or `HOD`; and
+- Role is `Admin` or `Management`; or the actor is the response owner's assigned HOD; and
 - The status transition to `Approved` is allowed.
 
 ## Reject Rules
 
 `can_reject_response` allows rejection when:
 
-- Role is `Admin`, `Management`, or `HOD`; and
+- Role is `Admin` or `Management`; or the actor is the response owner's assigned HOD; and
 - The status transition to `Rejected` is allowed.
 
 ## Approval Process
@@ -195,24 +187,26 @@ The intended approval process is:
 
 1. User creates a response.
 2. User submits it for approval.
-3. HOD or Management sees the response if it falls within their scope.
-4. Reviewer chooses approve or reject.
+3. The assigned HOD receives the approval request and is the normal approver.
+4. The HOD approves with an optional comment or rejects with a mandatory reason.
 5. Approved responses become final.
 6. Rejected responses can return to the submitter for changes, depending on workflow action.
-7. Admin can view and act across all responses.
+7. Management and Admin can perform documented override approve/reject actions.
+8. Every decision is stored in append-only `ResponseDecision` history and is visible to the owner.
+9. In-app notifications inform the owner and relevant reviewer of workflow events.
 
 ## Current Workflow Caveats
 
-- New submissions use `Pending for Approval`, but some dashboards count `Pending`.
-- The status transition table still supports older `Pending` behavior.
-- Rejected responses can transition to `Pending` or `WIP`, depending on action.
-- The UI may show broad action buttons even when workflow later blocks the action.
+- New submissions use `Pending for Approval`; legacy `Pending` remains supported for existing data.
+- Dashboards count both submitted statuses as active pending work and display WIP separately.
+- Rejected owners edit/resubmit explicitly; response Toggle actions have been removed.
+- UI actions are generated per response from backend permission and workflow checks.
 
 ## Recommended Workflow Enhancements
 
 - Decide on one canonical submitted status: either `Pending` or `Pending for Approval`.
-- Add explicit review history/comments.
-- Add HOD-specific queues.
-- Add notification events for submission, approval, rejection, and resubmission.
+- Consider a dedicated assigned-HOD queue and aging indicators.
+- Normalize legacy `Pending` after a controlled data migration.
+- Add SLA/escalation only after business rules are approved.
 - Add status badges and timeline views.
 - Add tests for all status transitions and role/action combinations.

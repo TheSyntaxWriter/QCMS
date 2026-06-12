@@ -16,6 +16,7 @@
   <select name="action_type" class="form-control"><option value="">All Actions</option>{% for a in action_types %}<option value="{{ a }}" {% if request.GET.action_type == a %}selected{% endif %}>{{ a }}</option>{% endfor %}</select>
   <select name="status" class="form-control"><option value="">All Status</option>{% for s in status_choices %}<option value="{{ s }}" {% if request.GET.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
   <button type="submit" class="btn btn-add">Search</button>
+  {% include 'shared/tables/controls.html' with clear_url=request.path %}
 </form>
 
 <div class="card"><div class="table-container"><table>

@@ -76,7 +76,7 @@
   <input type="date" id="dateToFilter" name="date_to" value="{{ request.GET.date_to }}" class="form-control" />
   <input type="text" id="responseSearch" name="search" placeholder="Global Search" value="{{ request.GET.search }}" class="form-control toolbar-search" />
   <button type="submit" class="btn btn-add icon-btn" title="Search">🔍</button>
-  <a href="{% url 'admin_responses' %}" class="btn btn-delete reset-link">Reset Filters</a>
+  {% include 'shared/tables/controls.html' with clear_url=request.path %}
 </form>
 
 <div class="stats-grid">

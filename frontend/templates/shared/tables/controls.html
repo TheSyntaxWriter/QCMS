@@ -1,0 +1,10 @@
+<label class="table-page-size" for="{{ page_size_id|default:'tablePageSize' }}">
+  Rows
+  <select id="{{ page_size_id|default:'tablePageSize' }}" name="page_size" class="form-control" onchange="this.form.submit()">
+    {% for size in table_page_sizes %}
+      <option value="{{ size }}" {% if current_page_size == size %}selected{% endif %}>{{ size }}</option>
+    {% endfor %}
+  </select>
+</label>
+<a href="{{ clear_url }}" class="btn table-action-btn btn-delete">Clear Filters</a>
+<button type="submit" name="export" value="xlsx" class="btn table-action-btn btn-add">Export Excel</button>

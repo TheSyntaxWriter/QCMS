@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import ActivityLog, Notification, NotificationSetting, UserProfile
+from .logging_service import write_activity_log
 
 
 EVENT_DEFINITIONS = {
@@ -106,13 +107,11 @@ def assigned_hod_is_valid(profile):
 
 def record_permission_denied(user, description):
     now = timezone.now()
-    ActivityLog.objects.create(
-        user=user,
-        role=getattr(getattr(user, 'userprofile', None), 'role', ''),
-        action_type='Permission Denied',
-        module_name='Security',
-        description=description,
-        status=ActivityLog.STATUS_FAILED,
+    write_activity_log(
+        user=user, action_type='Permission Denied', module_name='Security',
+        description=description, status=ActivityLog.STATUS_FAILED,
+        event_key='permission.denied', severity=ActivityLog.SEVERITY_CRITICAL,
+        target_type='User', target_id=getattr(user, 'id', ''), source=ActivityLog.SOURCE_UI,
     )
     window_start = now - timedelta(minutes=15)
     denied_count = ActivityLog.objects.filter(

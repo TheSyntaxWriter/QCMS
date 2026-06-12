@@ -1,6 +1,7 @@
 import json
 from decimal import Decimal
 from io import BytesIO
+from zipfile import ZipFile
 
 from django.contrib import admin
 from django.core.exceptions import ValidationError
@@ -109,6 +110,24 @@ class AccessControlTests(TestCase):
             self.client.logout()
 
 
+class AuthenticationAuditCoverageTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='auth_audit', password='pass12345')
+        UserProfile.objects.create(user=self.user, role='User')
+
+    def test_login_success_failure_and_logout_use_structured_event_keys(self):
+        failed = self.client.post(reverse('login'), {'username': 'auth_audit', 'password': 'wrong'})
+        self.assertEqual(failed.status_code, 200)
+        self.assertTrue(ActivityLog.objects.filter(event_key='login.failed', target_id='auth_audit').exists())
+
+        success = self.client.post(reverse('login'), {'username': 'auth_audit', 'password': 'pass12345'})
+        self.assertEqual(success.status_code, 302)
+        self.assertTrue(ActivityLog.objects.filter(event_key='login.success', target_id=str(self.user.id)).exists())
+
+        self.client.get(reverse('logout'))
+        self.assertTrue(ActivityLog.objects.filter(event_key='logout', target_id=str(self.user.id)).exists())
+
+
 class TableFrameworkPhase0Tests(TestCase):
     def setUp(self):
         self.admin_user = User.objects.create_user(username="table_admin", password="pass12345")
@@ -124,7 +143,7 @@ class TableFrameworkPhase0Tests(TestCase):
         )
         self.checklist_type = ChecklistType.objects.create(name="Table Type")
 
-        for index in range(21):
+        for index in range(51):
             checklist = ChecklistDefinition.objects.create(
                 checklist_id=f"CL-TBL-{index:02d}",
                 name=f"Table Checklist {index:02d}",
@@ -159,7 +178,7 @@ class TableFrameworkPhase0Tests(TestCase):
         self.assertEqual(first_page.status_code, 200)
         self.assertEqual(second_page.status_code, 200)
         self.assertContains(first_page, "Showing 1-")
-        self.assertContains(first_page, f"of 21 results")
+        self.assertContains(first_page, f"of 51 results")
         self.assertContains(first_page, f"Page 1 of {expected_pages}")
         self.assertContains(first_page, "Go to next page")
         self.assertEqual(second_page.context[context_name].number, 2)
@@ -182,7 +201,7 @@ class TableFrameworkPhase0Tests(TestCase):
         )
 
     def test_activity_logs_page_two_is_reachable(self):
-        self.assert_page_two_reachable("admin_logs", "logs", 2)
+        self.assert_page_two_reachable("admin_logs", "logs", 3)
 
     def test_my_checklists_page_two_is_reachable(self):
         self.assert_page_two_reachable("my_checklists", "checklists", 3)
@@ -200,6 +219,31 @@ class TableFrameworkPhase0Tests(TestCase):
         self.assertContains(response, "Showing 0 of 0 results")
         self.assertContains(response, "Page 1 of 1")
         self.assertNotContains(response, "Go to next page")
+
+    def test_page_size_selector_and_excel_export_use_complete_filtered_dataset(self):
+        self.client.force_login(self.admin_user)
+        page = self.client.get(reverse('admin_checklists'), {'page_size': 50})
+        self.assertEqual(len(page.context['checklists'].object_list), 50)
+
+        exported = self.client.get(reverse('admin_checklists'), {'search': 'CL-TBL-', 'export': 'xlsx'})
+        self.assertEqual(exported.status_code, 200)
+        self.assertEqual(exported['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        with ZipFile(BytesIO(exported.content)) as workbook:
+            sheet = workbook.read('xl/worksheets/sheet1.xml').decode('utf-8')
+        self.assertIn('CL-TBL-00', sheet)
+        self.assertIn('CL-TBL-50', sheet)
+
+    def test_excel_export_neutralizes_formula_injection(self):
+        checklist = ChecklistDefinition.objects.get(checklist_id='CL-TBL-00')
+        checklist.name = '=HYPERLINK("https://example.invalid")'
+        checklist.save(update_fields=['name'])
+        self.client.force_login(self.admin_user)
+
+        exported = self.client.get(reverse('admin_checklists'), {'search': 'CL-TBL-00', 'export': 'xlsx'})
+        with ZipFile(BytesIO(exported.content)) as workbook:
+            sheet = workbook.read('xl/worksheets/sheet1.xml').decode('utf-8')
+        self.assertIn("'=HYPERLINK", sheet)
+        self.assertNotIn('<f>', sheet)
 
 
 class ActivityLogIntegrityPhase0Tests(TestCase):
@@ -630,6 +674,8 @@ class WorkflowPhase1Tests(TestCase):
         self.assertRedirects(result, reverse("admin_control_panel"))
         settings_obj.refresh_from_db()
         self.assertTrue(settings_obj.security_settings["geolocation_tracking_enabled"])
+        self.assertTrue(ActivityLog.objects.filter(event_key='settings.updated', target_type='AppSettings').exists())
+        self.assertTrue(ActivityLog.objects.filter(event_key='geolocation_settings.updated', target_type='AppSettings').exists())
 
     def test_submit_captures_coordinates_accuracy_and_ip_when_enabled(self):
         settings_obj = AppSettings.get_solo()
@@ -1312,11 +1358,13 @@ class SecurityHardeningTests(TestCase):
         self.client.force_login(other)
         unauthorized = self.client.get(url)
         self.assertEqual(unauthorized.status_code, 404)
+        self.assertTrue(ActivityLog.objects.filter(event_key='attachment.access_denied', target_id=str(answer.id)).exists())
 
         self.client.force_login(owner)
         authorized = self.client.get(url)
         self.assertEqual(authorized.status_code, 200)
         self.assertEqual(authorized["X-Content-Type-Options"], "nosniff")
+        self.assertTrue(ActivityLog.objects.filter(event_key='attachment.downloaded', target_id=str(answer.id)).exists())
 
         self.client.force_login(admin)
         admin_response = self.client.get(url)
@@ -1499,6 +1547,7 @@ class NotificationCenterTests(TestCase):
             self.assertEqual(result.status_code, 403)
 
         self.assertEqual(Notification.objects.filter(recipient=self.admin_user, event_key='permission_denied_threshold').count(), 1)
+        self.assertEqual(ActivityLog.objects.filter(user=self.owner, event_key='permission.denied').count(), 5)
 
     def test_protected_audit_delete_notifies_admin(self):
         response_obj = ChecklistResponse.objects.create(
@@ -1550,6 +1599,7 @@ class NotificationCenterTests(TestCase):
         self.assertEqual(settings.retention_days, 180)
         self.assertEqual(settings.event_settings['notification_settings_changed']['priority'], 'Critical')
         self.assertTrue(Notification.objects.filter(recipient=self.admin_user, event_key='notification_settings_changed').exists())
+        self.assertTrue(ActivityLog.objects.filter(event_key='notification_settings.updated', target_type='NotificationSetting').exists())
 
     def test_authenticated_header_contains_notification_bell(self):
         self.client.force_login(self.owner)

@@ -1,5 +1,14 @@
 # Documentation Changelog
 
+## 2026-06-12 - Final Stabilization Release
+
+### Updated
+
+- Refreshed the master system and checklist workflow documents for assigned-HOD approval, override authority, decision history, geolocation, Notification Control, secure attachments, and structured audit logging.
+- Documented the completed Universal Table Framework: shared pagination, search/filter controls, 25/50/100/250 page sizes, and full filtered XLSX export with formula-injection protection.
+- Updated the future roadmap to remove delivered security, workflow-comment, notification, and export work.
+- Confirmed all Markdown documentation resides under `docs/` using the `audits`, `plans`, `implementation`, `reports`, and `archive` structure.
+
 ## 2026-06-10 - Documentation Reorganization
 
 ### Changed

@@ -9,7 +9,6 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.core.exceptions import ValidationError
-from django.core.paginator import Paginator
 from django.core.validators import validate_email
 from django.contrib.staticfiles import finders
 from django.http import HttpResponse, JsonResponse
@@ -34,6 +33,7 @@ from ..models import (
 )
 from .common import get_user_profile
 from ..logging_service import write_activity_log
+from ..table_framework import PAGE_SIZE_OPTIONS, excel_response, get_page_size, is_excel_export, paginate
 from ..notification_service import notify_on_commit, users_for_role
 from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response, effective_allowed_actions_for_response
 from ..upload_validation import validate_branding_upload
@@ -288,9 +288,17 @@ def admin_users(request):
     dept_active_data = [department['active_count'] for department in dept_stats]
     dept_inactive_data = [department['inactive_count'] for department in dept_stats]
 
-    paginator = Paginator(filtered_user_list, 10)
-    page_number = request.GET.get('page')
-    users_page = paginator.get_page(page_number)
+    if is_excel_export(request):
+        rows = [
+            [item.user.username, item.user.get_full_name(), item.user.email, item.role,
+             item.department.name if item.department else '', item.project.name if item.project else '',
+             item.assigned_hod.get_full_name() or item.assigned_hod.username if item.assigned_hod else '',
+             'Active' if item.is_active else 'Inactive']
+            for item in filtered_user_list
+        ]
+        return excel_response('qcms-users.xlsx', ['Username', 'Full Name', 'Email', 'Role', 'Department', 'Project', 'Assigned HOD', 'Status'], rows, 'Users')
+
+    users_page = paginate(request, filtered_user_list)
 
     context = {
         'sidebar_menu': _admin_sidebar_menu(),
@@ -316,6 +324,8 @@ def admin_users(request):
             'dir': sort_dir,
         }.items() if v != ''}),
         'users_page': users_page,
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
         'admin_users_config': {
             'createUrl': '/admin-create/',
             'editUrl': '/admin-user-action/',
@@ -354,10 +364,25 @@ def admin_departments(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
-    departments = Department.objects.all().order_by('id')
+    search = (request.GET.get('search') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+    departments = Department.objects.all()
+    if search:
+        departments = departments.filter(Q(code__icontains=search) | Q(name__icontains=search))
+    if status in {'active', 'inactive'}:
+        departments = departments.filter(is_active=status == 'active')
+    departments = departments.order_by('id')
+    if is_excel_export(request):
+        return excel_response('qcms-departments.xlsx', ['ID', 'Code', 'Name', 'Status', 'Created', 'Updated'], [
+            [item.id, item.code, item.name, 'Active' if item.is_active else 'Inactive', item.created_at, item.updated_at]
+            for item in departments
+        ], 'Departments')
+    departments = paginate(request, departments)
     return render(request, 'admin_panel/admin_departments.html', {
         'sidebar_menu': _admin_sidebar_menu(),
         'departments': departments,
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
         'admin_departments_config': {
             'createUrl': '/admin-create/',
             'actionUrl': '/admin-department-action/',
@@ -374,10 +399,28 @@ def admin_projects(request):
     if not profile or profile.role != "Admin":
         return redirect('home')
 
-    projects = Project.objects.all().order_by('id')
+    search = (request.GET.get('search') or '').strip()
+    status = (request.GET.get('status') or '').strip()
+    domain = (request.GET.get('domain') or '').strip()
+    projects = Project.objects.all()
+    if search:
+        projects = projects.filter(Q(code__icontains=search) | Q(name__icontains=search))
+    if status in {'active', 'inactive'}:
+        projects = projects.filter(is_active=status == 'active')
+    if domain in {'Corporate', 'Non-Corporate'}:
+        projects = projects.filter(domain=domain)
+    projects = projects.order_by('id')
+    if is_excel_export(request):
+        return excel_response('qcms-projects.xlsx', ['ID', 'Code', 'Name', 'Domain', 'Status', 'Created', 'Updated'], [
+            [item.id, item.code, item.name, item.domain, 'Active' if item.is_active else 'Inactive', item.created_at, item.updated_at]
+            for item in projects
+        ], 'Projects')
+    projects = paginate(request, projects)
     return render(request, 'admin_panel/admin_projects.html', {
         'sidebar_menu': _admin_sidebar_menu(),
         'projects': projects,
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
         'admin_projects_config': {
             'createUrl': '/admin-create/',
             'actionUrl': '/admin-project-action/',
@@ -408,8 +451,16 @@ def admin_checklists(request):
     if status in {'active', 'inactive'}:
         checklists = checklists.filter(is_active=(status == 'active'))
 
-    paginator = Paginator(checklists.order_by('-updated_at'), 8)
-    page_obj = paginator.get_page(page_no)
+    checklists = checklists.order_by('-updated_at')
+    if is_excel_export(request):
+        return excel_response('qcms-checklists.xlsx', ['Checklist ID', 'Name', 'Type', 'Projects', 'Departments', 'Status', 'Updated'], [
+            [item.checklist_id, item.name, item.checklist_type.name,
+             ', '.join(project.name for project in item.projects.all()),
+             ', '.join(department.name for department in item.departments.all()),
+             'Active' if item.is_active else 'Inactive', item.updated_at]
+            for item in checklists
+        ], 'Checklists')
+    page_obj = paginate(request, checklists)
 
     if request.GET.get('ajax') == '1':
         rows = []
@@ -429,7 +480,7 @@ def admin_checklists(request):
                 'has_next': page_obj.has_next(),
                 'has_previous': page_obj.has_previous(),
                 'number': page_obj.number,
-                'num_pages': paginator.num_pages,
+                'num_pages': page_obj.paginator.num_pages,
             },
         })
 
@@ -439,6 +490,8 @@ def admin_checklists(request):
         'checklist_types': ChecklistType.objects.filter(is_active=True).order_by('name'),
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'departments': Department.objects.filter(is_active=True).order_by('name'),
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
         'questions_json_help': {
             'types': _question_type_options(),
         },
@@ -690,7 +743,16 @@ def admin_responses(request):
         .order_by('day')
     )
 
-    page_obj = Paginator(responses.order_by('-submitted_at'), 10).get_page(request.GET.get('page'))
+    responses = responses.order_by('-submitted_at')
+    if is_excel_export(request):
+        return excel_response('qcms-responses.xlsx', ['Response ID', 'Checklist ID', 'Checklist', 'Submitted By', 'Project', 'Department', 'Status', 'Submitted'], [
+            [item.id, item.checklist.checklist_id, item.checklist.name,
+             item.submitted_by.username if item.submitted_by else '',
+             item.project.name if item.project else '', item.department.name if item.department else '',
+             item.status, item.submitted_at]
+            for item in responses
+        ], 'Responses')
+    page_obj = paginate(request, responses)
     admin_allowed_actions = get_role_permission_config('Admin')[1]
     for response in page_obj.object_list:
         response.workflow_allowed_actions = effective_allowed_actions_for_response(admin_allowed_actions, response, profile, request.user)
@@ -715,6 +777,8 @@ def admin_responses(request):
         'responses': page_obj,
         'projects': active_projects,
         'departments': Department.objects.filter(is_active=True).order_by('name'),
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
         'stats': stats,
         'role_permissions': role_permissions,
         'chart_data': {
@@ -746,6 +810,7 @@ def admin_control_panel(request):
         'layout_width': 'boxed',
     }
     if request.method == 'POST':
+        previous_geolocation = bool((app_settings.security_settings or {}).get('geolocation_tracking_enabled', False))
         confirm_password = (request.POST.get('confirm_password') or '').strip()
         if not authenticate(request, username=request.user.username, password=confirm_password):
             messages.error(request, 'Password confirmation failed. No settings were changed.')
@@ -763,6 +828,19 @@ def admin_control_panel(request):
             app_settings.logo = None
             app_settings.favicon = None
             app_settings.save()
+            write_activity_log(
+                action_type='Settings Updated', module_name='Settings', description='Control panel settings reset to defaults.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.updated',
+                severity=ActivityLog.SEVERITY_HIGH, target_type='AppSettings', target_id=app_settings.pk,
+                source=ActivityLog.SOURCE_UI,
+            )
+            if previous_geolocation:
+                write_activity_log(
+                    action_type='Geolocation Settings Updated', module_name='Settings', description='Geolocation tracking disabled by settings reset.',
+                    status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='geolocation_settings.updated',
+                    severity=ActivityLog.SEVERITY_HIGH, target_type='AppSettings', target_id=app_settings.pk,
+                    source=ActivityLog.SOURCE_UI,
+                )
             messages.success(request, 'Settings reset to defaults.')
             return redirect('admin_control_panel')
 
@@ -789,11 +867,32 @@ def admin_control_panel(request):
                 try:
                     validate_branding_upload(f)
                 except ValidationError as exc:
+                    write_activity_log(
+                        action_type='Upload Rejected', module_name='Security',
+                        description=f'Invalid branding upload rejected for {field}.', status=ActivityLog.STATUS_FAILED,
+                        user=request.user, event_key='upload.rejected', severity=ActivityLog.SEVERITY_HIGH,
+                        target_type='AppSettings', target_id=app_settings.pk, source=ActivityLog.SOURCE_UI,
+                    )
                     messages.error(request, f'{field.replace("_", " ").title()}: {" ".join(exc.messages)}')
                     return redirect('admin_control_panel')
                 setattr(app_settings, field, f)
         app_settings.sidebar_logo = app_settings.logo
         app_settings.save()
+        write_activity_log(
+            action_type='Settings Updated', module_name='Settings', description='Control panel settings updated.',
+            status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.updated',
+            severity=ActivityLog.SEVERITY_HIGH, target_type='AppSettings', target_id=app_settings.pk,
+            source=ActivityLog.SOURCE_UI,
+        )
+        current_geolocation = bool((app_settings.security_settings or {}).get('geolocation_tracking_enabled', False))
+        if previous_geolocation != current_geolocation:
+            write_activity_log(
+                action_type='Geolocation Settings Updated', module_name='Settings',
+                description=f'Geolocation tracking set to {current_geolocation}.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='geolocation_settings.updated',
+                severity=ActivityLog.SEVERITY_HIGH, target_type='AppSettings', target_id=app_settings.pk,
+                source=ActivityLog.SOURCE_UI,
+            )
         messages.success(request, 'Control panel settings saved and applied globally.')
         return redirect('admin_control_panel')
 
@@ -846,7 +945,15 @@ def admin_logs(request):
     if status:
         logs = logs.filter(status=status)
 
-    page_obj = Paginator(logs.order_by('-timestamp'), 20).get_page(request.GET.get('page'))
+    logs = logs.order_by('-timestamp')
+    if is_excel_export(request):
+        return excel_response('qcms-activity-logs.xlsx', ['Timestamp', 'Event Key', 'Action', 'Severity', 'User', 'Target Type', 'Target ID', 'Source', 'Status', 'Description', 'IP Address'], [
+            [item.timestamp, item.event_key, item.action_type, item.severity,
+             item.user.username if item.user else '', item.target_type, item.target_id,
+             item.source, item.status, item.description, item.ip_address]
+            for item in logs
+        ], 'Activity Logs')
+    page_obj = paginate(request, logs)
 
     return render(request, 'admin_panel/admin_logs.html', {
         'sidebar_menu': _admin_sidebar_menu(),
@@ -856,6 +963,8 @@ def admin_logs(request):
         'projects': Project.objects.filter(is_active=True).order_by('name'),
         'action_types': ActivityLog.objects.values_list('action_type', flat=True).distinct().order_by('action_type'),
         'status_choices': [choice[0] for choice in ActivityLog.STATUS_CHOICES],
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'current_page_size': get_page_size(request),
     })
 
 
@@ -1205,7 +1314,12 @@ def admin_master_create(request):
                 assigned_hod_id=assigned_hod_id,
                 is_active=True,
             )
-            write_activity_log(action_type='User Created', module_name='User', description=f'User created: {username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            write_activity_log(
+                action_type='User Created', module_name='User', description=f'User created: {username}',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='user.created',
+                severity=ActivityLog.SEVERITY_HIGH, target_type='UserProfile', target_id=created_profile.id,
+                source=ActivityLog.SOURCE_UI,
+            )
             notify_on_commit('user_created', users_for_role('Admin'), message=f'User {username} was created by {request.user.username}.', related_type='User', related_id=user.id, related_url=reverse('admin_users'))
             if created_profile.assigned_hod_id:
                 notify_on_commit('user_assigned_to_hod', created_profile.assigned_hod, message=f'{user.get_full_name() or username} was assigned to you.', related_type='UserProfile', related_id=created_profile.id, related_url=reverse('admin_users'))
@@ -1283,7 +1397,13 @@ def admin_user_action(request):
                     was_active = profile_obj.is_active
                     profile_obj.is_active = not profile_obj.is_active
                     profile_obj.save()
-                    write_activity_log(action_type='User Updated', module_name='User', description=f'User activation toggled: {profile_obj.user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+                    write_activity_log(
+                        action_type='User Updated', module_name='User', description=f'User activation toggled: {profile_obj.user.username}',
+                        status=ActivityLog.STATUS_SUCCESS, user=request.user,
+                        event_key='user.enabled' if profile_obj.is_active else 'user.disabled',
+                        severity=ActivityLog.SEVERITY_HIGH, target_type='UserProfile', target_id=profile_obj.id,
+                        source=ActivityLog.SOURCE_UI, old_data={'is_active': was_active}, new_data={'is_active': profile_obj.is_active},
+                    )
                     if was_active and not profile_obj.is_active:
                         notify_on_commit('user_deactivated', users_for_role('Admin'), message=f'User {profile_obj.user.username} was deactivated by {request.user.username}.', related_type='User', related_id=profile_obj.user_id, related_url=reverse('admin_users'), action_required=True)
                 except UserProfile.DoesNotExist:
@@ -1320,6 +1440,9 @@ def admin_user_action(request):
 
             user = profile_obj.user
             previous_hod_id = profile_obj.assigned_hod_id
+            previous_role = profile_obj.role
+            previous_department_id = profile_obj.department_id
+            previous_project_id = profile_obj.project_id
             username = (request.POST.get('username') or '').strip()
             if not username:
                 messages.error(request, "Username is required.")
@@ -1349,7 +1472,27 @@ def admin_user_action(request):
             profile_obj.project_id = request.POST.get('project') or None
             profile_obj.assigned_hod_id = assigned_hod_id
             profile_obj.save()
-            write_activity_log(action_type='User Updated', module_name='User', description=f'User updated: {user.username}', status=ActivityLog.STATUS_SUCCESS, user=request.user)
+            write_activity_log(
+                action_type='User Updated', module_name='User', description=f'User updated: {user.username}',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='user.updated',
+                severity=ActivityLog.SEVERITY_MEDIUM, target_type='UserProfile', target_id=profile_obj.id,
+                source=ActivityLog.SOURCE_UI,
+            )
+            changes = (
+                ('user.role_changed', previous_role, profile_obj.role, ActivityLog.SEVERITY_CRITICAL),
+                ('user.assigned_hod_changed', previous_hod_id, profile_obj.assigned_hod_id, ActivityLog.SEVERITY_HIGH),
+                ('user.department_changed', previous_department_id, profile_obj.department_id, ActivityLog.SEVERITY_HIGH),
+                ('user.project_assignment_changed', previous_project_id, profile_obj.project_id, ActivityLog.SEVERITY_HIGH),
+            )
+            for event_key, old_value, new_value, severity in changes:
+                if old_value != new_value:
+                    write_activity_log(
+                        action_type='User Assignment Changed', module_name='User',
+                        description=f'{event_key} for {user.username}.', status=ActivityLog.STATUS_SUCCESS,
+                        user=request.user, event_key=event_key, severity=severity,
+                        target_type='UserProfile', target_id=profile_obj.id, source=ActivityLog.SOURCE_UI,
+                        old_data={'value': old_value}, new_data={'value': new_value},
+                    )
             if previous_hod_id != profile_obj.assigned_hod_id:
                 if previous_hod_id:
                     notify_on_commit('user_removed_from_hod', [previous_hod_id], message=f'{user.get_full_name() or user.username} is no longer assigned to you.', related_type='UserProfile', related_id=profile_obj.id, related_url=reverse('admin_users'))

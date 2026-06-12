@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-QCMS, the Quality Control Management System, is a Django-based web application for managing quality checklists across projects and departments. It supports checklist creation, assignment, completion, review, approval, rejection, role-based response visibility, audit logging, PDF export, profile management, and basic system branding.
+QCMS, the Quality Control Management System, is a Django-based web application for managing quality checklists across projects and departments. It supports checklist creation, assignment, completion, assigned-HOD approval, Management/Admin overrides, append-only decision and audit history, geolocation-at-submit, in-app notifications, secure attachments, PDF/Excel export, profile management, and system branding.
 
 The application is currently a server-rendered Django monolith. The backend uses Django models, function-based views, and service modules for permissions, workflow, and logging. The frontend uses Django templates, shared CSS, and page-specific vanilla JavaScript.
 
@@ -17,7 +17,7 @@ Business goals:
 - Digitize checklist-based quality inspections.
 - Assign checklist templates by project and department.
 - Allow users to submit checklist responses with text, options, dates, and files.
-- Route submitted responses to HOD, Management, or Admin review.
+- Route submitted responses to the user's assigned HOD, with Management and Admin override authority.
 - Track approval/rejection status.
 - Maintain an audit trail for accountability.
 - Provide dashboards and reports for operational visibility.
@@ -244,7 +244,6 @@ erDiagram
 | Approve response | Yes | No | Yes if permitted and valid status | Yes if permitted and valid status |
 | Reject response | Yes | No | Yes if permitted and valid status | Yes if permitted and valid status |
 | Delete response | Yes | No | No | No |
-| Toggle response status | Yes | No | No | No |
 | Manage users | Yes | No | No | No |
 | Manage departments | Yes | No | No | No |
 | Manage projects | Yes | No | No | No |
@@ -257,7 +256,7 @@ Role action ceilings in code:
 
 | Role | Maximum Response Actions |
 | --- | --- |
-| Admin | `view`, `edit`, `approve`, `reject`, `delete`, `toggle` |
+| Admin | `view`, `edit`, `approve`, `reject`, `delete` |
 | User | `view`, `edit` |
 | HOD | `view`, `approve`, `reject` |
 | Management | `view`, `approve`, `reject` |
@@ -380,7 +379,6 @@ Action mapping:
 | --- | --- |
 | `approve` | Target status `Approved` if transition is allowed. |
 | `reject` | Target status `Rejected` if transition is allowed. |
-| `toggle` | If current status is `Rejected`, target `Pending`; otherwise target `Rejected`. |
 
 Known status concern:
 
@@ -439,7 +437,7 @@ Known status concern:
 | `/admin-department-action/` | Department edit/delete. |
 | `/admin-project-action/` | Project edit/delete. |
 | `/admin-checklist-action/` | Checklist create/edit/delete/toggle. |
-| `/admin-response-action/` | Response view/approve/reject/delete/toggle and permission save. |
+| `/admin-response-action/` | Response view, override approve/reject, delete, and permission save. |
 
 ## 13. Folder Structure
 
@@ -681,19 +679,15 @@ Common logged events:
 - Checklist viewed/printed/PDF downloaded.
 - Checklist created/updated/deleted/toggled.
 - Checklist submitted/WIP saved.
-- Response approved/rejected/deleted/toggled.
+- Response approved/rejected/deleted, including structured HOD and override decisions.
 - Permission changes.
 - User, department, and project changes.
 
 ## 22. Known Issues
 
-- Development settings are present in source.
 - `Pending` and `Pending for Approval` coexist and may confuse reporting.
-- Response detail modals use unsafe `innerHTML`.
-- Checklist answer uploads are permissive.
-- Media is served directly in development.
+- SQLite remains the default local database and PostgreSQL is recommended for production.
 - `RolePermission.selected_projects` is stored but not fully enforced.
-- Some generated `__pycache__` files appear tracked.
 - Some templates/static files contain mojibake text artifacts.
 - Legacy checklist models remain in `models.py`.
 - Admin views are concentrated in one large module.
@@ -703,8 +697,6 @@ Common logged events:
 - Split `backend/views/admin.py` by domain.
 - Replace manual repeated auth/role checks with decorators or mixins.
 - Add comprehensive permission/workflow tests.
-- Add upload validators.
-- Add private media access.
 - Normalize status model.
 - Remove legacy models after data review.
 - Add database constraints and composite indexes.
@@ -719,13 +711,13 @@ gantt
     title QCMS Roadmap
     dateFormat  YYYY-MM-DD
     section Hardening
-    Production settings          :a1, 2026-06-10, 14d
-    Upload security              :a2, after a1, 14d
-    XSS fixes                    :a3, after a1, 7d
+    Production settings          :done, a1, 2026-06-10, 2d
+    Upload security              :done, a2, after a1, 2d
+    XSS fixes                    :done, a3, after a1, 1d
     section Workflow
     Status normalization         :b1, after a3, 14d
-    Review comments/history      :b2, after b1, 21d
-    Notifications                :b3, after b2, 21d
+    Review comments/history      :done, b2, after b1, 2d
+    In-app notifications         :done, b3, after b2, 2d
     section Scale
     PostgreSQL migration         :c1, after a2, 14d
     Reporting optimization       :c2, after c1, 21d
@@ -734,16 +726,22 @@ gantt
 
 Priority roadmap:
 
-1. Production settings hardening.
-2. Upload validation and private media.
-3. XSS-safe response rendering.
-4. Status workflow consolidation.
-5. Database constraints and indexes.
-6. Admin module refactor.
-7. Workflow and permission test coverage.
-8. Reporting and dashboard performance improvements.
-9. Notifications and review comments.
-10. Enterprise identity/SSO and fine-grained permissions.
+1. PostgreSQL migration, backup verification, monitoring, and operational hardening.
+2. Central inactive-profile enforcement and login throttling.
+3. Legacy status normalization and database/index review.
+4. Admin module refactor and centralized authorization guards.
+5. Reporting/dashboard performance improvements.
+6. Accessibility and visual-regression automation.
+7. Enterprise identity/SSO and fine-grained permissions.
+
+### 2026 Stabilization Baseline
+
+- Universal business tables provide shared pagination, result counts, search/filter controls, 25/50/100/250 page sizes, clear filters, and full filtered XLSX export with spreadsheet-formula neutralization.
+- `ActivityLog` and `ResponseDecision` are append-only, including queryset, bulk, conflict-update, and Admin protections.
+- Structured audit events cover core workflow, authentication, permission denials, attachments, rejected uploads, user administration, and settings changes.
+- Notification Control provides database-backed in-app notifications, polling, unread counts, drawer actions, priorities, retention, and event-level settings.
+- Geolocation is disabled by default, captured only on submission, validated at model level, and never blocks submission.
+- Response attachments are served only through authenticated, role-scoped download endpoints.
 
 ## 25. Troubleshooting Guide
 

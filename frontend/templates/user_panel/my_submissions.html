@@ -9,6 +9,15 @@
 <link rel="stylesheet" href="{% static 'admin_users/admin_users.css' %}" />
 
 <h2>My Submissions</h2>
+<form method="GET" class="users-toolbar">
+  <input type="search" name="search" placeholder="Search submissions" value="{{ request.GET.search }}" class="form-control toolbar-search">
+  <select name="status" class="form-control">
+    <option value="">All Status</option>
+    {% for value, label in status_choices %}<option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <button type="submit" class="btn table-action-btn btn-view">Search</button>
+  {% include 'shared/tables/controls.html' with clear_url=request.path %}
+</form>
 {% include 'admin_panel/partials/response_table.html' with response_view_mode=True %}
 {% include 'shared/tables/pagination.html' with page_obj=responses %}
 

@@ -17,6 +17,17 @@
   <button class="btn table-action-btn btn-add" id="addEntityBtn">+ Add Department</button>
 </div>
 
+<form method="GET" class="users-toolbar">
+  <input type="search" name="search" placeholder="Search departments" value="{{ request.GET.search }}" class="form-control toolbar-search">
+  <select name="status" class="form-control">
+    <option value="">All Status</option>
+    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+  </select>
+  <button type="submit" class="btn table-action-btn btn-view">Search</button>
+  {% include 'shared/tables/controls.html' with clear_url=request.path %}
+</form>
+
 <div class="card">
   <div class="table-container">
     <table>
@@ -58,6 +69,7 @@
     </table>
   </div>
 </div>
+{% include 'shared/tables/pagination.html' with page_obj=departments %}
 
 <div id="popup" class="popup">
   <div class="popup-content">

@@ -25,10 +25,21 @@
     </div>
   </section>
   <section class="ns-card"><h2>Event Settings</h2><p>Control the availability, priority, and popup behavior of each Phase 1 event.</p>
+    <div class="users-toolbar">
+      <input type="search" name="search" form="notificationFilterForm" placeholder="Search events" value="{{ request.GET.search }}" class="form-control toolbar-search">
+      <select name="priority" form="notificationFilterForm" class="form-control"><option value="">All Priorities</option>{% for value, label in priority_choices %}<option value="{{ value }}" {% if request.GET.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+      <select name="enabled" form="notificationFilterForm" class="form-control"><option value="">All States</option><option value="yes" {% if request.GET.enabled == 'yes' %}selected{% endif %}>Enabled</option><option value="no" {% if request.GET.enabled == 'no' %}selected{% endif %}>Disabled</option></select>
+      <button type="submit" form="notificationFilterForm" class="btn table-action-btn btn-view">Search</button>
+      <label class="table-page-size">Rows <select name="page_size" form="notificationFilterForm" class="form-control" onchange="this.form.submit()">{% for size in table_page_sizes %}<option value="{{ size }}" {% if current_page_size == size %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></label>
+      <a href="{{ request.path }}" class="btn table-action-btn btn-delete">Clear Filters</a>
+      <button type="submit" form="notificationFilterForm" name="export" value="xlsx" class="btn table-action-btn btn-add">Export Excel</button>
+    </div>
     <table class="ns-events"><thead><tr><th>Event</th><th>Enabled</th><th>Priority</th><th>Popup</th></tr></thead><tbody>
-    {% for key, event in event_settings.items %}<tr><td><strong>{{ event.name }}</strong><br><small>{{ key }}</small></td><td><input type="checkbox" name="event_{{ key }}_enabled" {% if event.enabled %}checked{% endif %}></td><td><select name="event_{{ key }}_priority">{% for value, label in priority_choices %}<option value="{{ value }}" {% if event.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td><td><input type="checkbox" name="event_{{ key }}_popup" {% if event.popup %}checked{% endif %}></td></tr>{% endfor %}
+    {% for event in event_settings %}<tr><td><input type="hidden" name="event_{{ event.key }}_present" value="1"><strong>{{ event.name }}</strong><br><small>{{ event.key }}</small></td><td><input type="checkbox" name="event_{{ event.key }}_enabled" {% if event.enabled %}checked{% endif %}></td><td><select name="event_{{ event.key }}_priority">{% for value, label in priority_choices %}<option value="{{ value }}" {% if event.priority == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td><td><input type="checkbox" name="event_{{ event.key }}_popup" {% if event.popup %}checked{% endif %}></td></tr>{% endfor %}
     </tbody></table>
+    {% include 'shared/tables/pagination.html' with page_obj=event_settings %}
   </section>
   <div class="ns-actions"><button type="submit" class="ns-save">Save Notification Control Settings</button></div>
 </form>
+<form id="notificationFilterForm" method="get"></form>
 {% endblock %}
