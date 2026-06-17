@@ -1,0 +1,107 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'shared/profile.css' %}">
+
+<main class="profile-page" data-profile-page>
+  <section class="profile-identity" aria-labelledby="profileName">
+    <div class="profile-identity__avatar-wrap">
+      {% include 'shared/avatar.html' with avatar_profile=profile_obj avatar_user=request.user avatar_size='profile' avatar_id='avatarPreview' %}
+      <button class="profile-photo-trigger" id="changePhotoButton" type="button" aria-label="Change profile photo" title="Change profile photo">
+        <span aria-hidden="true">&#128247;</span>
+      </button>
+    </div>
+    <div class="profile-identity__details">
+      <div class="profile-identity__heading">
+        <div>
+          <h1 id="profileName">{{ request.user.get_full_name|default:request.user.username }}</h1>
+          <p>{{ profile_obj.role }}{% if profile_obj.department %} &middot; {{ profile_obj.department.name }}{% endif %}{% if profile_obj.project %} &middot; {{ profile_obj.project.name }}{% endif %}</p>
+        </div>
+        <span class="profile-status {% if profile_obj.is_active %}profile-status--active{% else %}profile-status--inactive{% endif %}">
+          {% if profile_obj.is_active %}Active{% else %}Inactive{% endif %}
+        </span>
+      </div>
+      <p class="profile-identity__help">Use a clear, centered photo. QCMS stores a normalized square image and displays it consistently across the application.</p>
+      <form method="post" id="profilePhotoForm" class="profile-photo-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_image">
+        <input type="hidden" name="cropped_image" id="croppedImage">
+        <input type="file" id="imageInput" accept="image/png,image/jpeg,image/webp" hidden>
+        <button class="btn btn-secondary" id="choosePhotoButton" type="button">Choose Photo</button>
+        <button class="btn btn-primary" id="savePhotoButton" type="submit" disabled>Save Photo</button>
+        <span class="profile-photo-status" id="profilePhotoStatus" aria-live="polite"></span>
+      </form>
+    </div>
+  </section>
+
+  <div class="profile-content-grid">
+    <section class="profile-section" aria-labelledby="personalInfoHeading">
+      <header class="profile-section__header">
+        <div>
+          <h2 id="personalInfoHeading">Personal Information</h2>
+          <p>Account and organizational details maintained in QCMS.</p>
+        </div>
+      </header>
+      <dl class="profile-details">
+        <div><dt>Full Name</dt><dd>{{ request.user.get_full_name|default:'N/A' }}</dd></div>
+        <div><dt>Username</dt><dd>{{ request.user.username }}</dd></div>
+        <div><dt>Employee ID</dt><dd>{{ profile_obj.employee_id|default:'N/A' }}</dd></div>
+        <div><dt>Official Email</dt><dd>{{ request.user.email|default:'N/A' }}</dd></div>
+        <div><dt>Phone Number</dt><dd>{{ profile_obj.phone_number|default:'N/A' }}</dd></div>
+        <div><dt>Role</dt><dd>{{ profile_obj.role }}</dd></div>
+        <div><dt>Department</dt><dd>{{ profile_obj.department.name|default:'N/A' }}</dd></div>
+        <div><dt>Project</dt><dd>{{ profile_obj.project.name|default:'N/A' }}</dd></div>
+        <div><dt>Joined Date</dt><dd>{{ request.user.date_joined|date:'d M Y' }}</dd></div>
+        <div><dt>Account Status</dt><dd>{% if profile_obj.is_active %}Active{% else %}Inactive{% endif %}</dd></div>
+      </dl>
+    </section>
+
+    <section class="profile-section profile-security" aria-labelledby="securityHeading">
+      <header class="profile-section__header">
+        <div>
+          <h2 id="securityHeading">Password & Security</h2>
+          <p>Change your password without ending the current session.</p>
+        </div>
+      </header>
+      <form method="post" class="profile-password-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="change_password">
+        <label for="currentPassword">Current Password</label>
+        <input class="form-control" id="currentPassword" required name="current_password" type="password" autocomplete="current-password">
+        <label for="newPassword">New Password</label>
+        <input class="form-control" id="newPassword" required name="new_password" type="password" autocomplete="new-password">
+        <label for="confirmPassword">Confirm New Password</label>
+        <input class="form-control" id="confirmPassword" required name="confirm_password" type="password" autocomplete="new-password">
+        <p class="profile-security__hint">Use at least 8 characters and avoid common words or personal information.</p>
+        <button class="btn btn-primary" type="submit">Update Password</button>
+      </form>
+    </section>
+  </div>
+</main>
+
+<div class="profile-crop-dialog" id="cropModal" role="dialog" aria-modal="true" aria-labelledby="cropDialogTitle" aria-describedby="cropDialogHelp" hidden>
+  <div class="profile-crop-dialog__backdrop" data-crop-close></div>
+  <section class="profile-crop-dialog__panel" role="document">
+    <header class="profile-crop-dialog__header">
+      <div>
+        <h2 id="cropDialogTitle">Position Your Photo</h2>
+        <p id="cropDialogHelp">Drag to reposition. Use zoom controls to frame your face inside the circle.</p>
+      </div>
+      <button class="profile-crop-dialog__close" id="closeCropButton" type="button" aria-label="Close photo editor">&times;</button>
+    </header>
+    <div class="profile-crop-stage">
+      <canvas id="cropCanvas" width="560" height="420" tabindex="0" aria-label="Profile photo crop area. Use arrow keys to reposition the image."></canvas>
+    </div>
+    <div class="profile-crop-controls">
+      <button class="profile-icon-button" id="zoomOutButton" type="button" aria-label="Zoom out">&minus;</button>
+      <label for="zoomControl">Zoom</label>
+      <input id="zoomControl" type="range" min="1" max="3" step="0.01" value="1">
+      <button class="profile-icon-button" id="zoomInButton" type="button" aria-label="Zoom in">+</button>
+      <button class="btn btn-secondary" id="resetCropButton" type="button">Reset</button>
+    </div>
+    <footer class="profile-crop-dialog__actions">
+      <button class="btn btn-secondary" id="cancelCropButton" type="button">Cancel</button>
+      <button class="btn btn-primary" id="applyCropButton" type="button">Apply Photo</button>
+    </footer>
+  </section>
+</div>
+
+<script src="{% static 'shared/profile.js' %}"></script>

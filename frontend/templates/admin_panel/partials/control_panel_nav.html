@@ -1,0 +1,27 @@
+<div class="cp-mobile-nav">
+  <label for="controlPanelSection">Control Panel section</label>
+  <select id="controlPanelSection" data-control-panel-mobile-nav>
+    <option value="{% url 'admin_control_panel' %}#general" {% if control_panel_active == 'general' %}selected{% endif %}>General</option>
+    <option value="{% url 'admin_control_panel' %}#branding">Branding</option>
+    <option value="{% url 'admin_control_panel' %}#appearance">Appearance</option>
+    <option value="{% url 'admin_control_panel' %}#components">Components</option>
+    <option value="{% url 'admin_control_panel' %}#header-navigation">Header &amp; Navigation</option>
+    <option value="{% url 'admin_control_panel' %}#tables">Tables</option>
+    <option value="{% url 'admin_notification_settings' %}" {% if control_panel_active == 'notifications' %}selected{% endif %}>Notification Control</option>
+    <option value="{% url 'admin_control_panel' %}#security">Security</option>
+    <option value="{% url 'admin_control_panel' %}#operations">Operations</option>
+  </select>
+</div>
+
+<aside class="cp-nav" aria-label="Control Panel sections">
+  <p class="cp-nav__eyebrow">Configuration</p>
+  <a href="{% url 'admin_control_panel' %}#general" {% if control_panel_active == 'general' %}class="is-active"{% endif %}>General</a>
+  <a href="{% url 'admin_control_panel' %}#branding">Branding</a>
+  <a href="{% url 'admin_control_panel' %}#appearance">Appearance</a>
+  <a href="{% url 'admin_control_panel' %}#components">Components</a>
+  <a href="{% url 'admin_control_panel' %}#header-navigation">Header &amp; Navigation</a>
+  <a href="{% url 'admin_control_panel' %}#tables">Tables</a>
+  <a href="{% url 'admin_notification_settings' %}" {% if control_panel_active == 'notifications' %}class="is-active"{% endif %}>Notification Control</a>
+  <a href="{% url 'admin_control_panel' %}#security">Security</a>
+  <a href="{% url 'admin_control_panel' %}#operations">Operations</a>
+</aside>

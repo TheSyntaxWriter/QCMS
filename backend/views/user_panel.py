@@ -14,7 +14,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse
-from PIL import Image
+from PIL import Image, ImageOps
 
 from ..models import AppSettings, ChecklistDefinition, ChecklistQuestion, ChecklistResponse, ChecklistAnswer, ResponseDecision, UserProfile, validate_geolocation_values
 from .common import get_user_profile, redirect_for_profile
@@ -173,11 +173,19 @@ def _save_profile_image_from_data_url(profile_obj, data_url):
         raise ValidationError('Unable to decode profile image.') from exc
 
     validate_profile_image_bytes(image_bytes, declared_content_type)
-    image = Image.open(BytesIO(image_bytes)).convert('RGB')
-    image.thumbnail((512, 512))
+    image = ImageOps.exif_transpose(Image.open(BytesIO(image_bytes))).convert('RGB')
+    image = ImageOps.fit(image, (512, 512), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
     output = BytesIO()
-    image.save(output, format='JPEG', quality=85, optimize=True)
+    image.save(output, format='JPEG', quality=90, optimize=True, progressive=True)
+    previous_name = profile_obj.profile_image.name if profile_obj.profile_image else ''
+    storage = profile_obj.profile_image.storage
     profile_obj.profile_image.save(f'avatar_{profile_obj.user_id}.jpg', ContentFile(output.getvalue()), save=True)
+    if previous_name and previous_name != profile_obj.profile_image.name:
+        try:
+            storage.delete(previous_name)
+        except OSError:
+            # A storage cleanup failure must not invalidate the successfully saved replacement.
+            pass
 
 
 def _profile_view(request):

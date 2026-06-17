@@ -6,17 +6,22 @@ from xml.sax.saxutils import escape
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 
+from .control_panel_settings import PAGE_SIZE_OPTIONS, normalize_system_preferences
+from .models import AppSettings
 
-PAGE_SIZE_OPTIONS = (25, 50, 100, 250)
+
 DEFAULT_PAGE_SIZE = 25
 
 
 def get_page_size(request):
+    configured_default = normalize_system_preferences(
+        AppSettings.get_solo().system_preferences
+    )['table_default_page_size']
     try:
-        value = int(request.GET.get('page_size', DEFAULT_PAGE_SIZE))
+        value = int(request.GET.get('page_size', configured_default))
     except (TypeError, ValueError):
-        return DEFAULT_PAGE_SIZE
-    return value if value in PAGE_SIZE_OPTIONS else DEFAULT_PAGE_SIZE
+        return configured_default
+    return value if value in PAGE_SIZE_OPTIONS else configured_default
 
 
 def paginate(request, queryset):

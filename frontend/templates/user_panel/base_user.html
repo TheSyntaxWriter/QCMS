@@ -33,15 +33,22 @@
       .content { min-width:0; }
     </style>
   </head>
-  <body class="app-layout">
+  <body
+    class="app-layout"
+    data-card-profile="{{ GLOBAL_THEME.card_profile }}"
+    data-button-profile="{{ GLOBAL_THEME.button_profile }}"
+    data-cursor-profile="{{ GLOBAL_THEME.cursor_profile }}"
+    data-header-density="{{ GLOBAL_THEME.header_density }}"
+    data-table-density="{{ GLOBAL_SYSTEM_PREFERENCES.table_density }}"
+  >
     {% include 'admin_panel/partials/sidebar.html' with panel_title=PROJECT_SHORT_NAME menu_items=sidebar_menu %}
     <div class="content app-content-wrapper">
       <div class="page-container responsive-content-area">
       <div class="topbar">
         <div>{% block topbar_title %}User Panel{% endblock %}</div>
         <div class="topbar-account-group">
-          {% include 'shared/header_identity.html' %}
-          <span class="topbar-welcome-text">{% block topbar_welcome %}Welcome{% endblock %}</span>
+          {% if GLOBAL_THEME.header_show_avatar %}{% include 'shared/header_identity.html' %}{% endif %}
+          {% if GLOBAL_THEME.header_show_welcome_text %}<span class="topbar-welcome-text">{% block topbar_welcome %}Welcome{% endblock %}</span>{% endif %}
           {% include 'shared/notification_center.html' %}
         </div>
       </div>

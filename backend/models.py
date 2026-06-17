@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.core.validators import RegexValidator
 from .workflow_service import ResponseStatus
+from .control_panel_settings import DEFAULT_SYSTEM_PREFERENCES, DEFAULT_THEME_SETTINGS
 
 
 def validate_geolocation_values(latitude=None, longitude=None, accuracy=None):
@@ -535,16 +536,8 @@ class AppSettings(models.Model):
             pk=1,
             defaults={
                 'general_settings': {'company_tagline': '', 'support_email': ''},
-                'theme_settings': {
-                    'mode': 'light',
-                    'primary_color': '#4f46e5',
-                    'sidebar_color': '#0b1b68',
-                    'header_color': '#0b1b68',
-                    'button_style': 'rounded',
-                    'font_family': 'Poppins',
-                    'layout_width': 'boxed',
-                },
-                'system_preferences': {'timezone': 'UTC', 'date_format': 'YYYY-MM-DD'},
+                'theme_settings': DEFAULT_THEME_SETTINGS.copy(),
+                'system_preferences': DEFAULT_SYSTEM_PREFERENCES.copy(),
                 'security_settings': {
                     'session_timeout': 30,
                     'password_rotation_days': 90,

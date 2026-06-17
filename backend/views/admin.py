@@ -38,6 +38,20 @@ from ..notification_service import notify_on_commit, users_for_role
 from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response, effective_allowed_actions_for_response
 from ..upload_validation import validate_branding_upload
 from ..workflow_service import ResponseStatus, evaluate_status_action
+from ..control_panel_settings import (
+    BUTTON_PROFILES,
+    CARD_PROFILES,
+    CURSOR_PROFILES,
+    DEFAULT_SYSTEM_PREFERENCES,
+    DEFAULT_THEME_SETTINGS,
+    FONT_OPTIONS,
+    HEADER_DENSITIES,
+    TABLE_DENSITIES,
+    normalize_system_preferences,
+    normalize_theme_settings,
+    posted_system_preferences,
+    posted_theme_settings,
+)
 
 
 ACTIVE_PENDING_STATUSES = (ResponseStatus.PENDING, ResponseStatus.PENDING_APPROVAL)
@@ -54,7 +68,6 @@ def _admin_sidebar_menu():
         {'url': reverse('admin_departments'), 'label': 'Department', 'icon': 'department'},
         {'url': reverse('admin_projects'), 'label': 'Project', 'icon': 'project'},
         {'url': reverse('admin_control_panel'), 'label': 'Control Panel', 'icon': 'control'},
-        {'url': reverse('admin_notification_settings'), 'label': 'Notification Control', 'icon': 'control'},
         {'url': reverse('admin_logs'), 'label': 'Logs', 'icon': 'logs'},
         {'url': reverse('admin_profile'), 'label': 'Profile', 'icon': 'profile'},
     ]
@@ -802,14 +815,11 @@ def admin_control_panel(request):
         return redirect('home')
 
     app_settings = AppSettings.get_solo()
-    default_theme = {
-        'mode': 'light',
-        'global_theme_color': '#0b1b68',
-        'button_style': 'rounded',
-        'font_family': 'Inter',
-        'layout_width': 'boxed',
-    }
+    current_theme = normalize_theme_settings(app_settings.theme_settings)
+    current_system_preferences = normalize_system_preferences(app_settings.system_preferences)
     if request.method == 'POST':
+        previous_theme = current_theme.copy()
+        previous_system_preferences = current_system_preferences.copy()
         previous_geolocation = bool((app_settings.security_settings or {}).get('geolocation_tracking_enabled', False))
         confirm_password = (request.POST.get('confirm_password') or '').strip()
         if not authenticate(request, username=request.user.username, password=confirm_password):
@@ -818,7 +828,8 @@ def admin_control_panel(request):
 
         action = request.POST.get('action')
         if action == 'reset':
-            app_settings.theme_settings = default_theme
+            app_settings.theme_settings = DEFAULT_THEME_SETTINGS.copy()
+            app_settings.system_preferences = DEFAULT_SYSTEM_PREFERENCES.copy()
             app_settings.web_app_name = 'QCMS'
             app_settings.general_settings = {}
             app_settings.security_settings = {
@@ -827,13 +838,37 @@ def admin_control_panel(request):
             }
             app_settings.logo = None
             app_settings.favicon = None
+            app_settings.sidebar_logo = None
             app_settings.save()
             write_activity_log(
-                action_type='Settings Updated', module_name='Settings', description='Control panel settings reset to defaults.',
-                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.updated',
+                action_type='Control Panel Updated', module_name='Settings', description='Control Panel settings reset to defaults.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.control_panel_updated',
                 severity=ActivityLog.SEVERITY_HIGH, target_type='AppSettings', target_id=app_settings.pk,
                 source=ActivityLog.SOURCE_UI,
+                old_data={'theme': previous_theme, 'tables': previous_system_preferences},
+                new_data={'theme': app_settings.theme_settings, 'tables': app_settings.system_preferences},
             )
+            if previous_theme != app_settings.theme_settings:
+                write_activity_log(
+                    action_type='Theme Settings Updated', module_name='Settings', description='Appearance, component, and header settings reset to defaults.',
+                    status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.theme_updated',
+                    severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                    source=ActivityLog.SOURCE_UI, old_data=previous_theme, new_data=app_settings.theme_settings,
+                )
+            if any(previous_theme.get(key) != app_settings.theme_settings.get(key) for key in ('header_show_avatar', 'header_show_welcome_text', 'header_density')):
+                write_activity_log(
+                    action_type='Header Settings Updated', module_name='Settings', description='Header settings reset to defaults.',
+                    status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.header_updated',
+                    severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                    source=ActivityLog.SOURCE_UI,
+                )
+            if previous_system_preferences != app_settings.system_preferences:
+                write_activity_log(
+                    action_type='Table Settings Updated', module_name='Settings', description='Table settings reset to defaults.',
+                    status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.table_updated',
+                    severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                    source=ActivityLog.SOURCE_UI, old_data=previous_system_preferences, new_data=app_settings.system_preferences,
+                )
             if previous_geolocation:
                 write_activity_log(
                     action_type='Geolocation Settings Updated', module_name='Settings', description='Geolocation tracking disabled by settings reset.',
@@ -845,22 +880,12 @@ def admin_control_panel(request):
             return redirect('admin_control_panel')
 
         app_settings.web_app_name = (request.POST.get('web_app_name') or '').strip() or 'QCMS'
-        app_settings.general_settings = {}
         app_settings.security_settings = {
             **(app_settings.security_settings or {}),
             'geolocation_tracking_enabled': request.POST.get('geolocation_tracking_enabled') == 'on',
         }
-        theme_color = request.POST.get('global_theme_color', '#0b1b68')
-        app_settings.theme_settings = {
-            'mode': request.POST.get('mode', 'light'),
-            'global_theme_color': theme_color,
-            'primary_color': theme_color,
-            'sidebar_color': theme_color,
-            'header_color': theme_color,
-            'button_style': request.POST.get('button_style', 'rounded'),
-            'font_family': request.POST.get('font_family', 'Inter'),
-            'layout_width': request.POST.get('layout_width', 'boxed'),
-        }
+        app_settings.theme_settings = posted_theme_settings(request.POST, current_theme)
+        app_settings.system_preferences = posted_system_preferences(request.POST, current_system_preferences)
         for field in ['logo', 'favicon']:
             f = request.FILES.get(field)
             if f:
@@ -879,11 +904,41 @@ def admin_control_panel(request):
         app_settings.sidebar_logo = app_settings.logo
         app_settings.save()
         write_activity_log(
-            action_type='Settings Updated', module_name='Settings', description='Control panel settings updated.',
-            status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.updated',
+            action_type='Control Panel Updated', module_name='Settings', description='Control Panel settings updated.',
+            status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.control_panel_updated',
             severity=ActivityLog.SEVERITY_HIGH, target_type='AppSettings', target_id=app_settings.pk,
             source=ActivityLog.SOURCE_UI,
+            old_data={'theme': previous_theme, 'tables': previous_system_preferences},
+            new_data={'theme': app_settings.theme_settings, 'tables': app_settings.system_preferences},
         )
+        theme_keys = {'global_theme_color', 'font_family', 'card_profile', 'button_profile', 'cursor_profile'}
+        if any(previous_theme.get(key) != app_settings.theme_settings.get(key) for key in theme_keys):
+            write_activity_log(
+                action_type='Theme Settings Updated', module_name='Settings', description='Appearance and component profile settings updated.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.theme_updated',
+                severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                source=ActivityLog.SOURCE_UI,
+                old_data={key: previous_theme.get(key) for key in theme_keys},
+                new_data={key: app_settings.theme_settings.get(key) for key in theme_keys},
+            )
+        header_keys = {'header_show_avatar', 'header_show_welcome_text', 'header_density'}
+        if any(previous_theme.get(key) != app_settings.theme_settings.get(key) for key in header_keys):
+            write_activity_log(
+                action_type='Header Settings Updated', module_name='Settings', description='Header and navigation settings updated.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.header_updated',
+                severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                source=ActivityLog.SOURCE_UI,
+                old_data={key: previous_theme.get(key) for key in header_keys},
+                new_data={key: app_settings.theme_settings.get(key) for key in header_keys},
+            )
+        if previous_system_preferences != app_settings.system_preferences:
+            write_activity_log(
+                action_type='Table Settings Updated', module_name='Settings', description='Universal Table Framework defaults updated.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.table_updated',
+                severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                source=ActivityLog.SOURCE_UI,
+                old_data=previous_system_preferences, new_data=app_settings.system_preferences,
+            )
         current_geolocation = bool((app_settings.security_settings or {}).get('geolocation_tracking_enabled', False))
         if previous_geolocation != current_geolocation:
             write_activity_log(
@@ -899,7 +954,15 @@ def admin_control_panel(request):
     return render(request, 'admin_panel/admin_control_panel.html', {
         'sidebar_menu': _admin_sidebar_menu(),
         'app_settings': app_settings,
-        'font_options': ['Inter', 'Poppins', 'Roboto', 'Open Sans', 'Nunito Sans', 'Source Sans Pro'],
+        'theme_settings': current_theme,
+        'system_preferences': current_system_preferences,
+        'font_options': FONT_OPTIONS,
+        'card_profiles': CARD_PROFILES,
+        'button_profiles': BUTTON_PROFILES,
+        'cursor_profiles': CURSOR_PROFILES,
+        'header_densities': HEADER_DENSITIES,
+        'table_densities': TABLE_DENSITIES,
+        'table_page_sizes': PAGE_SIZE_OPTIONS,
     })
 def admin_logs(request):
     if not request.user.is_authenticated:

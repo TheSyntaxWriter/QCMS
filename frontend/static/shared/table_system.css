@@ -3,13 +3,18 @@
   --tbl-head-text: #fff;
   --tbl-border: #e6eaf2;
   --tbl-row-hover: #eef2ff;
+  --tbl-cell-padding: 12px;
+  --tbl-font-size: 12px;
 }
+.app-layout[data-table-density='compact']{--tbl-cell-padding:8px;--tbl-font-size:11px}
+.app-layout[data-table-density='comfortable']{--tbl-cell-padding:12px;--tbl-font-size:12px}
+.app-layout[data-table-density='spacious']{--tbl-cell-padding:16px;--tbl-font-size:13px}
 .card {
   background: #fff;
   border: 1px solid var(--tbl-border);
-  border-radius: 12px;
+  border-radius: var(--radius-md, 8px);
   padding: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--shadow-card, 0 2px 8px rgba(0, 0, 0, 0.04));
 }
 .table-container,
 .table-responsive {
@@ -29,8 +34,8 @@ table.standard-table {
 .standard-table thead th {
   background: var(--tbl-head);
   color: var(--tbl-head-text);
-  padding: 12px;
-  font-size: 12px;
+  padding: var(--tbl-cell-padding);
+  font-size: var(--tbl-font-size);
   font-weight: 600;
   text-align: left;
   white-space: nowrap;
@@ -40,8 +45,8 @@ table.standard-table {
 }
 .table-container tbody td,
 .standard-table tbody td {
-  padding: 12px;
-  font-size: 12px;
+  padding: var(--tbl-cell-padding);
+  font-size: var(--tbl-font-size);
   vertical-align: middle;
   border-bottom: 1px solid var(--tbl-border);
   overflow: hidden;
@@ -75,7 +80,7 @@ table.standard-table {
   padding: 0px 10px;
   font-size: 12px;
   line-height: 32px;
-  border-radius: 20px;
+  border-radius: var(--button-radius, 8px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -99,7 +104,7 @@ table.standard-table {
   align-items: center;
   justify-content: center;
   padding: 0px 10px;
-  border-radius: 20px;
+  border-radius: var(--button-radius, 8px);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;

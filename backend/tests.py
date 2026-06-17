@@ -1,8 +1,11 @@
+import base64
 import json
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 from zipfile import ZipFile
 
+from django.conf import settings
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -10,6 +13,7 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from pypdf import PdfWriter
+from PIL import Image as PILImage
 
 from .upload_validation import MAX_CHECKLIST_UPLOAD_SIZE, validate_branding_upload, validate_checklist_upload
 from .models import (
@@ -232,6 +236,25 @@ class TableFrameworkPhase0Tests(TestCase):
             sheet = workbook.read('xl/worksheets/sheet1.xml').decode('utf-8')
         self.assertIn('CL-TBL-00', sheet)
         self.assertIn('CL-TBL-50', sheet)
+
+    def test_configured_default_page_size_is_used_and_query_override_wins(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.system_preferences = {
+            **(settings_obj.system_preferences or {}),
+            'table_default_page_size': 50,
+            'table_density': 'compact',
+        }
+        settings_obj.save(update_fields=['system_preferences', 'updated_at'])
+        self.client.force_login(self.admin_user)
+
+        configured = self.client.get(reverse('admin_checklists'))
+        overridden = self.client.get(reverse('admin_checklists'), {'page_size': 25})
+
+        self.assertEqual(len(configured.context['checklists'].object_list), 50)
+        self.assertEqual(configured.context['current_page_size'], 50)
+        self.assertEqual(len(overridden.context['checklists'].object_list), 25)
+        self.assertEqual(overridden.context['current_page_size'], 25)
+        self.assertContains(configured, 'data-table-density="compact"')
 
     def test_excel_export_neutralizes_formula_injection(self):
         checklist = ChecklistDefinition.objects.get(checklist_id='CL-TBL-00')
@@ -674,7 +697,7 @@ class WorkflowPhase1Tests(TestCase):
         self.assertRedirects(result, reverse("admin_control_panel"))
         settings_obj.refresh_from_db()
         self.assertTrue(settings_obj.security_settings["geolocation_tracking_enabled"])
-        self.assertTrue(ActivityLog.objects.filter(event_key='settings.updated', target_type='AppSettings').exists())
+        self.assertTrue(ActivityLog.objects.filter(event_key='settings.control_panel_updated', target_type='AppSettings').exists())
         self.assertTrue(ActivityLog.objects.filter(event_key='geolocation_settings.updated', target_type='AppSettings').exists())
 
     def test_submit_captures_coordinates_accuracy_and_ip_when_enabled(self):
@@ -1605,12 +1628,266 @@ class NotificationCenterTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.get(reverse('my_checklists'))
         self.assertContains(response, 'id="notificationBell"')
-        self.assertContains(response, 'class="topbar-avatar topbar-avatar--initials"')
+        self.assertContains(response, 'class="qcms-avatar qcms-avatar--header"')
+        self.assertContains(response, 'class="qcms-avatar__initials"')
         self.assertContains(response, 'Open profile for notification_owner')
 
     def test_admin_ui_uses_notification_control_name(self):
         self.client.force_login(self.admin_user)
         response = self.client.get(reverse('admin_notification_settings'))
-        self.assertContains(response, '<span class="app-sidebar__label">Notification Control</span>', html=True)
+        self.assertNotContains(response, '<span class="app-sidebar__label">Notification Control</span>', html=True)
+        self.assertContains(response, 'aria-label="Control Panel sections"')
         self.assertContains(response, '<div>Notification Control</div>', html=True)
+        self.assertContains(response, 'Control Panel section')
+        self.assertContains(response, reverse('admin_control_panel') + '#components')
         self.assertContains(response, 'Save Notification Control Settings')
+
+
+class ControlPanel2Phase1Tests(TestCase):
+    def setUp(self):
+        self.admin_user = User.objects.create_user(username='control_admin', password='pass12345')
+        UserProfile.objects.create(user=self.admin_user, role='Admin')
+        self.client.force_login(self.admin_user)
+
+    def test_control_panel_contains_all_phase_one_sections(self):
+        response = self.client.get(reverse('admin_control_panel'))
+
+        self.assertEqual(response.status_code, 200)
+        for section_id in (
+            'general', 'branding', 'appearance', 'components', 'header-navigation',
+            'tables', 'notification-control', 'security', 'operations',
+        ):
+            self.assertContains(response, f'id="{section_id}"')
+        self.assertContains(response, 'Corporate Minimal')
+        self.assertContains(response, 'Modern Enterprise')
+        self.assertContains(response, 'Premium Executive')
+        self.assertContains(response, reverse('admin_notification_settings'))
+
+    def test_component_header_and_table_settings_persist_and_are_audited(self):
+        response = self.client.post(reverse('admin_control_panel'), {
+            'action': 'save',
+            'confirm_password': 'pass12345',
+            'web_app_name': 'QCMS Enterprise',
+            'global_theme_color': '#2457A6',
+            'font_family': 'Inter',
+            'card_profile': 'premium',
+            'button_profile': 'corporate',
+            'cursor_profile': 'modern',
+            'header_settings_present': '1',
+            'header_show_welcome_text': 'on',
+            'header_density': 'compact',
+            'table_default_page_size': '50',
+            'table_density': 'spacious',
+        })
+
+        self.assertRedirects(response, reverse('admin_control_panel'))
+        settings_obj = AppSettings.get_solo()
+        settings_obj.refresh_from_db()
+        self.assertEqual(settings_obj.theme_settings['card_profile'], 'premium')
+        self.assertEqual(settings_obj.theme_settings['button_profile'], 'corporate')
+        self.assertEqual(settings_obj.theme_settings['cursor_profile'], 'modern')
+        self.assertFalse(settings_obj.theme_settings['header_show_avatar'])
+        self.assertTrue(settings_obj.theme_settings['header_show_welcome_text'])
+        self.assertEqual(settings_obj.theme_settings['header_density'], 'compact')
+        self.assertEqual(settings_obj.system_preferences['table_default_page_size'], 50)
+        self.assertEqual(settings_obj.system_preferences['table_density'], 'spacious')
+        for event_key in (
+            'settings.control_panel_updated', 'settings.theme_updated',
+            'settings.header_updated', 'settings.table_updated',
+        ):
+            self.assertTrue(ActivityLog.objects.filter(event_key=event_key, target_type='AppSettings').exists())
+
+    def test_root_attributes_and_header_visibility_use_normalized_settings(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.theme_settings = {
+            'global_theme_color': '#0b1b68',
+            'font_family': 'Inter',
+            'card_profile': 'corporate',
+            'button_profile': 'premium',
+            'cursor_profile': 'modern',
+            'header_show_avatar': False,
+            'header_show_welcome_text': False,
+            'header_density': 'compact',
+        }
+        settings_obj.system_preferences = {'table_default_page_size': 25, 'table_density': 'compact'}
+        settings_obj.save(update_fields=['theme_settings', 'system_preferences', 'updated_at'])
+
+        response = self.client.get(reverse('admin_dashboard'))
+
+        self.assertContains(response, 'data-card-profile="corporate"')
+        self.assertContains(response, 'data-button-profile="premium"')
+        self.assertContains(response, 'data-cursor-profile="modern"')
+        self.assertContains(response, 'data-header-density="compact"')
+        self.assertContains(response, 'data-table-density="compact"')
+        self.assertNotContains(response, 'class="topbar-identity"')
+        self.assertNotContains(response, 'class="topbar-welcome-text"')
+
+    def test_invalid_profile_values_fall_back_to_safe_defaults(self):
+        response = self.client.post(reverse('admin_control_panel'), {
+            'action': 'save',
+            'confirm_password': 'pass12345',
+            'web_app_name': 'QCMS',
+            'global_theme_color': 'not-a-color',
+            'font_family': 'Untrusted Font',
+            'card_profile': 'unknown',
+            'button_profile': 'unknown',
+            'cursor_profile': 'unknown',
+            'header_settings_present': '1',
+            'header_show_avatar': 'on',
+            'header_show_welcome_text': 'on',
+            'header_density': 'unknown',
+            'table_default_page_size': '999',
+            'table_density': 'unknown',
+        })
+
+        self.assertRedirects(response, reverse('admin_control_panel'))
+        settings_obj = AppSettings.get_solo()
+        settings_obj.refresh_from_db()
+        self.assertEqual(settings_obj.theme_settings['global_theme_color'], '#0b1b68')
+        self.assertEqual(settings_obj.theme_settings['font_family'], 'Inter')
+        self.assertEqual(settings_obj.theme_settings['card_profile'], 'modern')
+        self.assertEqual(settings_obj.theme_settings['button_profile'], 'modern')
+        self.assertEqual(settings_obj.theme_settings['cursor_profile'], 'classic')
+        self.assertEqual(settings_obj.theme_settings['header_density'], 'comfortable')
+        self.assertEqual(settings_obj.system_preferences['table_default_page_size'], 25)
+        self.assertEqual(settings_obj.system_preferences['table_density'], 'comfortable')
+
+
+class AvatarRenderingTests(TestCase):
+    def create_profile(self, username, role, *, first_name='', last_name='', image_name=''):
+        user = User.objects.create_user(
+            username=username,
+            password='pass12345',
+            first_name=first_name,
+            last_name=last_name,
+        )
+        profile = UserProfile.objects.create(user=user, role=role)
+        if image_name:
+            profile.profile_image.name = image_name
+            profile.save(update_fields=['profile_image'])
+        return user
+
+    def test_user_header_with_image_uses_shared_circular_avatar(self):
+        user = self.create_profile('user_image', 'User', image_name='profile_images/user-image.jpg')
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('my_checklists'))
+
+        self.assertContains(response, 'class="qcms-avatar qcms-avatar--header"')
+        self.assertContains(response, 'class="qcms-avatar__image"')
+        self.assertContains(response, '/media/profile_images/user-image.jpg')
+
+    def test_user_header_without_image_uses_initials_fallback(self):
+        user = self.create_profile('user_fallback', 'User', first_name='Uma', last_name='Rao')
+        self.client.force_login(user)
+
+        response = self.client.get(reverse('my_checklists'))
+
+        self.assertContains(response, 'class="qcms-avatar__initials"')
+        self.assertContains(response, 'aria-label="Uma Rao initials"')
+
+    def test_admin_with_image_uses_shared_avatar_in_header_and_profile(self):
+        admin_user = self.create_profile('admin_image', 'Admin', image_name='profile_images/admin-image.jpg')
+        self.client.force_login(admin_user)
+
+        response = self.client.get(reverse('admin_profile'))
+
+        self.assertContains(response, 'class="qcms-avatar qcms-avatar--header"')
+        self.assertContains(response, 'class="qcms-avatar qcms-avatar--profile"')
+        self.assertContains(response, '/media/profile_images/admin-image.jpg', count=2)
+        self.assertContains(response, 'id="avatarPreview"')
+
+    def test_admin_without_image_uses_same_initials_fallback_on_both_surfaces(self):
+        admin_user = self.create_profile('admin_fallback', 'Admin', first_name='Asha', last_name='Nair')
+        self.client.force_login(admin_user)
+
+        response = self.client.get(reverse('admin_profile'))
+
+        self.assertContains(response, 'class="qcms-avatar qcms-avatar--header"')
+        self.assertContains(response, 'class="qcms-avatar qcms-avatar--profile"')
+        self.assertContains(response, 'aria-label="Asha Nair initials"', count=2)
+
+    def test_hod_and_management_headers_use_shared_avatar_component(self):
+        for role in ('HOD', 'Management'):
+            with self.subTest(role=role):
+                user = self.create_profile(f'{role.lower()}_avatar', role, first_name=role, last_name='User')
+                self.client.force_login(user)
+                response = self.client.get(reverse('my_checklists'))
+                self.assertContains(response, 'class="qcms-avatar qcms-avatar--header"')
+                self.assertContains(response, f'aria-label="{role} User initials"')
+                self.client.logout()
+
+    def test_profile_pages_use_shared_modern_enterprise_content_and_cropper(self):
+        for role, url_name in (('Admin', 'admin_profile'), ('User', 'user_profile')):
+            with self.subTest(role=role):
+                user = self.create_profile(f'{role.lower()}_modern', role, first_name=role, last_name='Profile')
+                self.client.force_login(user)
+                response = self.client.get(reverse(url_name))
+                self.assertContains(response, 'class="profile-identity"')
+                self.assertContains(response, 'class="profile-content-grid"')
+                self.assertContains(response, 'id="cropModal" role="dialog" aria-modal="true"')
+                self.assertContains(response, 'id="zoomOutButton"')
+                self.assertContains(response, 'id="zoomInButton"')
+                self.assertContains(response, 'id="resetCropButton"')
+                self.assertContains(response, 'id="cancelCropButton"')
+                self.assertContains(response, 'id="applyCropButton"')
+                self.assertContains(response, '/static/shared/profile.css')
+                self.assertContains(response, '/static/shared/profile.js')
+                self.client.logout()
+
+    def test_cropper_assets_include_viewport_layout_and_safe_enhancement(self):
+        static_root = Path(settings.BASE_DIR) / 'frontend' / 'static' / 'shared'
+        crop_css = (static_root / 'profile.css').read_text(encoding='utf-8')
+        crop_script = (static_root / 'profile.js').read_text(encoding='utf-8')
+
+        self.assertIn('grid-template-rows:auto minmax(0,1fr) auto auto', crop_css)
+        self.assertIn('height:min(760px,calc(100dvh', crop_css)
+        self.assertIn('max-height:100%', crop_css)
+        self.assertIn('min-height:100dvh', crop_css)
+        self.assertIn('@media(max-height:560px)', crop_css)
+        self.assertIn('.profile-crop-dialog__header p{display:none}', crop_css)
+        self.assertIn("imageOrientation: 'from-image'", crop_script)
+        self.assertIn("status.textContent = 'Optimizing photo...'", crop_script)
+        self.assertIn('sourceUrl = await enhancedImageUrl(file)', crop_script)
+        self.assertIn('function correctedLevels', crop_script)
+        self.assertIn('function enhancePixels', crop_script)
+        self.assertIn('const amount = .12', crop_script)
+
+    def test_profile_upload_normalizes_square_image_and_removes_replaced_file(self):
+        user = self.create_profile('normalized_avatar', 'User', first_name='Nora', last_name='Square')
+        profile = user.userprofile
+        source = BytesIO()
+        PILImage.new('RGB', (900, 450), (210, 120, 60)).save(source, format='PNG')
+        data_url = 'data:image/png;base64,' + base64.b64encode(source.getvalue()).decode('ascii')
+
+        storage_settings = {
+            'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+            'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+        }
+        with self.settings(STORAGES=storage_settings):
+            old_image = BytesIO()
+            PILImage.new('RGB', (32, 32), (20, 30, 40)).save(old_image, format='JPEG')
+            profile.profile_image.save(
+                'previous-avatar.jpg',
+                SimpleUploadedFile('previous-avatar.jpg', old_image.getvalue(), content_type='image/jpeg'),
+                save=True,
+            )
+            previous_name = profile.profile_image.name
+            storage = profile.profile_image.storage
+            self.assertTrue(storage.exists(previous_name))
+            self.client.force_login(user)
+
+            response = self.client.post(reverse('user_profile'), {
+                'action': 'update_image',
+                'cropped_image': data_url,
+            })
+
+            self.assertRedirects(response, reverse('user_profile'))
+            profile.refresh_from_db()
+            self.assertFalse(storage.exists(previous_name))
+            profile.profile_image.open('rb')
+            with PILImage.open(profile.profile_image.file) as saved:
+                self.assertEqual(saved.size, (512, 512))
+                self.assertEqual(saved.format, 'JPEG')
+                corner = saved.convert('RGB').getpixel((0, 0))
+                self.assertGreater(sum(corner), 100)

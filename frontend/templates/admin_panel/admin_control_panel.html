@@ -1,79 +1,93 @@
 {% extends 'admin_panel/admin_base.html' %}
 {% load static %}
 
-{% block topbar_title %}Global Settings Center{% endblock %}
+{% block topbar_title %}Control Panel{% endblock %}
 {% block topbar_welcome %}Enterprise Configuration{% endblock %}
 
 {% block content %}
-<style>
-.cp-shell{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
-.cp-nav,.cp-card,.cp-actions,.cp-modal__dialog{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 12px 30px rgba(2,6,23,.06)}
-.cp-nav{padding:14px;position:sticky;top:20px;height:fit-content}
-.cp-nav a{display:block;padding:11px 12px;border-radius:10px;text-decoration:none;color:#334155;font-weight:500;transition:.2s}
-.cp-nav a:hover{background:#f1f5f9;color:#0f172a}
-.cp-main{display:grid;gap:18px}
-.cp-card{padding:28px}
-.cp-card h3{margin:0 0 8px;font-size:1.07rem;color:#0f172a}
-.cp-sub{margin:0 0 24px;color:#64748b;font-size:.92rem;line-height:1.5}
-.cp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 18px}
-.cp-field{display:grid;gap:8px}
-.cp-field label{display:block;font-size:.83rem;font-weight:700;color:#334155;letter-spacing:.02em}
-.cp-field input,.cp-field select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;transition:.2s;background:#fff;color:#0f172a}
-.cp-check{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #cbd5e1;border-radius:10px}.cp-check input{width:auto}.cp-check label{margin:0}
-.cp-field input:focus,.cp-field select:focus{outline:none;border-color:var(--theme-primary);box-shadow:0 0 0 3px rgba(15,23,42,.08)}
-.cp-stack{display:grid;gap:18px}
-.cp-stack .cp-field{gap:10px}
-.cp-upload-card{padding:18px;border:1px solid #dbe4f1;border-radius:14px;background:#f8fafc;display:grid;gap:12px}
-.cp-upload-control{display:grid;gap:10px}
-.cp-upload-help{margin:0;font-size:.83rem;line-height:1.45;color:#64748b}
-.cp-preview{display:flex;align-items:center;gap:12px;padding:12px;border:1px dashed #cbd5e1;border-radius:12px;background:#fff;color:#475569}
-.cp-preview img{width:48px;height:48px;object-fit:contain}
-.cp-preview strong{display:block;color:#0f172a;font-size:.86rem;margin-bottom:2px}
-.cp-color-control{display:flex;align-items:center;gap:12px}
-.cp-color-swatch{position:relative;width:44px;height:44px;border-radius:10px;border:1px solid #cbd5e1;box-shadow:inset 0 0 0 1px rgba(255,255,255,.32);overflow:hidden;background:var(--theme-primary,#0b1b68);flex-shrink:0}
-.cp-color-swatch input[type="color"]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0;padding:0}
-.cp-color-value{font-size:.86rem;color:#475569;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.cp-actions{padding:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;bottom:16px}
-.btnx{border:0;border-radius:10px;padding:11px 18px;font-weight:600;transition:.2s}.btn-primary{background:var(--theme-primary);color:#fff}.btn-secondary{background:#e2e8f0;color:#0f172a}.btnx:hover{transform:translateY(-1px)}
-.cp-modal{position:fixed;inset:0;background:rgba(2,6,23,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}.cp-modal.is-open{display:flex}
-.cp-modal__dialog{max-width:430px;width:100%;padding:20px}.cp-modal__title{margin:0 0 6px}.cp-modal__meta{margin:0 0 14px;color:#64748b;font-size:.9rem}
-@media(max-width:1024px){.cp-shell{grid-template-columns:1fr}.cp-grid{grid-template-columns:1fr}}
-.cp-main{display:grid;gap:16px}.cp-actions__meta{margin:0;color:#64748b}.cp-actions__buttons{display:flex;gap:10px}.cp-modal__label{display:block;font-size:.85rem;font-weight:600;margin-bottom:6px}.cp-modal__input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}.cp-modal__footer{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-</style>
-<form method="post" enctype="multipart/form-data" id="controlForm">
-  {% csrf_token %}
-  <input type="hidden" name="confirm_password" id="confirmPasswordInput">
-  <div class="cp-shell">
-    <aside class="cp-nav">
-      <a href="#general">General</a><a href="#security">Security</a><a href="#branding">Branding</a><a href="#theme">Theme</a>
-    </aside>
-    <main class="cp-main">
-      <section id="general" class="cp-card"><h3>General Settings</h3><p class="cp-sub">Global product identity used across titles, headers, and navigation.</p><div class="cp-grid"><div class="cp-field"><label>Web App Name</label><input name="web_app_name" id="web_app_name" value="{{ app_settings.web_app_name|default:'QCMS' }}" placeholder="QCMS"></div></div></section>
-      <section id="security" class="cp-card"><h3>Security Settings</h3><p class="cp-sub">Location is requested once when a checklist is submitted. Draft saves never request or store location.</p><div class="cp-check"><input type="checkbox" name="geolocation_tracking_enabled" id="geolocation_tracking_enabled" {% if app_settings.security_settings.geolocation_tracking_enabled %}checked{% endif %}><label for="geolocation_tracking_enabled">Enable Geolocation Tracking</label></div></section>
-      <section id="branding" class="cp-card"><h3>Branding Settings</h3><p class="cp-sub">Single-source branding assets applied globally.</p><div class="cp-grid"><div class="cp-field"><label>Application Logo</label><input type="file" name="logo" accept="image/*"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current logo"><span>Used in sidebar, header, login, and reports.</span></div></div><div class="cp-field"><label>Favicon</label><input type="file" name="favicon" accept="image/*"></div></div></section>
-      <section id="theme" class="cp-card"><h3>Theme & Appearance</h3><p class="cp-sub">Unified enterprise theme controls.</p><div class="cp-grid"><div class="cp-field"><label>Global Theme Color</label><input type="color" name="global_theme_color" id="global_theme_color" value="{{ GLOBAL_THEME.global_theme_color|default:'#0b1b68' }}"></div><div class="cp-field"><label>Font Family</label><select name="font_family">{% for font in font_options %}<option value="{{ font }}" {% if GLOBAL_THEME.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select></div></div></section>
-      <div class="cp-actions"><p class="cp-actions__meta">Changes require admin password confirmation.</p><div class="cp-actions__buttons"><button class="btnx btn-primary" type="submit" name="action" value="save">Save & Apply</button><button class="btnx btn-secondary" type="submit" name="action" value="reset">Reset</button></div></div>
-    </main>
-  </div>
-</form>
-<div class="cp-modal" id="passwordModal" aria-hidden="true"><div class="cp-modal__dialog"><h3 class="cp-modal__title">Confirm Admin Password</h3><p class="cp-modal__meta">Re-enter your current password to authorize global settings changes.</p><label for="confirmPasswordField" class="cp-modal__label">Password</label><input id="confirmPasswordField" class="cp-modal__input" type="password" autocomplete="current-password"><div class="cp-modal__footer"><button type="button" class="btnx btn-secondary" id="cancelModal">Cancel</button><button type="button" class="btnx btn-primary" id="confirmModal">Confirm & Continue</button></div></div></div>
-<script>
-(()=>{
-  const form=document.getElementById('controlForm'),modal=document.getElementById('passwordModal'),pwdInput=document.getElementById('confirmPasswordField'),hidden=document.getElementById('confirmPasswordInput'),cancel=document.getElementById('cancelModal'),ok=document.getElementById('confirmModal');
-  const colorInput=document.getElementById('global_theme_color'),colorSwatch=document.getElementById('themeColorSwatch'),colorValue=document.getElementById('themeColorValue');
-  let pendingSubmitter=null;
+<link rel="stylesheet" href="{% static 'shared/control_panel.css' %}">
+{% if messages %}{% for message in messages %}<div class="alert-inline">{{ message }}</div>{% endfor %}{% endif %}
 
-  const syncColor=()=>{
-    const value=colorInput.value||'#0b1b68';
-    if(colorSwatch)colorSwatch.style.backgroundColor=value;
-    if(colorValue)colorValue.textContent=value;
-  };
-  syncColor();
-  colorInput?.addEventListener('input',syncColor);
+<header class="cp-intro">
+  <div><h1>Control Panel 2.0</h1><p>Manage QCMS identity, shared interface behavior, workflow evidence settings, and operational defaults from one governed configuration surface.</p></div>
+  <span class="cp-updated">Last updated {{ app_settings.updated_at|date:'d M Y, H:i' }}</span>
+</header>
 
-  form.addEventListener('submit',e=>{if(hidden.value)return; e.preventDefault(); pendingSubmitter=e.submitter; modal.classList.add('is-open'); pwdInput.value=''; pwdInput.focus();});
-  cancel.addEventListener('click',()=>modal.classList.remove('is-open'));
-  ok.addEventListener('click',()=>{if(!pwdInput.value.trim()){pwdInput.focus();return;} hidden.value=pwdInput.value; modal.classList.remove('is-open'); if(form.requestSubmit&&pendingSubmitter){form.requestSubmit(pendingSubmitter);}else{form.submit();}});
-})();
-</script>
+<div class="cp-shell">
+  {% include 'admin_panel/partials/control_panel_nav.html' with control_panel_active='general' %}
+  <main class="cp-main">
+    <form method="post" enctype="multipart/form-data" id="controlForm" class="cp-form">
+      {% csrf_token %}
+      <input type="hidden" name="confirm_password" id="confirmPasswordInput">
+
+      <section id="general" class="cp-section" aria-labelledby="generalHeading">
+        <header class="cp-section__header"><div><h2 id="generalHeading">General</h2><p>Global product identity used in page titles, navigation, and authenticated workspaces.</p></div><span class="cp-section__tag">Global</span></header>
+        <div class="cp-grid"><div class="cp-field"><label for="webAppName">Web App Name</label><input id="webAppName" name="web_app_name" maxlength="120" value="{{ app_settings.web_app_name|default:'QCMS' }}" required><small>Keep the name concise enough for collapsed and mobile navigation.</small></div></div>
+      </section>
+
+      <section id="branding" class="cp-section" aria-labelledby="brandingHeading">
+        <header class="cp-section__header"><div><h2 id="brandingHeading">Branding</h2><p>Validated image assets shared by login, navigation, browser tabs, and reports.</p></div></header>
+        <div class="cp-grid">
+          <div class="cp-field"><label for="applicationLogo">Application Logo</label><input id="applicationLogo" type="file" name="logo" accept="image/png,image/jpeg,image/webp"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.logo %}{{ GLOBAL_BRANDING.logo.url }}{% else %}{% static 'images/logo.png' %}{% endif %}" alt="Current application logo"><div><strong>Current application logo</strong><span>PNG, JPEG, or WEBP. SVG is rejected.</span></div></div></div>
+          <div class="cp-field"><label for="applicationFavicon">Favicon</label><input id="applicationFavicon" type="file" name="favicon" accept="image/png,image/jpeg,image/webp"><div class="cp-preview"><img src="{% if GLOBAL_BRANDING.favicon %}{{ GLOBAL_BRANDING.favicon.url }}{% else %}{% static 'images/favicon.png' %}{% endif %}" alt="Current favicon"><div><strong>Current browser icon</strong><span>Shown in supported browser tabs and bookmarks.</span></div></div></div>
+        </div>
+      </section>
+
+      <section id="appearance" class="cp-section" aria-labelledby="appearanceHeading">
+        <header class="cp-section__header"><div><h2 id="appearanceHeading">Appearance</h2><p>One brand color and typography choice feed the existing shared UI token system.</p></div></header>
+        <div class="cp-grid">
+          <div class="cp-field"><label for="global_theme_color">Global Theme Color</label><div class="cp-color-row"><input type="color" name="global_theme_color" id="global_theme_color" value="{{ theme_settings.global_theme_color }}"><span id="themeColorValue" class="cp-color-value">{{ theme_settings.global_theme_color }}</span></div></div>
+          <div class="cp-field"><label for="fontFamily">Font Family</label><select id="fontFamily" name="font_family">{% for font in font_options %}<option value="{{ font }}" {% if theme_settings.font_family == font %}selected{% endif %}>{{ font }}</option>{% endfor %}</select></div>
+        </div>
+      </section>
+
+      <section id="components" class="cp-section" aria-labelledby="componentsHeading">
+        <header class="cp-section__header"><div><h2 id="componentsHeading">Components</h2><p>Choose global behavior profiles. Templates remain shared; root data attributes switch design tokens.</p></div><span class="cp-section__tag">Modern default</span></header>
+        <div class="cp-field"><span>Card Profile</span><div class="cp-profile-options">{% for value, label in card_profiles %}<label class="cp-profile-option"><input type="radio" name="card_profile" value="{{ value }}" {% if theme_settings.card_profile == value %}checked{% endif %}><strong>{{ label }}</strong><span>{% if value == 'corporate' %}Dense, restrained borders and minimal motion.{% elif value == 'premium' %}Layered elevation for executive surfaces.{% else %}Balanced elevation and clear interaction feedback.{% endif %}</span></label>{% endfor %}</div></div>
+        <div class="cp-field"><span>Button Profile</span><div class="cp-profile-options">{% for value, label in button_profiles %}<label class="cp-profile-option"><input type="radio" name="button_profile" value="{{ value }}" {% if theme_settings.button_profile == value %}checked{% endif %}><strong>{{ label }}</strong><span>{% if value == 'corporate' %}Compact corners and minimal movement.{% elif value == 'premium' %}Stronger elevation and press feedback.{% else %}Balanced radius, hover, focus, and disabled states.{% endif %}</span></label>{% endfor %}</div></div>
+        <div class="cp-field"><span>Cursor Profile</span><div class="cp-profile-options">{% for value, label in cursor_profiles %}<label class="cp-profile-option"><input type="radio" name="cursor_profile" value="{{ value }}" {% if theme_settings.cursor_profile == value %}checked{% endif %}><strong>{{ label }}</strong><span>{% if value == 'classic' %}Direct enterprise feedback with standard cursors.{% elif value == 'premium' %}More deliberate component press feedback.{% else %}Responsive SaaS-style interaction timing.{% endif %}</span></label>{% endfor %}</div></div>
+      </section>
+
+      <section id="header-navigation" class="cp-section" aria-labelledby="headerHeading">
+        <header class="cp-section__header"><div><h2 id="headerHeading">Header &amp; Navigation</h2><p>Control header information density while preserving the shared avatar renderer and profile links.</p></div></header>
+        <input type="hidden" name="header_settings_present" value="1">
+        <div class="cp-checks">
+          <label class="cp-check"><input type="checkbox" name="header_show_avatar" {% if theme_settings.header_show_avatar %}checked{% endif %}><span><strong>Show Avatar</strong><span>Display the shared circular image or initials avatar.</span></span></label>
+          <label class="cp-check"><input type="checkbox" name="header_show_welcome_text" {% if theme_settings.header_show_welcome_text %}checked{% endif %}><span><strong>Show Welcome Text</strong><span>Display the role-specific welcome label beside the avatar.</span></span></label>
+        </div>
+        <div class="cp-grid"><div class="cp-field"><label for="headerDensity">Header Density</label><select id="headerDensity" name="header_density">{% for value, label in header_densities %}<option value="{{ value }}" {% if theme_settings.header_density == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><small>Compact reduces header padding but keeps avatar dimensions stable.</small></div></div>
+      </section>
+
+      <section id="tables" class="cp-section" aria-labelledby="tablesHeading">
+        <header class="cp-section__header"><div><h2 id="tablesHeading">Tables</h2><p>Defaults used by the existing Universal Table Framework. Query-string selections still override the default per page.</p></div></header>
+        <div class="cp-grid">
+          <div class="cp-field"><label for="tablePageSize">Default Page Size</label><select id="tablePageSize" name="table_default_page_size">{% for size in table_page_sizes %}<option value="{{ size }}" {% if system_preferences.table_default_page_size == size %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
+          <div class="cp-field"><label for="tableDensity">Table Density</label><select id="tableDensity" name="table_density">{% for value, label in table_densities %}<option value="{{ value }}" {% if system_preferences.table_density == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><small>Export remains filtered, complete, and protected against spreadsheet formula injection.</small></div>
+        </div>
+      </section>
+
+      <section id="notification-control" class="cp-section" aria-labelledby="notificationHeading">
+        <header class="cp-section__header"><div><h2 id="notificationHeading">Notification Control</h2><p>Notification policy remains owned by the existing NotificationSetting singleton.</p></div><span class="cp-section__tag">Separate owner</span></header>
+        <div class="cp-notification-summary"><div class="cp-summary-copy"><strong>Manage in-app notification behavior</strong><span>Configure bell, popup, sound, retention, priority colors, and event-level policy.</span></div><a href="{% url 'admin_notification_settings' %}" class="btn btn-primary">Open Notification Control</a></div>
+      </section>
+
+      <section id="security" class="cp-section" aria-labelledby="securityHeading">
+        <header class="cp-section__header"><div><h2 id="securityHeading">Security</h2><p>Location is requested once during Submit only. WIP saves never request or store location.</p></div></header>
+        <label class="cp-check"><input type="checkbox" name="geolocation_tracking_enabled" {% if app_settings.security_settings.geolocation_tracking_enabled %}checked{% endif %}><span><strong>Enable Geolocation Tracking</strong><span>Submission still succeeds when permission is denied or location is unavailable.</span></span></label>
+      </section>
+
+      <section id="operations" class="cp-section" aria-labelledby="operationsHeading">
+        <header class="cp-section__header"><div><h2 id="operationsHeading">Operations</h2><p>Review immutable evidence for privileged settings changes and system activity.</p></div></header>
+        <div class="cp-operation-links"><a href="{% url 'admin_logs' %}?search=Settings" class="btn btn-outline">View Settings Activity</a><a href="{% url 'admin_logs' %}" class="btn btn-outline">Open Activity Logs</a></div>
+      </section>
+
+      <div class="cp-actions"><p>Saving or resetting global settings requires current Admin password confirmation.</p><div class="cp-actions__buttons"><button class="btn btn-secondary" type="submit" name="action" value="reset">Reset All</button><button class="btn btn-primary" type="submit" name="action" value="save">Save &amp; Apply</button></div></div>
+    </form>
+  </main>
+</div>
+
+<div class="cp-modal" id="passwordModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+  <div class="cp-modal__dialog"><h2 id="passwordModalTitle">Confirm Admin Password</h2><p>Re-enter your current password to authorize global Control Panel changes.</p><label for="confirmPasswordField">Password</label><input id="confirmPasswordField" type="password" autocomplete="current-password"><div class="cp-modal__footer"><button type="button" class="btn btn-secondary" id="cancelPasswordConfirmation">Cancel</button><button type="button" class="btn btn-primary" id="confirmPasswordConfirmation">Confirm &amp; Continue</button></div></div>
+</div>
+<script src="{% static 'shared/control_panel.js' %}"></script>
 {% endblock %}

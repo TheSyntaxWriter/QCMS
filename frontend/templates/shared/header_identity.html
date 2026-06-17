@@ -1,3 +1,4 @@
+{% load static %}
 {% with profile=request.user.userprofile %}
 <a
   class="topbar-identity"
@@ -5,22 +6,7 @@
   aria-label="Open profile for {{ request.user.get_full_name|default:request.user.username }}"
   title="{{ request.user.get_full_name|default:request.user.username }}"
 >
-  {% if profile.profile_image %}
-    <img
-      class="topbar-avatar"
-      src="{{ profile.profile_image.url }}"
-      alt=""
-      width="34"
-      height="34"
-      onerror="this.hidden=true;this.nextElementSibling.hidden=false"
-    />
-    <span class="topbar-avatar topbar-avatar--initials" aria-hidden="true" hidden>
-      {% if request.user.first_name or request.user.last_name %}{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}{% else %}{{ request.user.username|first|upper }}{% endif %}
-    </span>
-  {% else %}
-    <span class="topbar-avatar topbar-avatar--initials" aria-hidden="true">
-      {% if request.user.first_name or request.user.last_name %}{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}{% else %}{{ request.user.username|first|upper }}{% endif %}
-    </span>
-  {% endif %}
+  {% include 'shared/avatar.html' with avatar_profile=profile avatar_user=request.user avatar_size='header' %}
 </a>
 {% endwith %}
+<script src="{% static 'shared/avatar.js' %}"></script>

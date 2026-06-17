@@ -1,0 +1,25 @@
+{% with display_name=avatar_user.get_full_name|default:avatar_user.username %}
+<span class="qcms-avatar qcms-avatar--{{ avatar_size|default:'header' }}" data-avatar>
+  {% if avatar_profile.profile_image %}
+    <img
+      {% if avatar_id %}id="{{ avatar_id }}"{% endif %}
+      class="qcms-avatar__image"
+      src="{{ avatar_profile.profile_image.url }}"
+      alt="{{ display_name }} profile image"
+    >
+    <span class="qcms-avatar__initials" aria-label="{{ display_name }} initials" hidden>
+      {% if avatar_user.first_name or avatar_user.last_name %}{{ avatar_user.first_name|first|upper }}{{ avatar_user.last_name|first|upper }}{% else %}{{ avatar_user.username|first|upper }}{% endif %}
+    </span>
+  {% else %}
+    <img
+      {% if avatar_id %}id="{{ avatar_id }}"{% endif %}
+      class="qcms-avatar__image"
+      alt="{{ display_name }} profile image"
+      hidden
+    >
+    <span class="qcms-avatar__initials" aria-label="{{ display_name }} initials">
+      {% if avatar_user.first_name or avatar_user.last_name %}{{ avatar_user.first_name|first|upper }}{{ avatar_user.last_name|first|upper }}{% else %}{{ avatar_user.username|first|upper }}{% endif %}
+    </span>
+  {% endif %}
+</span>
+{% endwith %}

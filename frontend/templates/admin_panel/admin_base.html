@@ -82,7 +82,14 @@
     </style>
   </head>
 
-  <body class="app-layout">
+  <body
+    class="app-layout"
+    data-card-profile="{{ GLOBAL_THEME.card_profile }}"
+    data-button-profile="{{ GLOBAL_THEME.button_profile }}"
+    data-cursor-profile="{{ GLOBAL_THEME.cursor_profile }}"
+    data-header-density="{{ GLOBAL_THEME.header_density }}"
+    data-table-density="{{ GLOBAL_SYSTEM_PREFERENCES.table_density }}"
+  >
     {% block sidebar %}
       {% include 'includes/sidebar/admin_sidebar.html' %}
     {% endblock %}
@@ -92,8 +99,8 @@
       <div class="topbar">
         <div>{% block topbar_title %}Admin Dashboard{% endblock %}</div>
         <div class="topbar-account-group">
-          {% include 'shared/header_identity.html' %}
-          <span class="topbar-welcome-text">{% block topbar_welcome %}Welcome, Admin{% endblock %}</span>
+          {% if GLOBAL_THEME.header_show_avatar %}{% include 'shared/header_identity.html' %}{% endif %}
+          {% if GLOBAL_THEME.header_show_welcome_text %}<span class="topbar-welcome-text">{% block topbar_welcome %}Welcome, Admin{% endblock %}</span>{% endif %}
           {% include 'shared/notification_center.html' %}
         </div>
       </div>
