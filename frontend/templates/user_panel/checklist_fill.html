@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block topbar_title %}Fill Checklist{% endblock %}
-{% block topbar_welcome %}Welcome, {{ request.user.get_full_name|default:request.user.username }}{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'user_panel/checklist_fill.css' %}" />

@@ -1,8 +1,7 @@
 {% extends 'admin_panel/admin_base.html' %}
-{% load static %}
+{% load static qcms_icons %}
 
 {% block topbar_title %}Control Panel{% endblock %}
-{% block topbar_welcome %}Enterprise Configuration{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'shared/control_panel.css' %}">
@@ -64,6 +63,34 @@
           <div class="cp-field"><label for="tablePageSize">Default Page Size</label><select id="tablePageSize" name="table_default_page_size">{% for size in table_page_sizes %}<option value="{{ size }}" {% if system_preferences.table_default_page_size == size %}selected{% endif %}>{{ size }}</option>{% endfor %}</select></div>
           <div class="cp-field"><label for="tableDensity">Table Density</label><select id="tableDensity" name="table_density">{% for value, label in table_densities %}<option value="{{ value }}" {% if system_preferences.table_density == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><small>Export remains filtered, complete, and protected against spreadsheet formula injection.</small></div>
         </div>
+      </section>
+
+      <section id="icon-gallery" class="cp-section" aria-labelledby="iconGalleryHeading">
+        <header class="cp-section__header"><div><h2 id="iconGalleryHeading">Icon Gallery</h2><p>Choose allowlisted Lucide icons for sidebar and major navigation items. Only safe icon keys are stored.</p></div><span class="cp-section__tag">Phase 1</span></header>
+        <input type="hidden" name="icon_gallery_present" value="1">
+        <input type="hidden" name="icon_gallery_reset" id="iconGalleryReset" value="0">
+        <div class="cp-icon-tools">
+          <div class="cp-field"><label for="iconGallerySearch">Search Icons</label><input id="iconGallerySearch" type="search" placeholder="Search slots or icons" data-icon-gallery-search></div>
+          <div class="cp-field"><label for="iconGalleryCategory">Category</label><select id="iconGalleryCategory" data-icon-gallery-category><option value="">All categories</option>{% for value, label in icon_categories %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+        </div>
+        <div class="cp-icon-grid">
+          {% for slot in icon_slots %}
+            <div class="cp-icon-card" data-icon-gallery-row data-search-text="{{ slot.label|lower }} {{ slot.selected|lower }}">
+              <div class="cp-icon-card__preview" aria-hidden="true">{% qcms_icon slot.slot class_name="cp-icon-preview" %}</div>
+              <div class="cp-icon-card__body">
+                <label for="iconSlot{{ slot.slot }}">{{ slot.label }}</label>
+                <select id="iconSlot{{ slot.slot }}" name="icon_slot_{{ slot.slot }}" data-icon-picker data-default-icon="{{ slot.default }}">
+                  {% for option in icon_options %}
+                    <option value="{{ option.key }}" data-category="{{ option.category }}" {% if slot.selected == option.key %}selected{% endif %}>{{ option.label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <button type="button" class="btn btn-secondary cp-icon-reset" data-icon-reset>Reset</button>
+            </div>
+          {% endfor %}
+        </div>
+        <p class="cp-icon-note">Icon changes apply after Save &amp; Apply. Reset buttons restore individual slots; Reset Icon Gallery restores every icon slot.</p>
+        <button type="submit" name="action" value="save" class="btn btn-outline" data-icon-gallery-reset-all>Reset Icon Gallery</button>
       </section>
 
       <section id="notification-control" class="cp-section" aria-labelledby="notificationHeading">

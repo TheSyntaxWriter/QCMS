@@ -1,4 +1,5 @@
 import math
+import copy
 from decimal import Decimal, InvalidOperation
 
 from django.db import models
@@ -536,8 +537,8 @@ class AppSettings(models.Model):
             pk=1,
             defaults={
                 'general_settings': {'company_tagline': '', 'support_email': ''},
-                'theme_settings': DEFAULT_THEME_SETTINGS.copy(),
-                'system_preferences': DEFAULT_SYSTEM_PREFERENCES.copy(),
+                'theme_settings': copy.deepcopy(DEFAULT_THEME_SETTINGS),
+                'system_preferences': copy.deepcopy(DEFAULT_SYSTEM_PREFERENCES),
                 'security_settings': {
                     'session_timeout': 30,
                     'password_rotation_days': 90,

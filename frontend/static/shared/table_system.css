@@ -19,8 +19,10 @@
 .table-container,
 .table-responsive {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-inline: contain;
 }
 .table-container table,
 .table-responsive .standard-table,
@@ -96,6 +98,12 @@ table.standard-table {
     height: 30px;
     line-height: 30px;
     padding: 0 10px;
+  }
+  .table-page-size {
+    width: 100%;
+  }
+  .table-page-size select {
+    flex: 1;
   }
 }
 

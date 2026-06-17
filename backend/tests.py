@@ -1655,13 +1655,15 @@ class ControlPanel2Phase1Tests(TestCase):
         self.assertEqual(response.status_code, 200)
         for section_id in (
             'general', 'branding', 'appearance', 'components', 'header-navigation',
-            'tables', 'notification-control', 'security', 'operations',
+            'icon-gallery', 'tables', 'notification-control', 'security', 'operations',
         ):
             self.assertContains(response, f'id="{section_id}"')
         self.assertContains(response, 'Corporate Minimal')
         self.assertContains(response, 'Modern Enterprise')
         self.assertContains(response, 'Premium Executive')
         self.assertContains(response, reverse('admin_notification_settings'))
+        self.assertContains(response, 'Icon Gallery')
+        self.assertContains(response, 'icon_slot_dashboard')
 
     def test_component_header_and_table_settings_persist_and_are_audited(self):
         response = self.client.post(reverse('admin_control_panel'), {
@@ -1676,6 +1678,9 @@ class ControlPanel2Phase1Tests(TestCase):
             'header_settings_present': '1',
             'header_show_welcome_text': 'on',
             'header_density': 'compact',
+            'icon_gallery_present': '1',
+            'icon_slot_dashboard': 'file-check-2',
+            'icon_slot_control': 'shield-check',
             'table_default_page_size': '50',
             'table_density': 'spacious',
         })
@@ -1686,6 +1691,8 @@ class ControlPanel2Phase1Tests(TestCase):
         self.assertEqual(settings_obj.theme_settings['card_profile'], 'premium')
         self.assertEqual(settings_obj.theme_settings['button_profile'], 'corporate')
         self.assertEqual(settings_obj.theme_settings['cursor_profile'], 'modern')
+        self.assertEqual(settings_obj.theme_settings['icon_slots']['dashboard'], 'file-check-2')
+        self.assertEqual(settings_obj.theme_settings['icon_slots']['control'], 'shield-check')
         self.assertFalse(settings_obj.theme_settings['header_show_avatar'])
         self.assertTrue(settings_obj.theme_settings['header_show_welcome_text'])
         self.assertEqual(settings_obj.theme_settings['header_density'], 'compact')
@@ -1693,7 +1700,7 @@ class ControlPanel2Phase1Tests(TestCase):
         self.assertEqual(settings_obj.system_preferences['table_density'], 'spacious')
         for event_key in (
             'settings.control_panel_updated', 'settings.theme_updated',
-            'settings.header_updated', 'settings.table_updated',
+            'settings.header_updated', 'settings.icon_gallery_updated', 'settings.table_updated',
         ):
             self.assertTrue(ActivityLog.objects.filter(event_key=event_key, target_type='AppSettings').exists())
 
@@ -1736,6 +1743,8 @@ class ControlPanel2Phase1Tests(TestCase):
             'header_show_avatar': 'on',
             'header_show_welcome_text': 'on',
             'header_density': 'unknown',
+            'icon_gallery_present': '1',
+            'icon_slot_dashboard': '<svg/onload=alert(1)>',
             'table_default_page_size': '999',
             'table_density': 'unknown',
         })
@@ -1749,8 +1758,58 @@ class ControlPanel2Phase1Tests(TestCase):
         self.assertEqual(settings_obj.theme_settings['button_profile'], 'modern')
         self.assertEqual(settings_obj.theme_settings['cursor_profile'], 'classic')
         self.assertEqual(settings_obj.theme_settings['header_density'], 'comfortable')
+        self.assertEqual(settings_obj.theme_settings['icon_slots']['dashboard'], 'layout-dashboard')
         self.assertEqual(settings_obj.system_preferences['table_default_page_size'], 25)
         self.assertEqual(settings_obj.system_preferences['table_density'], 'comfortable')
+
+    def test_sidebar_uses_allowlisted_icon_registry(self):
+        settings_obj = AppSettings.get_solo()
+        settings_obj.theme_settings = {
+            'global_theme_color': '#0b1b68',
+            'font_family': 'Inter',
+            'icon_slots': {'dashboard': 'file-check-2', 'control': 'shield-check'},
+        }
+        settings_obj.save(update_fields=['theme_settings', 'updated_at'])
+
+        response = self.client.get(reverse('admin_dashboard'))
+
+        self.assertContains(response, '<svg class="app-icon"')
+        self.assertContains(response, '<svg class="app-icon app-icon--chevron"')
+        self.assertContains(response, '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path>', html=True)
+        self.assertNotContains(response, 'app-icon--dashboard')
+
+
+class HeaderIdentityStandardizationTests(TestCase):
+    def create_role_user(self, username, role, first_name, last_name):
+        user = User.objects.create_user(
+            username=username,
+            password='pass12345',
+            first_name=first_name,
+            last_name=last_name,
+        )
+        UserProfile.objects.create(user=user, role=role)
+        return user
+
+    def test_admin_header_always_uses_full_name_not_module_context(self):
+        admin_user = self.create_role_user('identity_admin', 'Admin', 'Anika', 'Admin')
+        self.client.force_login(admin_user)
+
+        response = self.client.get(reverse('admin_control_panel'))
+
+        self.assertContains(response, '<span class="topbar-welcome-text">Welcome, Anika Admin</span>', html=True)
+        self.assertNotContains(response, '<span class="topbar-welcome-text">Enterprise Configuration</span>', html=True)
+        self.assertContains(response, '<div>Control Panel</div>', html=True)
+
+    def test_user_hod_and_management_headers_use_full_name(self):
+        for role in ('User', 'HOD', 'Management'):
+            with self.subTest(role=role):
+                user = self.create_role_user(f'identity_{role.lower()}', role, role, 'Member')
+                self.client.force_login(user)
+
+                response = self.client.get(reverse('my_checklists'))
+
+                self.assertContains(response, f'<span class="topbar-welcome-text">Welcome, {role} Member</span>', html=True)
+                self.client.logout()
 
 
 class AvatarRenderingTests(TestCase):

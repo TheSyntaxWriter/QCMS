@@ -14,6 +14,35 @@
     syncColor();
   }
 
+  const iconSearch = document.querySelector('[data-icon-gallery-search]');
+  const iconCategory = document.querySelector('[data-icon-gallery-category]');
+  const iconRows = Array.from(document.querySelectorAll('[data-icon-gallery-row]'));
+  const filterIconRows = () => {
+    const term = (iconSearch?.value || '').trim().toLowerCase();
+    const category = iconCategory?.value || '';
+    iconRows.forEach(row => {
+      const select = row.querySelector('[data-icon-picker]');
+      const selected = select?.selectedOptions?.[0];
+      const matchesTerm = !term || (row.dataset.searchText || '').includes(term) || (selected?.textContent || '').toLowerCase().includes(term);
+      const matchesCategory = !category || selected?.dataset.category === category;
+      row.classList.toggle('is-hidden', !(matchesTerm && matchesCategory));
+    });
+  };
+  iconSearch?.addEventListener('input', filterIconRows);
+  iconCategory?.addEventListener('change', filterIconRows);
+  document.querySelectorAll('[data-icon-reset]').forEach(button => {
+    button.addEventListener('click', () => {
+      const row = button.closest('[data-icon-gallery-row]');
+      const select = row?.querySelector('[data-icon-picker]');
+      if (select?.dataset.defaultIcon) select.value = select.dataset.defaultIcon;
+      filterIconRows();
+    });
+  });
+  document.querySelector('[data-icon-gallery-reset-all]')?.addEventListener('click', () => {
+    const resetInput = document.getElementById('iconGalleryReset');
+    if (resetInput) resetInput.value = '1';
+  });
+
   const form = document.getElementById('controlForm');
   const modal = document.getElementById('passwordModal');
   if (!form || !modal) return;

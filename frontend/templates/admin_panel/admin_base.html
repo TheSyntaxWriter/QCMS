@@ -44,8 +44,11 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
         margin-bottom: 20px;
       }
+      .topbar > div:first-child { min-width: 0; overflow-wrap: anywhere; }
       /* Table width/overflow is centralized in shared/table_system.css */
       .btn {
         padding: 0px 10px;
@@ -100,7 +103,7 @@
         <div>{% block topbar_title %}Admin Dashboard{% endblock %}</div>
         <div class="topbar-account-group">
           {% if GLOBAL_THEME.header_show_avatar %}{% include 'shared/header_identity.html' %}{% endif %}
-          {% if GLOBAL_THEME.header_show_welcome_text %}<span class="topbar-welcome-text">{% block topbar_welcome %}Welcome, Admin{% endblock %}</span>{% endif %}
+          {% if GLOBAL_THEME.header_show_welcome_text %}<span class="topbar-welcome-text">Welcome, {{ request.user.get_full_name|default:request.user.username }}</span>{% endif %}
           {% include 'shared/notification_center.html' %}
         </div>
       </div>

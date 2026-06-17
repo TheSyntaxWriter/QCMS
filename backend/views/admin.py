@@ -1,4 +1,5 @@
 import re
+import copy
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -38,6 +39,7 @@ from ..notification_service import notify_on_commit, users_for_role
 from ..permission_service import get_role_permission_config, validate_permission_payload, is_action_permitted_for_response, effective_allowed_actions_for_response
 from ..upload_validation import validate_branding_upload
 from ..workflow_service import ResponseStatus, evaluate_status_action
+from ..icon_registry import ICON_CATEGORIES, icon_options_for_template, icon_slots_for_template
 from ..control_panel_settings import (
     BUTTON_PROFILES,
     CARD_PROFILES,
@@ -828,8 +830,8 @@ def admin_control_panel(request):
 
         action = request.POST.get('action')
         if action == 'reset':
-            app_settings.theme_settings = DEFAULT_THEME_SETTINGS.copy()
-            app_settings.system_preferences = DEFAULT_SYSTEM_PREFERENCES.copy()
+            app_settings.theme_settings = copy.deepcopy(DEFAULT_THEME_SETTINGS)
+            app_settings.system_preferences = copy.deepcopy(DEFAULT_SYSTEM_PREFERENCES)
             app_settings.web_app_name = 'QCMS'
             app_settings.general_settings = {}
             app_settings.security_settings = {
@@ -921,6 +923,15 @@ def admin_control_panel(request):
                 old_data={key: previous_theme.get(key) for key in theme_keys},
                 new_data={key: app_settings.theme_settings.get(key) for key in theme_keys},
             )
+        if previous_theme.get('icon_slots') != app_settings.theme_settings.get('icon_slots'):
+            write_activity_log(
+                action_type='Icon Gallery Updated', module_name='Settings', description='Global navigation icon assignments updated.',
+                status=ActivityLog.STATUS_SUCCESS, user=request.user, event_key='settings.icon_gallery_updated',
+                severity=ActivityLog.SEVERITY_MEDIUM, target_type='AppSettings', target_id=app_settings.pk,
+                source=ActivityLog.SOURCE_UI,
+                old_data={'icon_slots': previous_theme.get('icon_slots')},
+                new_data={'icon_slots': app_settings.theme_settings.get('icon_slots')},
+            )
         header_keys = {'header_show_avatar', 'header_show_welcome_text', 'header_density'}
         if any(previous_theme.get(key) != app_settings.theme_settings.get(key) for key in header_keys):
             write_activity_log(
@@ -963,6 +974,9 @@ def admin_control_panel(request):
         'header_densities': HEADER_DENSITIES,
         'table_densities': TABLE_DENSITIES,
         'table_page_sizes': PAGE_SIZE_OPTIONS,
+        'icon_categories': ICON_CATEGORIES,
+        'icon_options': icon_options_for_template(),
+        'icon_slots': icon_slots_for_template(current_theme.get('icon_slots')),
     })
 def admin_logs(request):
     if not request.user.is_authenticated:

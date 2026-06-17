@@ -1,5 +1,7 @@
 import re
 
+from .icon_registry import DEFAULT_ICON_SLOTS, normalize_icon_slots, sanitize_icon_key
+
 
 CARD_PROFILES = (
     ('corporate', 'Corporate Minimal'),
@@ -43,6 +45,7 @@ DEFAULT_THEME_SETTINGS = {
     'header_show_avatar': True,
     'header_show_welcome_text': True,
     'header_density': 'comfortable',
+    'icon_slots': DEFAULT_ICON_SLOTS.copy(),
 }
 
 DEFAULT_SYSTEM_PREFERENCES = {
@@ -78,6 +81,7 @@ def normalize_theme_settings(value=None):
         'header_show_avatar': bool(result.get('header_show_avatar', True)),
         'header_show_welcome_text': bool(result.get('header_show_welcome_text', True)),
         'header_density': _choice(result.get('header_density'), HEADER_DENSITIES, 'comfortable'),
+        'icon_slots': normalize_icon_slots(result.get('icon_slots')),
     })
     return result
 
@@ -102,6 +106,16 @@ def posted_theme_settings(post, current=None):
     if post.get('header_settings_present') == '1':
         result['header_show_avatar'] = post.get('header_show_avatar') == 'on'
         result['header_show_welcome_text'] = post.get('header_show_welcome_text') == 'on'
+    if post.get('icon_gallery_present') == '1':
+        icon_slots = normalize_icon_slots(result.get('icon_slots'))
+        if post.get('icon_gallery_reset') == '1':
+            icon_slots = DEFAULT_ICON_SLOTS.copy()
+        else:
+            for slot, default_icon in DEFAULT_ICON_SLOTS.items():
+                field_name = f'icon_slot_{slot}'
+                if field_name in post:
+                    icon_slots[slot] = sanitize_icon_key((post.get(field_name) or '').strip(), default_icon)
+        result['icon_slots'] = icon_slots
     return normalize_theme_settings(result)
 
 

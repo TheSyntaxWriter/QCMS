@@ -3,7 +3,6 @@
 
 {% block sidebar %}{% if not pdf_mode %}{{ block.super }}{% endif %}{% endblock %}
 {% block topbar_title %}{% if pdf_mode %}Checklist PDF{% else %}Checklist Preview{% endif %}{% endblock %}
-{% block topbar_welcome %}{{ checklist.checklist_id }}{% endblock %}
 
 {% block content %}
 {% include 'shared/checklist_preview_content.html' %}

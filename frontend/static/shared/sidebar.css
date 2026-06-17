@@ -174,16 +174,14 @@
   overflow-x: clip;
 }
 .app-icon {
-  display: inline-block;
+  display: inline-flex;
   width: 20px;
   height: 20px;
-  background: #fff;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
+  flex: 0 0 20px;
+  color: currentColor;
+  background: transparent;
+  mask-image: none;
+  -webkit-mask-image: none;
 }
 .app-icon--dashboard {
   mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="black" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-10h8V3h-8v8Z"/></svg>');
@@ -225,8 +223,8 @@
 .app-icon--chevron {
   width: 16px;
   height: 16px;
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="black" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg>');
-  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="black" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"/></svg>');
+  mask-image: none;
+  -webkit-mask-image: none;
   transition: transform 0.2s ease;
 }
 @media (max-width: 920px) {
@@ -239,6 +237,20 @@
     margin-left: 0 !important;
     width: 100%;
     max-width: 100%;
+  }
+  .app-sidebar__menu {
+    display: block;
+  }
+  .app-sidebar__menu-main {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+  }
+  .app-sidebar__link {
+    flex: 0 0 auto;
+    margin-bottom: 0;
   }
   .app-layout.sidebar-collapsed .app-sidebar__brand-text,
   .app-layout.sidebar-collapsed .app-sidebar__label {

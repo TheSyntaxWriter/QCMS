@@ -1,7 +1,6 @@
 {% extends 'admin_panel/admin_base.html' %}
 {% load static %}
 {% block topbar_title %}Notification Control{% endblock %}
-{% block topbar_welcome %}Control Panel{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{% static 'shared/control_panel.css' %}">
 {% if messages %}{% for message in messages %}<div class="alert-inline">{{ message }}</div>{% endfor %}{% endif %}

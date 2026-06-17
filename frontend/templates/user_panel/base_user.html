@@ -29,7 +29,8 @@
       }
       * { box-sizing: border-box; }
       body { margin:0; font-family:'{{ GLOBAL_THEME.font_family|default:"Inter" }}',sans-serif; background:var(--bg); color:#111827; }
-      .topbar { background:var(--color-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+      .topbar { background:var(--color-header); color:#fff; padding:14px 18px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
+      .topbar > div:first-child { min-width:0; overflow-wrap:anywhere; }
       .content { min-width:0; }
     </style>
   </head>
@@ -48,7 +49,7 @@
         <div>{% block topbar_title %}User Panel{% endblock %}</div>
         <div class="topbar-account-group">
           {% if GLOBAL_THEME.header_show_avatar %}{% include 'shared/header_identity.html' %}{% endif %}
-          {% if GLOBAL_THEME.header_show_welcome_text %}<span class="topbar-welcome-text">{% block topbar_welcome %}Welcome{% endblock %}</span>{% endif %}
+          {% if GLOBAL_THEME.header_show_welcome_text %}<span class="topbar-welcome-text">Welcome, {{ request.user.get_full_name|default:request.user.username }}</span>{% endif %}
           {% include 'shared/notification_center.html' %}
         </div>
       </div>

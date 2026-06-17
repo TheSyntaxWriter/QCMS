@@ -1,6 +1,7 @@
 from django.conf import settings
 from backend.models import AppSettings
 from backend.control_panel_settings import normalize_system_preferences, normalize_theme_settings
+from backend.icon_registry import normalize_icon_slots
 
 
 def branding(request):
@@ -13,4 +14,5 @@ def branding(request):
         'GLOBAL_BRANDING': app_settings,
         'GLOBAL_THEME': theme,
         'GLOBAL_SYSTEM_PREFERENCES': system_preferences,
+        'GLOBAL_ICON_SLOTS': normalize_icon_slots(theme.get('icon_slots')),
     }
